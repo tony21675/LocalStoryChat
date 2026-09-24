@@ -599,6 +599,130 @@ def _iter_changed_claims(base, patch, path=""):
         yield path, patch
 
 
+def _filter_patch_to_supported_evidence(base, patch, story_text, evidence):
+    """Keep only substantive patch claims supported by exact story quotes.
+
+    The state manager is a local language model and may occasionally emit an
+    imprecise or stitched evidence quote. A single bad quote should not discard
+    an otherwise useful state update. Unsupported claims are removed from the
+    proposed patch; authoritative bookkeeping fields remain eligible.
+    """
+    normalized_story = _normalize_evidence_text(story_text)
+
+    valid_evidence = set()
+
+    if isinstance(evidence, list):
+        for entry in evidence:
+            if not isinstance(entry, dict):
+                continue
+
+            field = entry.get("field")
+            claim = entry.get("claim")
+            quote = entry.get("quote")
+
+            if not isinstance(field, str) or not field.strip():
+                continue
+
+            if "claim" not in entry:
+                continue
+
+            if not isinstance(quote, str) or not quote.strip():
+                continue
+
+            normalized_quote = _normalize_evidence_text(quote)
+
+            if normalized_quote not in normalized_story:
+                continue
+
+            valid_evidence.add(
+                (
+                    field.strip(),
+                    _claim_key(claim)
+                )
+            )
+
+    def keep_value(base_value, value, path):
+        top_level = path.split(".", 1)[0]
+
+        if top_level in _STATE_METADATA_FIELDS:
+            return True, value
+
+        if isinstance(value, dict):
+            kept = {}
+
+            for key, child in value.items():
+                child_path = (
+                    f"{path}.{key}"
+                    if path
+                    else key
+                )
+
+                child_base = (
+                    base_value.get(key)
+                    if isinstance(base_value, dict)
+                    else None
+                )
+
+                keep, child_value = keep_value(
+                    child_base,
+                    child,
+                    child_path
+                )
+
+                if keep:
+                    kept[key] = child_value
+
+            return bool(kept), kept
+
+        if isinstance(value, list):
+            base_list = (
+                base_value
+                if isinstance(base_value, list)
+                else []
+            )
+
+            kept = []
+
+            for item in value:
+                item_key = (
+                    path,
+                    _claim_key(item)
+                )
+
+                if item in base_list or item_key in valid_evidence:
+                    kept.append(item)
+
+            return bool(kept), kept
+
+        if value == base_value:
+            return False, None
+
+        return (
+            (path, _claim_key(value)) in valid_evidence,
+            value
+        )
+
+    filtered = {}
+
+    for key, value in patch.items():
+        base_value = base.get(key)
+
+        if key in _STATE_METADATA_FIELDS:
+            filtered[key] = value
+            continue
+
+        keep, filtered_value = keep_value(
+            base_value,
+            value,
+            key
+        )
+
+        if keep:
+            filtered[key] = filtered_value
+
+    return filtered
+
+
 def validate_state_patch(base, patch, story_text, evidence):
     if not isinstance(base, dict):
         raise ValueError(
@@ -1149,6 +1273,15 @@ Do not return current_state.json.
 
         patch["chapter"] = section_chapter
         patch["scene"] = section_scene
+
+    # Drop only unsupported model-generated claims instead of rejecting
+    # the entire proposal. Proven claims remain eligible for the review UI.
+    patch = _filter_patch_to_supported_evidence(
+        current_state,
+        patch,
+        story_text,
+        evidence
+    )
 
     validate_state_patch(
         current_state,
