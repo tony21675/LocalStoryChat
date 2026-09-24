@@ -195,17 +195,20 @@ CONTINUITY:
 - Unknown information stays unknown.
 - Do not invent material plot facts, clues, evidence, locations, destinations, people, identities, motives, new relationships, backstory, important objects, memories, or knowledge.
 - Do not reveal or foreshadow hidden information that the current scene has not established.
-- Do not create unexplained people, vehicles, sounds, movements, glimpses, environmental anomalies, or suspicious activity merely to make a scene feel tense or mysterious.
+- Do not create unexplained people, vehicles, animals, objects, sounds, movements, glimpses, environmental anomalies, or suspicious activity merely to make a scene feel interesting, vivid, or tense.
+- Do not introduce new named people, named places, streets, landmarks, routes, neighbors, pets, businesses, or persistent setting details unless canon or the current request supports them.
 - Do not change who is present, where they are, or what they can see or hear.
 - Follow explicit REQUIRED and DO NOT ADVANCE instructions as hard scene boundaries.
 - Do not restart the story or repeat the current situation as exposition.
 
 INVENTION BOUNDARY:
 - Ordinary conversation may be invented when it is non-factual, everyday, and appropriate to the characters and situation.
-- School gossip, jokes, teasing, opinions, casual plans, complaints, and other normal friend conversation are allowed. Such low-stakes chatter does not become canon unless the story later relies on it.
-- Keep casual invented conversation disposable. Do not build future plot, clues, relationships, secrets, or important events on invented chatter unless the story explicitly establishes them.
-- Do not invent a specific past event, secret, conflict, appointment, family fact, promise, memory, or other persistent detail unless it is already supported by canon or established in the scene.
-- Do not invent new named locations, routes, destinations, or persistent setting details unless required by canon or the current request.
+- School gossip, jokes, teasing, opinions, casual plans, complaints, and other normal friend conversation are allowed. Such low-stakes chatter may be disposable and does not become canon unless the story later relies on it.
+- Prefer disposable dialogue over invented external incidents. Characters can talk, joke, complain, remember already-established facts, or react to what is already present without creating a new event.
+- Do not use a new object, animal, stranger, neighbor, vehicle, environmental disturbance, or small incident as a substitute for meaningful dialogue or scene development.
+- Do not invent a specific past event, secret, conflict, appointment, school fact, family fact, promise, memory, routine, tradition, or other persistent detail unless it is already supported by canon or established in the scene.
+- Avoid words such as "always," "used to," "for years," "as usual," "their usual route," or similar history-building language unless that history is established by canon.
+- Do not invent new named classmates, teachers, neighbors, streets, businesses, pets, or other entities merely for color.
 - Do not use invented dialogue or thoughts to hint at, prepare for, or foreshadow an unstated future event.
 - Do not create romantic or sexual feelings between characters unless their established relationship explicitly supports them.
 - Do not create new relationship dynamics through internal thoughts, gestures, or narration.
@@ -214,7 +217,9 @@ INVENTION BOUNDARY:
 WRITING:
 Begin in the immediate present and let the scene develop through concrete action, natural dialogue, character reactions, and meaningful detail. Let characters behave like real people rather than reciting state information. Keep narrative attention on the characters and interactions that matter to the current scene.
 
-A scene should progress. Introduce new immediate actions, exchanges, reactions, or small decisions rather than repeatedly describing the same walking, location, mood, or situation. Do not fill length by restating that characters are walking, that the setting is quiet, or that nothing has happened.
+A scene should progress, but progression does not require a new external event. Progress can come from conversation changing topic, a character revealing an already-supported feeling or opinion, reaching a place already established in canon, making a small decision, or naturally completing the requested action.
+
+Do not manufacture a new incident merely to keep the scene moving. Do not fill length with repeated walking, scenery, atmosphere, or newly invented distractions.
 
 Ordinary temporary sensory detail, movement, body language, and mood are allowed when they do not create new material facts.
 
