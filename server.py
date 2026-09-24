@@ -1226,11 +1226,8 @@ STORY_BIBLE_CONTEXT_FIELDS = (
     "title",
     "version",
     "status",
-    "premise",
-    "central_question",
     "relationships",
     "locations",
-    "canon_rules",
 )
 
 
@@ -1298,18 +1295,13 @@ def _format_locked_state(data):
         for item in clues if isinstance(clues, list) else [clues]:
             lines.append(f"- {item}")
 
-    requirements = data.get("continuity_requirements")
-    if requirements:
-        lines.append("")
-        lines.append("SCENE BOUNDARIES:")
-        for item in requirements:
-            lines.append(f"- {item}")
-
     lines.extend([
         "",
         "Use this as the exact present situation, not as narration to repeat in the prose.",
+        "Only the present facts above are writer context. Future plot information is intentionally omitted.",
         "Ordinary temporary movement, sensory detail, body language, and casual dialogue are allowed.",
         "Do not invent material facts merely because they are plausible.",
+        "Do not manufacture a new event simply because the scene needs more words.",
         "",
         "END CURRENT SCENE",
     ])
@@ -1743,12 +1735,13 @@ class LlamaSession:
                     continuation_prompt = (
                         "Continue the same story scene naturally from exactly "
                         "where you stopped. Do not restart, repeat, summarize, "
-                        "or explain the previous text. Add substantial prose "
-                        "so the overall section approaches 800 to 1,200 words. "
-                        "Let the scene breathe with natural action, dialogue, "
-                        "atmosphere, and character interaction. Preserve "
-                        "established canon and current scene boundaries, but "
-                        "do not sweat harmless small details. End only at a "
+                        "or explain the previous text. Add only as much prose "
+                        "as the scene genuinely needs, normally keeping the "
+                        "overall section around 400 to 800 words. Let the scene "
+                        "develop through natural action, dialogue, reactions, "
+                        "and ordinary interaction. Preserve established canon "
+                        "and the present scene boundary. Do not invent a new "
+                        "external incident merely to add length. End at a "
                         "natural scene break."
                     )
 
