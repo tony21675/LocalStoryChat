@@ -977,6 +977,8 @@ Rules:
 - The quote must directly support the claim. Do not attach a baseline-only fact to a quote that merely provides nearby context.
 - If a claim cannot be supported by a direct contiguous quote from the completed story section, do NOT include that claim in the patch.
 - Never create an update merely because a fact from current state remains true. Existing facts are not changes.
+- Treat location and physical position as literal continuity data. Do not infer arrival at a place from language such as approaching, nearing, heading toward, or not yet reached.
+- Do not make a character appear to be at or passing a location unless the completed story section explicitly establishes that position.
 - Do not create active_clues or unresolved_questions from ordinary objects, dialogue, or curiosity unless the story section explicitly establishes them as plot-relevant clues or unresolved story questions.
 - If nothing changed, return exactly:
   {{"patch": {{}}, "evidence": []}}
