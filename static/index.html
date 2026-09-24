@@ -905,7 +905,7 @@ async function saveStory(story){
     const status = await api('/api/status');
 
     const chapter = status.state?.chapter;
-    const scene = status.state?.scene;
+    const scene = status.state?.next_save_scene ?? status.state?.scene;
 
     if(!Number.isInteger(chapter) || !Number.isInteger(scene)){
       throw new Error('Current chapter and section numbers are not available.');

@@ -416,6 +416,18 @@ Evidence rules:
 """
 
 pending_state = None
+STORY_SAVE_LOCK = threading.Lock()
+
+
+def next_story_section_path(chapter, scene):
+    chapter_dir = MANUSCRIPT_DIR / "Chapters" / f"Chapter_{chapter:02d}"
+    candidate_scene = scene
+    while True:
+        filename = f"Chapter_{chapter:02d}_Section_{candidate_scene:02d}.txt"
+        path_out = chapter_dir / filename
+        if not path_out.exists():
+            return candidate_scene, filename, path_out
+        candidate_scene += 1
 
 
 def read_current_state():
@@ -2207,6 +2219,16 @@ class Handler(BaseHTTPRequestHandler):
                         read_current_state().get("status")
                         if STATE_PATH.exists() else None
                     ),
+                    "next_save_scene": (
+                        next_story_section_path(
+                            read_current_state().get("chapter"),
+                            read_current_state().get("scene")
+                        )[0]
+                        if STATE_PATH.exists()
+                        and isinstance(read_current_state().get("chapter"), int)
+                        and isinstance(read_current_state().get("scene"), int)
+                        else None
+                    ),
                     "pending": pending_state is not None,
                 },
             })
@@ -2747,16 +2769,15 @@ class Handler(BaseHTTPRequestHandler):
                     )
                     return
 
-                chapter_dir = MANUSCRIPT_DIR / "Chapters" / f"Chapter_{chapter:02d}"
-                chapter_dir.mkdir(parents=True, exist_ok=True)
-
-                filename = f"Chapter_{chapter:02d}_Section_{scene:02d}.txt"
-                path_out = chapter_dir / filename
-
-                path_out.write_text(
-                    story + "\n",
-                    encoding="utf-8"
-                )
+                with STORY_SAVE_LOCK:
+                    _, filename, path_out = next_story_section_path(
+                        chapter, scene
+                    )
+                    path_out.parent.mkdir(parents=True, exist_ok=True)
+                    path_out.write_text(
+                        story + "\n",
+                        encoding="utf-8"
+                    )
 
                 self._json(
                     200,
