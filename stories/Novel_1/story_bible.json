@@ -1,0 +1,76 @@
+{
+  "title": "Untitled",
+  "version": "1.4",
+  "status": "active",
+  "premise": "Tiffany is kidnapped during the story. Tony searches for her and discovers who took her and why.",
+  "central_question": "Where is Tiffany, who took her, and why?",
+  "character_cards": [
+    "Tony.json",
+    "Tiffany.json",
+    "Maya.json",
+    "Chloe.json"
+  ],
+  "relationships": {
+    "Tony-Tiffany": "father/daughter; Tony has known Tiffany since birth",
+    "Tony-Maya": "friends; Tony has known Maya since she was a baby",
+    "Tony-Chloe": "friends",
+    "Tiffany-Maya": "close friends; they have known each other since they were babies",
+    "Tiffany-Chloe": "close friends",
+    "Maya-Chloe": "close friends"
+  },
+  "hidden_canon": {
+    "tracker": {
+      "location": "inside Tiffany's dog tags",
+      "known_by": [],
+      "activation": "Tiffany squeezes the dog tags tightly",
+      "active": false,
+      "effect": "Sends Tiffany's location to Tony's phone when activated"
+    }
+  },
+  "kidnapping": {
+    "victim": "Tiffany",
+    "method": "Forcibly taken and shoved into a van",
+    "kidnappers": "Two male kidnappers; identities unknown.",
+    "motive": "unknown",
+    "van": "unknown",
+    "destination": "unknown",
+    "other_participants": "Two male kidnappers total.",
+    "planning": "unknown",
+    "required_sequence": [
+      "Tiffany is taken before reaching home.",
+      "Two male kidnappers are involved.",
+      "One male kidnapper drives the van.",
+      "The other male kidnapper physically grabs Tiffany and forces her into the van.",
+      "Maya and Chloe witness the kidnapping.",
+      "Maya and Chloe are not taken.",
+      "Maya and Chloe remain safe.",
+      "Maya and Chloe run to Tony after Tiffany is taken.",
+      "Maya and Chloe reach Tony together while crying and extremely distraught.",
+      "Maya and Chloe immediately hug Tony for comfort when they reach him.",
+      "Tony must calm Maya and Chloe before he can get a clear explanation of what happened.",
+      "After Tony calms them, Maya and Chloe tell him that Tiffany has been taken.",
+      "Tony learns about the kidnapping from Maya and Chloe, not by witnessing it."
+    ],
+    "roles": {
+      "driver": "One male kidnapper drives the van.",
+      "grabber": "One male kidnapper physically grabs Tiffany and forces her into the van."
+    }
+  },
+  "canon_rules": {
+    "kidnapping_sequence": "Required. Do not skip, reverse, replace, or prematurely resolve it unless the user explicitly changes canon.",
+    "emotional_aftermath": "Required. Maya and Chloe are crying and extremely distraught when they reach Tony. They immediately hug him, and Tony must calm them before learning what happened to Tiffany.",
+    "tracker": "Remains hidden and inactive until naturally revealed and activated.",
+    "unknowns": "The kidnappers' identities, motive, destination, and planning remain unknown until established by the story.",
+    "continuity": "Do not retroactively change established events unless the story establishes that earlier information was mistaken or incomplete.",
+    "kidnappers": "The kidnappers are male. Do not introduce a female kidnapper unless the user explicitly changes this canon.",
+    "kidnapping_roles": "There are two male kidnappers: one drives the van and the other grabs and forces Tiffany into the van.",
+    "police_involvement": "Tony intends to handle Tiffany's kidnapping himself and does not want police involvement. Maya and Chloe are instructed not to report the kidnapping or disclose what they witnessed to police or other outsiders unless Tony's plans or the established story explicitly change this rule.",
+    "tony_response": "Tony takes personal responsibility for finding Tiffany and intends to handle the investigation himself. He tells Maya and Chloe not to involve police or tell anyone outside their trusted group what happened. He does not require them to participate in the search, but makes clear that they may choose to help him look for Tiffany, gather clues, or assist in other ways if they want to.",
+    "maya_chloe_choice": "Maya and Chloe are not required to participate in Tony's search for Tiffany. Tony gives them the choice to help him find Tiffany or look for useful clues if they want to."
+  },
+  "locations": {
+    "tony_tiffany_home": "Tony and Tiffany live together in the same house.",
+    "garage": "The garage is part of Tony and Tiffany's home.",
+    "maya_home": "Maya lives next door to Tony and Tiffany."
+  }
+}

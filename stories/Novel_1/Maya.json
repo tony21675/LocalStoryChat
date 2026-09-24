@@ -1,0 +1,43 @@
+{
+  "name": "Maya",
+  "role": "Tiffany's friend; Tony's friend; eyewitness",
+  "status": "established",
+  "age": 18,
+  "appearance": {
+    "height": "5 ft 5 in",
+    "build": "slim",
+    "hair": "shoulder-length dark brown",
+    "eyes": "brown",
+    "style": "casual, practical; subtly dresses more provocatively around Tony without realizing how noticeable it is to him"
+  },
+  "personality": [
+    "observant",
+    "loyal",
+    "empathetic",
+    "cautious"
+  ],
+  "strengths": [
+    "notices small details",
+    "stays calm under pressure",
+    "protective of friends"
+  ],
+  "weaknesses": [
+    "second-guesses herself after frightening events",
+    "hesitates when uncertain"
+  ],
+  "stress_response": "Normally becomes quieter and focuses on details she can remember. After witnessing a traumatic event such as Tiffany being taken, she can become intensely distraught, cry, cling to or hug Tony for comfort, and have difficulty explaining what happened until he helps calm her down.",
+  "relationships": {
+    "Tony": "friend; Tony has known her since she was a baby; she has a secret crush on him that he does not know about",
+    "Tiffany": "close friend; they have known each other since they were babies",
+    "Chloe": "close friend"
+  },
+  "does_not_know": [
+    "The dog tags contain a hidden tracker.",
+    "The tracker's activation method.",
+    "The kidnapper's identity unless she learns it.",
+    "Information Chloe has not shared with her.",
+    "Tony knows about her crush.",
+    "Tony notices that she sometimes dresses more provocatively around him."
+  ],
+  "knowledge_rule": "Only knows what she personally witnessed, experienced, was told, or reasonably inferred."
+}

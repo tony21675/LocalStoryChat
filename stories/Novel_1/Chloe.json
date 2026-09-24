@@ -1,0 +1,43 @@
+{
+  "name": "Chloe",
+  "role": "Tiffany's friend; Tony's friend; eyewitness",
+  "status": "established",
+  "age": 20,
+  "appearance": {
+    "height": "5 ft 7 in",
+    "build": "average",
+    "hair": "long, wavy medium-brown",
+    "eyes": "hazel",
+    "style": "casual, slightly fashionable; subtly dresses more provocatively around Tony without realizing how noticeable it is to him"
+  },
+  "personality": [
+    "outgoing",
+    "direct",
+    "protective",
+    "emotionally expressive"
+  ],
+  "strengths": [
+    "speaks up when something feels wrong",
+    "confronts difficult situations",
+    "strongly loyal to friends"
+  ],
+  "weaknesses": [
+    "may react emotionally before thinking",
+    "becomes frustrated when powerless"
+  ],
+  "stress_response": "Normally talks through events repeatedly while reconstructing exactly what happened. After witnessing a traumatic event such as Tiffany being taken, she can become intensely distraught, cry, cling to or hug Tony for comfort, and have difficulty explaining what happened until he helps calm her down.",
+  "relationships": {
+    "Tony": "friend; has a secret crush on him that he does not know about",
+    "Tiffany": "close friend",
+    "Maya": "close friend"
+  },
+  "does_not_know": [
+    "The dog tags contain a hidden tracker.",
+    "The tracker's activation method.",
+    "The kidnapper's identity unless she learns it.",
+    "Information Maya has not shared with her.",
+    "Tony knows about her crush.",
+    "Tony notices that she sometimes dresses more provocatively around him."
+  ],
+  "knowledge_rule": "Only knows what she personally witnessed, experienced, was told, or reasonably inferred."
+}

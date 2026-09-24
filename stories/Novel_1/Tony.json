@@ -1,0 +1,41 @@
+{
+  "name": "Tony",
+  "role": "main protagonist",
+  "status": "established",
+  "age": 36,
+  "appearance": {
+    "height": "5 ft 10 in",
+    "build": "athletic",
+    "hair": "brown",
+    "eyes": "hazel",
+    "facial_hair": "goatee"
+  },
+  "background": "Retired U.S. Army Special Forces.",
+  "skills": [
+    "Expert hand-to-hand combat",
+    "Capable of lethal force when necessary"
+  ],
+  "personality": [
+    "thoughtful",
+    "caring",
+    "protective",
+    "determined"
+  ],
+  "relationships": {
+    "Tiffany": "daughter; Tony has known her since birth",
+    "Maya": "friend; Tony has known her since she was a baby",
+    "Chloe": "friend"
+  },
+  "goals": [
+    "Protect Tiffany",
+    "Find Tiffany and bring her home safely if she is in danger"
+  ],
+  "does_not_know": [
+    "Tiffany's dog tags contain a hidden tracker.",
+    "The tracker's activation method.",
+    "The kidnapper's identity or motive until discovered.",
+    "Information witnessed only by Maya or Chloe.",
+    "Maya and Chloe have crushes on him.",
+    "Maya and Chloe sometimes dress more provocatively around him."
+  ]
+}

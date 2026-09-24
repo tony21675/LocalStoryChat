@@ -1,0 +1,29 @@
+{
+  "name": "Tiffany",
+  "role": "central character; kidnapping victim",
+  "status": "established",
+  "age": 18,
+  "appearance": {
+    "build": "slim",
+    "hair": "long, curly, dark red",
+    "eyes": "green"
+  },
+  "personality": [
+    "affectionate",
+    "caring",
+    "independent"
+  ],
+  "relationships": {
+    "Tony": "father; he has known her since birth",
+    "Maya": "close friend; they have known each other since they were babies",
+    "Chloe": "close friend"
+  },
+  "important_items": {
+    "dog_tags": "Tony's dog tags, worn by Tiffany"
+  },
+  "does_not_know": [
+    "The dog tags contain a hidden tracker.",
+    "Squeezing the dog tags tightly activates the tracker.",
+    "The kidnapper's identity or motive until she learns them."
+  ]
+}

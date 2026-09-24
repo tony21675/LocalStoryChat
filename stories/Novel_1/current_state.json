@@ -1,0 +1,60 @@
+{
+  "status": "story_start",
+  "chapter": 1,
+  "scene": 1,
+  "scene_completed": false,
+  "location": {
+    "primary": "Tony and Tiffany's home",
+    "Tony": "In the garage at home with the garage door closed, working on his 2010 Chevrolet Silverado.",
+    "Tiffany": "Walking home from school with Maya and has not reached home yet.",
+    "Maya": "Walking home from school with Tiffany and has not reached Tony and Tiffany's house yet."
+  },
+  "time": {
+    "period": "late afternoon",
+    "exact_time": "not established"
+  },
+  "current_situation": "Chapter 1 is beginning. Tony is at home in the garage with the garage door closed, working on his 2010 Chevrolet Silverado while rock music plays in the garage. Tiffany and Maya are walking home from school together along the front road and have not reached home yet. From his current position, Tony cannot see or hear the front road or Tiffany and Maya. Maya lives next door to Tony and Tiffany. Tiffany is safe at the start of the story. No kidnapping has occurred yet.",
+  "character_knowledge": {
+    "Tony": [
+      "Knows Tiffany is his daughter.",
+      "Knows Maya is a friend of his and Tiffany's.",
+      "Knows Tiffany and Maya are walking home from school together.",
+      "Does not know of any kidnapping or threat to Tiffany."
+    ],
+    "Tiffany": [
+      "Is walking home from school with Maya.",
+      "Knows Tony is at home in the garage.",
+      "Knows Maya is walking home with her."
+    ],
+    "Maya": [
+      "Is walking home from school with Tiffany.",
+      "Knows Tony is at home in the garage.",
+      "Knows Tiffany is safe at the start of the story."
+    ]
+  },
+  "completed_events": [],
+  "active_clues": [],
+  "new_clues": [],
+  "unresolved_questions": [],
+  "active_objectives": {
+    "Tony": "Continue working on his truck while remaining available at home.",
+    "Tiffany": "Walk home safely with Maya.",
+    "Maya": "Walk home safely with Tiffany."
+  },
+  "continuity_requirements": [
+    "Chapter 1 begins here.",
+    "Tony and Tiffany live together in the same house.",
+    "Tony's garage is part of their home.",
+    "Maya lives next door to Tony and Tiffany.",
+    "Tiffany is safe at the start of the story.",
+    "Tiffany and Maya are walking home from school together.",
+    "Tiffany and Maya have not reached Tony and Tiffany's house yet.",
+    "Do not reveal the kidnapping before it occurs in the story.",
+    "Do not invent threats, clues, kidnappers, motives, destinations, or other investigative information before it is established.",
+    "Do not reveal the hidden tracker or its activation method.",
+    "Protect continuity of all established character facts and relationships.",
+    "Chloe is not an active character in this three-character test.",
+    "From his current position, Tony cannot see or hear the front road or Tiffany and Maya.",
+    "Tony is in the closed garage working on his 2010 Chevrolet Silverado with rock music playing."
+  ]
+}
