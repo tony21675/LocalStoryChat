@@ -913,6 +913,12 @@ Rules:
 - Do NOT include unchanged information.
 - For array fields, include ONLY new items introduced by this section.
 - Do NOT include old array items.
+- The ONLY permitted top-level patch fields are:
+  status, chapter, scene, scene_completed, location, time, current_situation,
+  character_knowledge, completed_events, active_clues, new_clues,
+  unresolved_questions, active_objectives, continuity_requirements.
+- Do NOT create or return any other top-level fields. Fields such as
+  conversation_topics, current_activity, notes, summary, history, or metadata are invalid.
 - "evidence" must contain an exact quote from this story section for every substantive patch item.
 - If nothing changed, return exactly:
   {{"patch": {{}}, "evidence": []}}
@@ -1015,6 +1021,23 @@ Do not return current_state.json.
         raise ValueError(
             "State manager 'evidence' must be an array."
         )
+
+    # Prevent the state model from creating unsupported top-level fields.
+    # The schema remains authoritative. Unknown fields are ignored rather than
+    # blocking an otherwise valid state proposal.
+    unknown_top_level = sorted(
+        set(patch.keys()) - STATE_REQUIRED_KEYS
+    )
+
+    if unknown_top_level:
+        print(
+            "Ignoring unsupported state fields: "
+            + ", ".join(unknown_top_level),
+            flush=True
+        )
+
+        for name in unknown_top_level:
+            patch.pop(name, None)
 
     # Prevent the model from accidentally creating character fields
     # at the top level of current_state.json.
