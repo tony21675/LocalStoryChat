@@ -13,7 +13,7 @@
     "period": "late afternoon",
     "exact_time": "not established"
   },
-  "current_situation": "Chapter 1 is beginning. Tony is at home taking a nap. Tiffany and Maya are walking home from school together along the front road and have not reached home yet. Tony is not currently interacting with them. Maya lives next door to Tony and Tiffany. Tiffany is safe at the start of the story. No kidnapping has occurred yet.",
+  "current_situation": "Chapter 1 is beginning. Tony is at home taking a nap. Tiffany and Maya are walking home from school together along the front road and have not reached home yet. Tony is not currently interacting with them. Maya lives next door to Tony and Tiffany. Tiffany is safe at the start of the story. No kidnapping has occurred yet. At this point all three characters are focused on their ordinary immediate activities; they do not expect, search for, or actively monitor outside interference or unusual events unless something actually gives them a reason to do so.",
   "character_knowledge": {
     "Tony": [
       "Knows Tiffany is his daughter.",
@@ -37,8 +37,8 @@
   "unresolved_questions": [],
   "active_objectives": {
     "Tony": "Remain at home and rest.",
-    "Tiffany": "Walk home safely with Maya.",
-    "Maya": "Walk home safely with Tiffany."
+    "Tiffany": "Walk home with Maya, enjoy their conversation, and get home normally.",
+    "Maya": "Walk home with Tiffany, enjoy their conversation, and get home normally."
   },
   "continuity_requirements": [
     "Chapter 1 begins here.",
@@ -54,6 +54,7 @@
     "Do not reveal the hidden tracker or its activation method.",
     "Protect continuity of all established character facts and relationships.",
     "Chloe is not an active character in this three-character test.",
-    "From his current position, Tony cannot see or hear the front road or Tiffany and Maya."
+    "From his current position, Tony cannot see or hear the front road or Tiffany and Maya.",
+    "Tony, Tiffany, and Maya do not actively scan for, anticipate, or investigate outside interference during ordinary moments unless an actual event gives them a reason to pay attention."
   ]
 }
