@@ -261,22 +261,72 @@ const input=$('#input');
 let pendingState=null;
 let selectedSectionFile=null;
 let builtScenePrompt="";
-function addMsg(role,text,isStory=false){
+const CHAT_STORAGE_KEY='localStoryChat.history.v1';
+
+function readChatHistory(){
+  try{
+    const raw=localStorage.getItem(CHAT_STORAGE_KEY);
+    const items=raw?JSON.parse(raw):[];
+    return Array.isArray(items)?items:[];
+  }catch(e){
+    return [];
+  }
+}
+
+function writeChatHistory(items){
+  try{
+    localStorage.setItem(CHAT_STORAGE_KEY,JSON.stringify(items));
+  }catch(e){
+    // Chat still works if browser storage is unavailable.
+  }
+}
+
+function addMsg(role,text,isStory=false,persist=true){
   const d=document.createElement('div');
   d.className='msg '+role+(isStory?' story':'');
   d.textContent=text;
-  chat.appendChild(d);
   d.scrollIntoView({block:'end'});
 
   const e=$('#empty');
   if(e)e.remove();
 
+  chat.appendChild(d);
+
+  if(persist){
+    const history=readChatHistory();
+    history.push({role:role,text:text,isStory:!!isStory});
+    writeChatHistory(history);
+  }
+
   return d;
+}
+
+function restoreChatHistory(){
+  const history=readChatHistory();
+
+  if(!history.length)return;
+
+  $('#empty')?.remove();
+  chat.innerHTML='';
+
+  history.forEach(item=>{
+    addMsg(
+      item.role,
+      item.text,
+      !!item.isStory,
+      false
+    );
+  });
 }
 
 function clearChat(){
   chat.innerHTML='<div class="empty" id="empty">New chat. No previous conversation is loaded.</div>';
   $('#timing').textContent='';
+  try{
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+  }catch(e){
+    // Ignore storage cleanup failures.
+  }
 }
 
 function showError(t){
@@ -977,6 +1027,7 @@ input.addEventListener('keydown',e=>{
   }
 });
 
+restoreChatHistory();
 refresh();
 </script>
 </body>
