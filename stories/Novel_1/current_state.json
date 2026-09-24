@@ -17,7 +17,7 @@
   "character_knowledge": {
     "Tony": [
       "Knows Tiffany is his daughter.",
-      "Knows Maya is a friend of his and Tiffany's.",
+      "Knows Maya is one of Tiffany's best friends and is also a friend of his.",
       "Does not know of any kidnapping or threat to Tiffany."
     ],
     "Tiffany": [
@@ -47,7 +47,7 @@
     "Tiffany is safe at the start of the story.",
     "Tiffany and Maya are walking home from school together.",
     "Tiffany and Maya have not reached Tony and Tiffany's house yet.",
-    "Maya and Tiffany are friends; their relationship is platonic.",
+    "Maya and Tiffany are best friends with a close, sister-like platonic relationship.",
     "Maya is attracted to Tony.",
     "Do not reveal the kidnapping before it occurs in the story.",
     "Do not invent threats, clues, kidnappers, motives, destinations, or other investigative information before it is established.",
