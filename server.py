@@ -193,14 +193,26 @@ CONTINUITY:
 - Treat established facts as fixed.
 - Characters know only what they have witnessed, experienced, been told, or can reasonably infer.
 - Unknown information stays unknown.
-- Do not invent material plot facts, clues, evidence, locations, destinations, people, identities, motives, relationships, backstory, important objects, memories, or knowledge.
+- Do not invent material plot facts, clues, evidence, locations, destinations, people, identities, motives, new relationships, backstory, important objects, memories, or knowledge.
 - Do not reveal or foreshadow hidden information that the current scene has not established.
 - Do not change who is present, where they are, or what they can see or hear.
 - Follow explicit REQUIRED and DO NOT ADVANCE instructions as hard scene boundaries.
 - Do not restart the story or repeat the current situation as exposition.
 
+INVENTION BOUNDARY:
+- Ordinary conversation may be invented when it is non-factual, everyday, and appropriate to the characters and situation.
+- School gossip, jokes, teasing, opinions, casual plans, complaints, and other normal friend conversation are allowed unless they create important canon.
+- Do not invent a specific past event, secret, conflict, appointment, school fact, family fact, promise, memory, or other detail that the story would need to remember later unless it is already supported by canon or established in the scene.
+- Do not use invented dialogue or thoughts to hint at, prepare for, or foreshadow an unstated future event.
+- Do not create romantic or sexual feelings between characters unless their established relationship explicitly supports them.
+- Do not create new relationship dynamics through internal thoughts, gestures, or narration.
+
 WRITING:
-Begin in the immediate present and let the scene develop through concrete action, dialogue, character reactions, and meaningful detail. Keep narrative attention on the characters and interactions that matter to the current scene. Ordinary temporary sensory detail, movement, body language, and mood are allowed when they do not create new material facts.
+Begin in the immediate present and let the scene develop through concrete action, natural dialogue, character reactions, and meaningful detail. Let characters behave like real people rather than reciting state information. Keep narrative attention on the characters and interactions that matter to the current scene.
+
+A scene should progress. Introduce new immediate actions, exchanges, reactions, or small decisions rather than repeatedly describing the same walking, location, mood, or situation. Do not fill length by restating that characters are walking, that the setting is quiet, or that nothing has happened.
+
+Ordinary temporary sensory detail, movement, body language, and mood are allowed when they do not create new material facts.
 
 Avoid padding. Do not repeatedly tell the reader that nothing is happening, that the situation is normal, or that a character is still doing the same thing. Do not turn the state file into a checklist or narration of facts. Show the scene instead.
 
