@@ -382,7 +382,7 @@ CRITICAL COMPACTNESS RULES:
 - If a field has no new information, leave it out of patch.
 - If nothing changed, the patch MUST be {}.
 - The normal response should be a small JSON object, not a copy of current_state.json.
-- Never advance chapter or scene merely because the supplied section already belongs to that chapter or scene.
+- Never infer chapter or scene numbers from prose. When a manuscript section filename is supplied, the application provides the authoritative chapter and scene bookkeeping numbers separately.
 
 IMPORTANT:
 - Include only top-level fields that changed in "patch".
@@ -931,7 +931,7 @@ def _find_unsupported_named_people(text):
     return sorted(set(unsupported))
 
 
-def generate_state_proposal(story_text):
+def generate_state_proposal(story_text, section_filename=None):
     global pending_state
 
     if session.model_path is None:
@@ -940,6 +940,20 @@ def generate_state_proposal(story_text):
         )
 
     current_state = read_current_state()
+
+    section_chapter = None
+    section_scene = None
+
+    if section_filename:
+        match = re.search(
+            r"^Chapter_(\d+)_Section_(\d+)\.txt$",
+            str(section_filename).strip(),
+            re.IGNORECASE
+        )
+
+        if match:
+            section_chapter = int(match.group(1))
+            section_scene = int(match.group(2))
 
     prompt = f"""Identify ONLY the changes caused by this completed story section.
 
@@ -1125,6 +1139,16 @@ Do not return current_state.json.
     if isinstance(current_characters, dict):
         for misplaced in current_characters:
             patch.pop(misplaced, None)
+
+    # Manuscript section numbering is deterministic bookkeeping supplied by the app.
+    if section_chapter is not None and section_scene is not None:
+        if section_chapter < current_state.get("chapter", section_chapter):
+            raise ValueError(
+                "Selected manuscript section is older than the current story state."
+            )
+
+        patch["chapter"] = section_chapter
+        patch["scene"] = section_scene
 
     validate_state_patch(
         current_state,
@@ -2681,7 +2705,10 @@ class Handler(BaseHTTPRequestHandler):
                         "The story section is too short to create a useful state update."
                     )
 
-                proposed = generate_state_proposal(story)
+                proposed = generate_state_proposal(
+                    story,
+                    body.get("sectionFilename")
+                )
 
                 self._json(200, {
                     "ok": True,
