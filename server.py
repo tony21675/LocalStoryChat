@@ -357,6 +357,24 @@ Return ONLY one valid JSON object using exactly this structure:
 The "patch" must contain ONLY fields whose values are actually different from CURRENT STATE BEFORE THIS SECTION.
 The "evidence" array must prove every substantive new or changed claim in the patch.
 
+ALLOWED TOP-LEVEL PATCH FIELDS:
+- status
+- chapter
+- scene
+- scene_completed
+- location
+- time
+- current_situation
+- character_knowledge
+- completed_events
+- active_clues
+- new_clues
+- unresolved_questions
+- active_objectives
+- continuity_requirements
+
+Never create any other top-level field. In particular, do NOT use fields such as "conversation_topics", "current_activity", "summary", "notes", "recent_events", or any other field not listed above.
+
 CRITICAL COMPACTNESS RULES:
 - Do NOT copy unchanged fields from current_state.json into patch.
 - Do NOT repeat existing array items.
@@ -895,6 +913,13 @@ def generate_state_proposal(story_text):
     current_state = read_current_state()
 
     prompt = f"""Identify ONLY the changes caused by this completed story section.
+
+The patch may contain ONLY these top-level fields:
+status, chapter, scene, scene_completed, location, time,
+current_situation, character_knowledge, completed_events, active_clues,
+new_clues, unresolved_questions, active_objectives, continuity_requirements.
+
+Never invent or create any other top-level field.
 
 COMPLETED STORY SECTION:
 {story_text}
