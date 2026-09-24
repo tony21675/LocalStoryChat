@@ -399,6 +399,11 @@ IMPORTANT:
 
 Evidence rules:
 - Every substantive new or changed claim in "patch" must have a matching entry in "evidence".
+- Every evidence "quote" must be one contiguous excerpt copied verbatim from the completed story section. Never stitch together separate parts of the section.
+- Never use ellipses ("..."), brackets, summaries, paraphrases, or text from CURRENT STATE BEFORE THIS SECTION as part of a quote.
+- The quote must directly support the claim and should be short enough to copy exactly.
+- If there is no direct contiguous quote supporting a claim, do not put the claim in the patch.
+- Existing state facts are not changes just because the completed section mentions or implies them again.
 - Each evidence entry must use this structure:
   {
     "field": "field.path",
@@ -966,6 +971,13 @@ Rules:
 - Do NOT create or return any other top-level fields. Fields such as
   conversation_topics, current_activity, notes, summary, history, or metadata are invalid.
 - "evidence" must contain an exact quote from this story section for every substantive patch item.
+- Every evidence "quote" MUST be one contiguous excerpt copied character-for-character from the completed story section after normal whitespace cleanup.
+- Do NOT use ellipses ("..."), brackets, summaries, stitched excerpts, or text from CURRENT STATE BEFORE THIS SECTION.
+- Prefer one short complete sentence or one short contiguous sentence fragment as the quote.
+- The quote must directly support the claim. Do not attach a baseline-only fact to a quote that merely provides nearby context.
+- If a claim cannot be supported by a direct contiguous quote from the completed story section, do NOT include that claim in the patch.
+- Never create an update merely because a fact from current state remains true. Existing facts are not changes.
+- Do not create active_clues or unresolved_questions from ordinary objects, dialogue, or curiosity unless the story section explicitly establishes them as plot-relevant clues or unresolved story questions.
 - If nothing changed, return exactly:
   {{"patch": {{}}, "evidence": []}}
 
