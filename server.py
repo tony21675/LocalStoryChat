@@ -303,6 +303,12 @@ However, be strict about SPECIFICITY. In a sparse scene, reject concrete details
 
 Generic temporary texture remains acceptable, such as ordinary walking, a pebble underfoot, generic weather, light, a brief laugh, or disposable nonspecific chatter.
 
+IMPORTANT DECISION RULE:
+When deciding whether a detail is disposable or material, require support from the runtime context for concrete specificity.
+A named teacher, named neighbor, specific assignment, specific class topic, specific family member, specific route, specific home feature, or specific prior event is NOT disposable merely because it appears inside casual dialogue.
+Named entities and concrete factual claims are unsupported unless they appear in the runtime context or are established by the user's request/current scene.
+Do not approve a draft merely because an invented detail is plausible or sounds like normal teen conversation.
+
 For every violation, return:
 {
   "quote": "EXACT QUOTE from the draft",
@@ -830,7 +836,50 @@ Return ONLY the required JSON object.
             "Canon reviewer returned an invalid 'violations' array."
         )
 
+    print("\n--- CANON REVIEW ---", flush=True)
+    print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
+    print("--- END CANON REVIEW ---\n", flush=True)
+
     return result
+
+
+def _find_unsupported_named_people(text):
+    """
+    Deterministic backstop for newly invented titled people such as
+    "Mr. Harrison" or "Mrs. Albright". Character names and other known
+    proper names are collected from runtime reference context.
+    """
+    known = set()
+
+    for name, content in session.files:
+        try:
+            data = json.loads(content)
+        except Exception:
+            continue
+
+        if isinstance(data, dict):
+            for key in ("name", "title"):
+                value = data.get(key)
+                if isinstance(value, str) and value.strip():
+                    known.add(value.strip().lower())
+
+            relationships = data.get("relationships")
+            if isinstance(relationships, dict):
+                for key in relationships:
+                    known.add(str(key).strip().lower())
+
+    matches = re.findall(
+        r"\b(?:Mr|Mrs|Ms|Miss|Dr|Coach|Professor)\.?\s+([A-Z][A-Za-z]+)\b",
+        text or "",
+    )
+
+    unsupported = []
+    for surname in matches:
+        normalized = surname.lower()
+        if normalized not in known:
+            unsupported.append(surname)
+
+    return sorted(set(unsupported))
 
 
 def generate_state_proposal(story_text):
@@ -1747,6 +1796,23 @@ class LlamaSession:
                         text,
                         answer
                     )
+
+                    unsupported_named_people = _find_unsupported_named_people(
+                        answer
+                    )
+
+                    if unsupported_named_people:
+                        review = {
+                            "approved": False,
+                            "violations": review.get("violations", []) + [
+                                {
+                                    "quote": name,
+                                    "reason": "The draft introduces a newly named person not established by the runtime story context.",
+                                    "category": "dialogue",
+                                }
+                                for name in unsupported_named_people
+                            ],
+                        }
 
                     if not review.get("approved", True):
                         violations = review.get("violations", [])
