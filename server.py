@@ -2277,28 +2277,27 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             if path == "/api/start":
-                files = []
+                requested_files = body.get("files")
 
-                for item in body.get("files", []):
-                    name = str(
-                        item.get(
-                            "name",
-                            "unnamed.json"
-                        )
-                    )[:120]
+                if requested_files:
+                    names = []
 
-                    content = str(
-                        item.get(
-                            "content",
-                            ""
-                        )
-                    )
+                    for item in requested_files:
+                        if isinstance(item, dict):
+                            name = str(
+                                item.get(
+                                    "name",
+                                    "unnamed.json"
+                                )
+                            )[:120]
+                        else:
+                            name = str(item)[:120]
 
-                    files.append(
-                        (name, content)
-                    )
+                        if name and name not in names:
+                            names.append(name)
 
-                if not files:
+                    files = load_story_files(names)
+                else:
                     files = (
                         session.files
                         if session.files
