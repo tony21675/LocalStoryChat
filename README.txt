@@ -23,3 +23,10 @@ Configuration:
 - 4096 context
 - Dolphin 3.0 Llama 3.1 8B Q4_K_M
 - Persistent llama-cli conversation
+
+
+Scene Prompt Builder
+- Build a compact prompt for each chapter/scene from the browser UI.
+- Permanent writing rules remain in server.py; scene-specific direction stays separate.
+- Use "Copy Prompt" or "Use in Chat" after reviewing/tweaking the generated prompt.
+- The generated prompt does not paste the six JSON reference files, preserving context space.

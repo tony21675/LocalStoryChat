@@ -33,58 +33,278 @@ DEFAULT_MODEL = Path(os.path.expanduser(
     "~/Documents/Models/llmfan46--gemma-4-E4B-it-ultra-uncensored-heretic-GGUF--gemma-4-E4B-it-ultra-uncensored-heretic-Q4_K_M.gguf"
 ))
 
-STORY_DIR = BASE / "Documents" / "StoryJSON"
+STORIES_ROOT = BASE / "Documents" / "LocalStoryStories"
+ACTIVE_STORY_FILE = STORIES_ROOT / ".active_story"
 
-STORY_NAMES = [
-    "Tony.json",
-    "Tiffany.json",
-    "Maya.json",
-    "Chloe.json",
-    "story_bible.json",
-    "current_state.json",
-]
 
-SYSTEM_PROMPT = r'''You are the story generation engine for an ongoing fictional story.
+def available_story_dirs():
+    STORIES_ROOT.mkdir(parents=True, exist_ok=True)
+    return sorted(
+        [
+            path
+            for path in STORIES_ROOT.iterdir()
+            if path.is_dir()
+            and (path / "story_bible.json").is_file()
+        ],
+        key=lambda p: p.name.lower()
+    )
 
-The six attached JSON files are PRIVATE REFERENCE MATERIAL. Use them silently to maintain continuity. Never quote, dump, summarize, expose, or discuss the contents of the files unless the user explicitly asks for that information.
 
-CANON AUTHORITY:
-1. Tony.json, Tiffany.json, Maya.json, and Chloe.json control those characters' established identities, appearance, personality, relationships, background, skills, and knowledge.
-2. story_bible.json controls permanent story canon, required events, hidden canon, and continuity rules.
-3. current_state.json controls the exact current story situation, locations, recent events, character knowledge, clues, objectives, and immediate continuity.
-4. Established story events take priority over guesses or assumptions.
+def _validate_story_dir(path):
+    path = Path(path).expanduser().resolve()
+    root = STORIES_ROOT.resolve()
 
-KNOWLEDGE:
-- Characters know only what they personally witnessed, experienced, were told, or could reasonably infer.
-- Never give a character information marked unknown.
-- Keep hidden canon hidden until the story naturally reveals it.
-- Do not reveal secrets simply because they appear in the reference files.
-- Do not make characters aware of another character's private thoughts, feelings, or secrets unless they have learned them.
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(
+            "Story folder must be inside ~/Documents/LocalStoryStories"
+        ) from exc
 
-CONTINUITY:
-- Start from the exact current_state.json situation.
-- Preserve established names, ages, appearances, relationships, locations, timeline, objects, knowledge, and required events.
-- Do not contradict established canon.
-- Do not prematurely resolve unknowns.
-- Do not invent major plot facts, locations, people, evidence, motives, or backstory unless the current scene establishes them.
-- When something is intentionally unknown, keep it unknown.
-- Preserve required emotional reactions and scene order.
-- Do not have a character witness something that character did not witness.
+    if not path.is_dir():
+        raise ValueError(f"Story folder does not exist: {path}")
 
-WRITING MODE:
-- When asked to write or continue the story, output only the story prose unless the user explicitly requests another format.
-- Do not output JSON, reference-file contents, analysis, notes, summaries, or explanations during normal story writing.
-- Do not repeat previous paragraphs.
-- Continue from the exact point requested.
-- Do not restart a scene unless explicitly asked.
-- Use natural dialogue and consistent character behavior.
-- Keep the writing focused on the current scene.
+    if not (path / "story_bible.json").is_file():
+        raise ValueError(
+            f"Story folder is missing story_bible.json: {path}"
+        )
 
-Before generating, silently check the requested scene against the reference files and current state for continuity.'''
+    if not (path / "current_state.json").is_file():
+        raise ValueError(
+            f"Story folder is missing current_state.json: {path}"
+        )
 
+    return path
+
+
+def set_active_story_dir(path, persist=True):
+    global STORY_DIR, MANUSCRIPT_DIR, STATE_PATH, STATE_BACKUP_DIR
+
+    path = _validate_story_dir(path)
+
+    STORY_DIR = path
+    MANUSCRIPT_DIR = path / "Manuscript"
+    STATE_PATH = path / "current_state.json"
+    STATE_BACKUP_DIR = path / "state_backups"
+
+    if persist:
+        STORIES_ROOT.mkdir(parents=True, exist_ok=True)
+        ACTIVE_STORY_FILE.write_text(
+            path.name + "\n",
+            encoding="utf-8"
+        )
+
+    return STORY_DIR
+
+
+def discover_initial_story_dir():
+    stories = available_story_dirs()
+
+    if ACTIVE_STORY_FILE.is_file():
+        name = ACTIVE_STORY_FILE.read_text(
+            encoding="utf-8"
+        ).strip()
+
+        if name:
+            candidate = (STORIES_ROOT / name).resolve()
+
+            try:
+                return _validate_story_dir(candidate)
+            except ValueError:
+                pass
+
+    if len(stories) == 1:
+        return stories[0]
+
+    if not stories:
+        raise FileNotFoundError(
+            "No story folders found in ~/Documents/LocalStoryStories"
+        )
+
+    raise RuntimeError(
+        "Multiple story folders exist, but no active story is selected."
+    )
+
+
+STORY_DIR = discover_initial_story_dir()
+MANUSCRIPT_DIR = STORY_DIR / "Manuscript"
 STATE_PATH = STORY_DIR / "current_state.json"
 STATE_BACKUP_DIR = STORY_DIR / "state_backups"
 
+def discover_story_names():
+    """Discover the active story files from story_bible.json.
+
+    The application itself does not know any character names or plot details.
+    story_bible.json declares the character-card files for the current novel.
+    current_state.json is always included as the live story state.
+    """
+    story_bible = STORY_DIR / "story_bible.json"
+    current_state = STORY_DIR / "current_state.json"
+
+    if not story_bible.exists():
+        raise FileNotFoundError(
+            f"story_bible.json not found: {story_bible}"
+        )
+
+    try:
+        data = json.loads(
+            story_bible.read_text(encoding="utf-8")
+        )
+    except Exception as exc:
+        raise ValueError(
+            f"Could not read story_bible.json: {exc}"
+        ) from exc
+
+    names = ["story_bible.json"]
+
+    character_cards = data.get("character_cards", [])
+
+    if not isinstance(character_cards, list):
+        raise ValueError(
+            "story_bible.json character_cards must be a list"
+        )
+
+    for item in character_cards:
+        name = str(item).strip()
+        if not name:
+            continue
+        if name not in names:
+            names.append(name)
+
+    if current_state.exists():
+        names.append("current_state.json")
+
+    return names
+
+SYSTEM_PROMPT = r'''You are the story generation engine for an ongoing fictional story.
+
+The supplied JSON files are private reference material. Use them silently. Never quote, dump, summarize, or expose their contents during normal story writing.
+
+Write only the requested story prose. Do not output analysis, notes, JSON, summaries, explanations, or reference-file contents unless the user explicitly asks for them.
+
+Treat the supplied story context as the authoritative fictional world:
+- Character files define established character facts.
+- story_bible.json defines permanent canon and required story rules.
+- current_state.json defines the exact current situation and what each character currently knows.
+- Established story events override assumptions or guesses.
+
+Characters may know only what they have witnessed, experienced, been told, or can reasonably infer from established information. Keep unknown information unknown. Do not reveal hidden information merely because it exists in the reference material.
+
+Do not invent concrete story facts that are not established or requested, including new plot events, clues, evidence, locations, destinations, people, identities, motives, objects, memories, relationships, backstory, or character knowledge.
+
+Do not turn possibilities or speculation into established facts.
+
+Begin from the exact current story state and continue naturally from the requested point. Preserve established continuity, character behavior, scene order, and required events. Do not restart or repeat the story unless explicitly asked.
+
+Scene-specific instructions marked as REQUIRED or DO NOT ADVANCE are binding constraints for the scene, not suggestions. When a creative assumption conflicts with an explicit scene instruction or established canon, follow the explicit instruction or canon.
+
+- Treat explicit locations, relative positions, travel distance, who is present, and the state of physical things such as doors, vehicles, rooms, or gates as fixed facts. Do not change them for convenience, atmosphere, or pacing.
+- Do not reinterpret an established physical fact. For example, a closed garage must remain closed unless the story explicitly establishes that it is opened.
+- Do not invent routes, distances, destinations, or spatial relationships when the prompt or canon already establishes them.
+- Treat explicit DO NOT ADVANCE instructions as hard scene boundaries. Do not introduce, foreshadow, imply, partially perform, or rush toward a forbidden event unless the user explicitly asks for that advancement.
+- When a scene requires specific characters to interact, establish that interaction through actual action and dialogue rather than vague summaries such as "they chatted about something."
+- Do not use hedging placeholders such as "maybe," "perhaps," or "possibly" to fill in concrete story details. Either establish a harmless detail directly when appropriate or leave it unspecified.
+- Avoid repetitive description of the same action, object, sensation, or activity. Keep the scene moving through varied action, interaction, dialogue, and meaningful detail.
+
+Use natural prose and dialogue, with ordinary sensory detail allowed when it does not introduce new plot facts or clues.
+
+For a normal story section, write at least 700 words and aim for 800 to 1,200 words. Continue developing the scene naturally rather than ending after only a few paragraphs. Do not pad the scene merely to reach the word target. Advance the scene through new action, interaction, dialogue, or meaningful description, and avoid repeatedly restating established scene facts. A section should end when there is a natural scene break or the requested event has been completed.
+
+Before writing, silently check the scene against the supplied context for continuity.'''
+
+CANON_REVIEW_SYSTEM_PROMPT = r"""You are a continuity and canon reviewer for an ongoing fictional story.
+
+Review the generated story draft against the supplied runtime story context and the user's request.
+
+Return ONLY one valid JSON object:
+
+{
+  "approved": true,
+  "violations": []
+}
+
+CORE STANDARD:
+Protect established canon without making the prose sterile.
+
+Approve ordinary creative prose when it is temporary, incidental, and does not create a material story fact.
+
+Reject a detail when it changes or establishes information the story may need to remember later.
+
+MATERIAL FACTS THAT REQUIRE SUPPORT:
+- new plot events
+- important actions that affect what happens in the story
+- new characters, identities, or relationships
+- backstory, memories, history, or prior events
+- specific locations, routes, destinations, or spatial relationships
+- important objects, possessions, vehicles, or persistent physical conditions
+- clues, evidence, witnesses, leads, motives, plans, or intentions
+- character knowledge, observations, discoveries, or information
+- injuries or other persistent bodily conditions
+- time, duration, sequence, or elapsed-time claims
+- dialogue that establishes new factual information
+- anything that contradicts established canon
+
+CREATIVE PROSE THAT MAY BE APPROVED:
+Ordinary temporary actions and sensory texture may be creative when they do not create material canon.
+
+Examples that may be acceptable:
+- wiping hands
+- shifting position
+- looking down or pausing
+- ordinary walking movements
+- generic light, weather, sound, smell, or mood
+- brief non-factual chatter
+- small transitional actions that do not affect the plot
+
+Do NOT reject such details merely because they were not explicitly listed in the JSON.
+
+However, reject them when the wording turns them into material facts.
+
+Examples:
+- "Tony wiped his hands on a rag." may be acceptable as temporary prose.
+- "Tony always kept a rag beside the truck." requires support because it establishes a habit or persistent detail.
+- "Maya kicked a pebble." may be acceptable as incidental movement.
+- "Maya took the shortcut she always used." requires support because it establishes a route and routine.
+- "They chatted as they walked." may be acceptable.
+- "They discussed a teacher's assignment due Friday." requires support because it creates specific story information.
+- "Tony looked toward the street." may be acceptable.
+- "Tony saw Tiffany approaching from the street." requires support because it establishes an observation and spatial relationship.
+
+UNKNOWN INFORMATION:
+- Plausibility is not evidence.
+- Keep unknown material unknown.
+- Never approve a new fact merely because it would make sense.
+- Never reveal hidden canon unless the story context or user request establishes the reveal.
+
+KNOWLEDGE AND OBSERVATION:
+Characters may know or notice only what is established by context, the user's request, or events occurring in the current scene.
+Reject unsupported important discoveries, sightings, overheard information, memories, or deductions presented as facts.
+
+CONTINUITY:
+Reject contradictions of established canon.
+Reject new material plot facts.
+Reject invented backstory, motives, destinations, evidence, clues, witnesses, identities, relationships, or persistent objects or conditions.
+Reject premature reveals of hidden or unknown information.
+
+CONSERVATIVE BUT PROPORTIONAL:
+Do not reject ordinary prose merely because it is not explicitly in the JSON.
+Reject when an unsupported detail would materially change the story or become something the story should remember.
+
+For every violation, return:
+{
+  "quote": "EXACT QUOTE from the draft",
+  "reason": "why the quoted claim creates an unsupported or contradictory material story fact",
+  "category": "backstory|character_knowledge|plot|clue|location|relationship|contradiction|object|observation|dialogue|physical_state|time|other"
+}
+
+If there are no material continuity violations, return:
+{"approved": true, "violations": []}
+
+If there is at least one material continuity violation, return:
+{"approved": false, "violations": [...]}
+
+Do not output markdown, explanations, analysis, or code fences.
+"""
 STATE_REQUIRED_KEYS = {
     "status",
     "chapter",
@@ -106,22 +326,53 @@ STATE_SYSTEM_PROMPT = r"""You are the continuity manager for an ongoing fictiona
 
 Your job is to identify ONLY the changes caused by a completed story section.
 
-Return ONLY one valid JSON object.
+Return ONLY one valid JSON object using exactly this structure:
+
+{
+  "patch": {},
+  "evidence": []
+}
+
+The "patch" must contain ONLY fields whose values are actually different from CURRENT STATE BEFORE THIS SECTION.
+The "evidence" array must prove every substantive new or changed claim in the patch.
+
+CRITICAL COMPACTNESS RULES:
+- Do NOT copy unchanged fields from current_state.json into patch.
+- Do NOT repeat existing array items.
+- Do NOT rewrite existing arrays merely because they already exist.
+- If a field has no new information, leave it out of patch.
+- If nothing changed, the patch MUST be {}.
+- The normal response should be a small JSON object, not a copy of current_state.json.
+- Never advance chapter or scene merely because the supplied section already belongs to that chapter or scene.
 
 IMPORTANT:
-- Return a PARTIAL UPDATE, not a complete current_state.json.
-- Include only top-level fields that changed.
+- Include only top-level fields that changed in "patch".
 - Do not repeat unchanged fields.
 - For changed nested objects, include only changed nested keys.
-- For arrays, return the complete replacement array only when that array changed.
+- For arrays, return ONLY NEW items introduced by the completed story section. Do not copy existing array items. The application will append new items to the existing array.
 - Record only events that actually happened in the supplied story section.
 - Never invent future events.
 - Never turn an unknown fact into a known fact.
 - Keep character knowledge limited to what the character could actually know.
 - Do not reveal hidden canon.
 - Do not invent clues, locations, motives, identities, evidence, relationships, or backstory.
-- If nothing changed in a field, omit it.
-- The application will merge your partial update into the existing current_state.json.
+- If nothing changed, return {"patch": {}, "evidence": []}.
+
+Evidence rules:
+- Every substantive new or changed claim in "patch" must have a matching entry in "evidence".
+- Each evidence entry must use this structure:
+  {
+    "field": "field.path",
+    "claim": "the exact value or array item being added or changed",
+    "quote": "an EXACT QUOTE copied from the completed story section"
+  }
+- "quote" must be copied exactly from the completed story section. Do not paraphrase it.
+- The application will check that every quote actually appears in the completed story section.
+- For array fields, provide evidence for every newly added item.
+- For changed string or nested values, provide evidence for the changed value.
+- Controlled bookkeeping fields such as chapter, scene, scene_completed, and status do not require quotation evidence.
+- Do not use evidence to justify information that is merely inferred or possible.
+- If the story section does not explicitly support a proposed change, do not include that change.
 - Do not output markdown, explanations, notes, analysis, or code fences.
 """
 
@@ -203,23 +454,207 @@ def merge_state(base, patch):
     result = dict(base)
 
     for key, value in patch.items():
+        existing = result.get(key)
+
         if (
             isinstance(value, dict)
-            and isinstance(result.get(key), dict)
+            and isinstance(existing, dict)
         ):
             result[key] = merge_state(
-                result[key],
+                existing,
                 value
             )
+
+        elif (
+            isinstance(value, list)
+            and isinstance(existing, list)
+        ):
+            merged = list(existing)
+
+            for item in value:
+                if item not in merged:
+                    merged.append(item)
+
+            result[key] = merged
+
         else:
             result[key] = value
 
     return result
 
 
+_STATE_METADATA_FIELDS = {
+    "chapter",
+    "scene",
+    "scene_completed",
+    "status",
+}
+
+
+def _normalize_evidence_text(value):
+    return re.sub(
+        r"\s+",
+        " ",
+        str(value or "")
+    ).strip()
+
+
+def _claim_key(value):
+    if isinstance(value, str):
+        return value
+
+    return json.dumps(
+        value,
+        sort_keys=True,
+        ensure_ascii=False
+    )
+
+
+def _iter_changed_claims(base, patch, path=""):
+    if isinstance(patch, dict):
+        base_dict = base if isinstance(base, dict) else {}
+
+        for key, value in patch.items():
+            child_path = (
+                f"{path}.{key}"
+                if path
+                else key
+            )
+
+            yield from _iter_changed_claims(
+                base_dict.get(key),
+                value,
+                child_path
+            )
+
+        return
+
+    if isinstance(patch, list):
+        base_list = base if isinstance(base, list) else []
+
+        for item in patch:
+            if item not in base_list:
+                yield path, item
+
+        return
+
+    if patch != base:
+        yield path, patch
+
+
+def validate_state_patch(base, patch, story_text, evidence):
+    if not isinstance(base, dict):
+        raise ValueError(
+            "State patch validation requires an object as the base state."
+        )
+
+    if not isinstance(patch, dict):
+        raise ValueError(
+            "State patch must be a JSON object."
+        )
+
+    if not isinstance(evidence, list):
+        raise ValueError(
+            "State proposal rejected. 'evidence' must be an array."
+        )
+
+    unknown_top_level = sorted(
+        set(patch.keys()) - STATE_REQUIRED_KEYS
+    )
+
+    if unknown_top_level:
+        raise ValueError(
+            "State proposal rejected. Unknown top-level fields: "
+            + ", ".join(unknown_top_level)
+        )
+
+    for key, value in patch.items():
+        if (
+            isinstance(value, dict)
+            and isinstance(base.get(key), dict)
+        ):
+            new_nested_keys = sorted(
+                set(value.keys()) - set(base[key].keys())
+            )
+
+            if new_nested_keys:
+                raise ValueError(
+                    f"State proposal rejected. Field '{key}' "
+                    "contains new nested keys: "
+                    + ", ".join(new_nested_keys)
+                )
+
+    normalized_story = _normalize_evidence_text(
+        story_text
+    )
+
+    evidence_keys = set()
+
+    for entry in evidence:
+        if not isinstance(entry, dict):
+            raise ValueError(
+                "State proposal rejected. Every evidence entry must be an object."
+            )
+
+        field = entry.get("field")
+        claim = entry.get("claim")
+        quote = entry.get("quote")
+
+        if not isinstance(field, str) or not field.strip():
+            raise ValueError(
+                "State proposal rejected. Every evidence entry needs a field."
+            )
+
+        if "claim" not in entry:
+            raise ValueError(
+                "State proposal rejected. Every evidence entry needs a claim."
+            )
+
+        if not isinstance(quote, str) or not quote.strip():
+            raise ValueError(
+                "State proposal rejected. Every evidence entry needs a non-empty quote."
+            )
+
+        normalized_quote = _normalize_evidence_text(
+            quote
+        )
+
+        if normalized_quote not in normalized_story:
+            raise ValueError(
+                "State proposal rejected. Evidence quote was not found "
+                "in the completed story section: "
+                f"{quote!r}"
+            )
+
+        evidence_keys.add(
+            (
+                field.strip(),
+                _claim_key(claim)
+            )
+        )
+
+    for field, claim in _iter_changed_claims(base, patch):
+        top_level = field.split(".", 1)[0]
+
+        if top_level in _STATE_METADATA_FIELDS:
+            continue
+
+        key = (
+            field,
+            _claim_key(claim)
+        )
+
+        if key not in evidence_keys:
+            raise ValueError(
+                "State proposal rejected. Missing exact evidence for "
+                f"changed field '{field}': {claim!r}"
+            )
+
+
 def extract_json_object(text):
     decoder = json.JSONDecoder()
     text = text or ""
+    candidates = []
 
     for index, char in enumerate(text):
         if char != "{":
@@ -233,11 +668,156 @@ def extract_json_object(text):
             continue
 
         if isinstance(obj, dict):
+            candidates.append(obj)
+
+    # The llama-cli output may echo the prompt before the model response.
+    # Prefer the actual state-manager proposal over JSON copied from the prompt.
+    for obj in reversed(candidates):
+        if "patch" in obj and "evidence" in obj:
             return obj
 
     raise ValueError(
-        "The state manager did not return a JSON object."
+        "The state manager did not return a valid proposal with "
+        "'patch' and 'evidence'."
     )
+
+
+def extract_json_with_keys(text, required_keys):
+    decoder = json.JSONDecoder()
+    text = text or ""
+
+    candidates = []
+
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
+
+        try:
+            obj, _ = decoder.raw_decode(
+                text[index:]
+            )
+        except json.JSONDecodeError:
+            continue
+
+        if isinstance(obj, dict):
+            candidates.append(obj)
+
+    required_keys = set(required_keys)
+
+    for obj in reversed(candidates):
+        if required_keys.issubset(obj.keys()):
+            return obj
+
+    raise ValueError(
+        "The model did not return the required JSON structure."
+    )
+
+
+def review_story_draft(user_request, draft):
+    if session.model_path is None:
+        raise RuntimeError(
+            "No model is loaded. Use Load Model first."
+        )
+
+    runtime_context = build_runtime_story_context(
+        session.files
+    )
+
+    prompt = f"""Review the following generated story draft for canon and continuity.
+
+USER REQUEST:
+{user_request}
+
+RUNTIME STORY CONTEXT:
+{runtime_context}
+
+GENERATED STORY DRAFT:
+{draft}
+
+Return ONLY the required JSON object.
+"""
+
+    env = os.environ.copy()
+
+    env["LD_LIBRARY_PATH"] = (
+        str(LLAMA.parent)
+        + (
+            ":" + env["LD_LIBRARY_PATH"]
+            if env.get("LD_LIBRARY_PATH")
+            else ""
+        )
+    )
+
+    args = [
+        str(LLAMA),
+        "-m", str(session.model_path),
+        "-ngl", "0",
+        "--device", "none",
+        "-c", "8192",
+        "--reasoning", "off",
+        "--temp", "0.02",
+        "--top-k", "20",
+        "--top-p", "0.80",
+        "--repeat-last-n", "256",
+        "--repeat-penalty", "1.08",
+        "--n-predict", "700",
+        "--system-prompt", CANON_REVIEW_SYSTEM_PROMPT,
+        "--prompt", prompt,
+        "--color", "off",
+        "--no-display-prompt",
+        "--simple-io",
+        "--single-turn",
+    ]
+
+    proc = subprocess.Popen(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+    try:
+        output, _ = proc.communicate(
+            timeout=600
+        )
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        output, _ = proc.communicate()
+
+        raise TimeoutError(
+            "Canon review generation timed out."
+        )
+
+    if proc.returncode not in (0, None):
+        raise RuntimeError(
+            f"Canon reviewer exited with code {proc.returncode}.\\n"
+            f"{output[-2000:]}"
+        )
+
+    result = extract_json_with_keys(
+        output,
+        {"approved", "violations"}
+    )
+
+    if not isinstance(
+        result.get("approved"),
+        bool
+    ):
+        raise ValueError(
+            "Canon reviewer returned an invalid 'approved' value."
+        )
+
+    violations = result.get("violations")
+
+    if not isinstance(violations, list):
+        raise ValueError(
+            "Canon reviewer returned an invalid 'violations' array."
+        )
+
+    return result
 
 
 def generate_state_proposal(story_text):
@@ -252,15 +832,29 @@ def generate_state_proposal(story_text):
 
     prompt = f"""Identify ONLY the changes caused by this completed story section.
 
-CURRENT STATE BEFORE THIS SECTION:
-{json.dumps(current_state, indent=2, ensure_ascii=False)}
-
 COMPLETED STORY SECTION:
 {story_text}
 
-Return ONLY a JSON object containing changed fields.
-Return {{}} if nothing changed.
-Do not return the complete current_state.json.
+Return ONLY this JSON structure:
+
+{{
+  "patch": {{}},
+  "evidence": []
+}}
+
+Rules:
+- "patch" contains ONLY information newly established by this story section.
+- Do NOT copy information from any previous state.
+- Do NOT invent information.
+- Do NOT include unchanged information.
+- For array fields, include ONLY new items introduced by this section.
+- Do NOT include old array items.
+- "evidence" must contain an exact quote from this story section for every substantive patch item.
+- If nothing changed, return exactly:
+  {{"patch": {{}}, "evidence": []}}
+
+Do not return markdown or explanations.
+Do not return current_state.json.
 """
 
     env = os.environ.copy()
@@ -324,17 +918,54 @@ Do not return the complete current_state.json.
         )
 
 
-    patch = extract_json_object(output)
+    print("\n--- RAW STATE MANAGER OUTPUT ---", flush=True)
+    print(output, flush=True)
+    print("--- END RAW STATE MANAGER OUTPUT ---\n", flush=True)
 
-    if not isinstance(patch, dict):
+    proposal = extract_json_object(output)
+
+    if not isinstance(proposal, dict):
         raise ValueError(
             "The state manager did not return a JSON object."
         )
 
-    # Prevent the model from accidentally creating character/location
-    # fields at the top level of current_state.json.
-    for misplaced in ("Tony", "Tiffany", "Maya", "Chloe"):
-        patch.pop(misplaced, None)
+    patch = proposal.get("patch")
+    evidence = proposal.get("evidence")
+
+    if patch is None:
+        raise ValueError(
+            "State manager response is missing 'patch'."
+        )
+
+    if evidence is None:
+        raise ValueError(
+            "State manager response is missing 'evidence'."
+        )
+
+    if not isinstance(patch, dict):
+        raise ValueError(
+            "State manager 'patch' must be a JSON object."
+        )
+
+    if not isinstance(evidence, list):
+        raise ValueError(
+            "State manager 'evidence' must be an array."
+        )
+
+    # Prevent the model from accidentally creating character fields
+    # at the top level of current_state.json.
+    current_characters = current_state.get("character_knowledge", {})
+
+    if isinstance(current_characters, dict):
+        for misplaced in current_characters:
+            patch.pop(misplaced, None)
+
+    validate_state_patch(
+        current_state,
+        patch,
+        story_text,
+        evidence
+    )
 
     proposed = merge_state(
         current_state,
@@ -350,6 +981,110 @@ Do not return the complete current_state.json.
     pending_state = proposed
 
     return proposed
+
+
+def build_scene_prompt(data):
+    """Build a compact, human-editable scene prompt from the UI fields.
+
+    This deliberately does NOT paste the JSON reference files or current_state
+    into the prompt. The model already receives those as authoritative context.
+    """
+    def clean(value, default=""):
+        return str(value or "").strip()
+
+    chapter = clean(data.get("chapter"), "1")
+    scene = clean(data.get("scene"), "1")
+    characters = clean(data.get("characters"))
+    goal = clean(data.get("goal"))
+    required = clean(data.get("required"))
+    avoid = clean(data.get("avoid"))
+    tone = clean(data.get("tone"))
+    length = clean(data.get("length"), "800 to 1,200")
+    guidance = clean(data.get("guidance"))
+
+    if not goal:
+        raise ValueError("Scene goal is required.")
+
+    lines = [
+        f"Begin Chapter {chapter}, Scene {scene}.",
+        "",
+        f"Write approximately {length} words.",
+        "",
+        "SCENE GOAL:",
+        goal,
+    ]
+
+    narrative_focus_lines = []
+
+    if characters:
+        lines += ["", "CHARACTERS:", characters]
+
+        # Character order is intentional. The first two listed characters
+        # are treated as the primary narrative focus; remaining characters
+        # are supporting/background unless the scene goal clearly requires
+        # otherwise.
+        character_list = [
+            item.strip()
+            for item in characters.replace("\n", ",").split(",")
+            if item.strip()
+        ]
+
+        if character_list:
+            primary = character_list[:2]
+            secondary = character_list[2:]
+
+            narrative_focus_lines = [
+                "SCENE FOCUS - READ THIS BEFORE WRITING:",
+                "The primary narrative focus is: " + ", ".join(primary) + ".",
+                "Begin the scene with the primary characters, not a secondary character.",
+                "Spend the clear majority of the scene on the primary characters' "
+                "actions, dialogue, interaction, and immediate experience.",
+                "Do not divide narrative attention evenly among all listed characters.",
+            ]
+
+            if secondary:
+                narrative_focus_lines.append(
+                    "Secondary/background characters: "
+                    + ", ".join(secondary) + "."
+                )
+                narrative_focus_lines.append(
+                    "Keep secondary/background characters brief and incidental. "
+                    "Do not give them detailed work, extended internal focus, "
+                    "or long descriptive passages unless the scene goal explicitly requires it."
+                )
+
+    if required:
+        lines += ["", "REQUIRED:", required]
+
+    if avoid:
+        lines += ["", "DO NOT ADVANCE YET:", avoid]
+
+    if tone:
+        lines += ["", "TONE / STYLE:", tone]
+
+    if guidance:
+        lines += ["", "CREATIVE GUIDANCE:", guidance]
+
+    lines += [
+        "",
+        "CONTINUITY:",
+        "Start from the exact current situation in current_state.json and respect the authoritative character cards and story_bible.json.",
+        "Preserve established relationships, knowledge, locations, timeline, and canon.",
+        "Do not reveal hidden information merely because it exists in the reference files.",
+        "Do not invent major plot facts or advance events that are explicitly being held back.",
+        "Let the scene breathe. Use natural action, dialogue, sensory detail, personality, and small ordinary details where appropriate.",
+    ]
+
+    # Put scene focus at the end so the model sees it immediately before writing.
+    if narrative_focus_lines:
+        lines += [""] + narrative_focus_lines
+
+    lines += [
+        "",
+        "Output only the story prose.",
+    ]
+
+    return "\n".join(lines).strip()
 
 
 def resolve_model_path(value):
@@ -393,10 +1128,18 @@ def available_models():
     return result
 
 
-def load_story_files(names=None):
-    names = STORY_NAMES if names is None else names
+def available_story_names():
+    STORY_DIR.mkdir(parents=True, exist_ok=True)
+    return sorted(
+        [path.name for path in STORY_DIR.glob("*.json") if path.is_file()],
+        key=str.lower
+    )
 
-    unknown = [name for name in names if name not in STORY_NAMES]
+
+def load_story_files(names=None):
+    names = discover_story_names() if names is None else names
+
+    unknown = [name for name in names if name not in available_story_names()]
     if unknown:
         raise ValueError(
             "Unknown story file(s): " + ", ".join(unknown)
@@ -427,7 +1170,278 @@ def load_story_files(names=None):
 
 
 def load_default_story_files():
-    return load_story_files(STORY_NAMES)
+    return load_story_files(discover_story_names())
+
+CHARACTER_CONTEXT_FIELDS = (
+    "name",
+    "role",
+    "age",
+    "appearance",
+    "personality",
+    "relationships",
+    "background",
+    "skills",
+    "strengths",
+    "weaknesses",
+    "stress_response",
+    "goals",
+    "important_items",
+    "knowledge_rule",
+)
+
+CURRENT_STATE_CONTEXT_FIELDS = (
+    "status",
+    "chapter",
+    "scene",
+    "scene_completed",
+    "location",
+    "time",
+    "current_situation",
+    "character_knowledge",
+    "completed_events",
+    "active_clues",
+    "new_clues",
+    "unresolved_questions",
+    "active_objectives",
+    "continuity_requirements",
+)
+
+STORY_BIBLE_CONTEXT_FIELDS = (
+    "title",
+    "version",
+    "status",
+    "premise",
+    "central_question",
+    "relationships",
+    "locations",
+    "canon_rules",
+)
+
+
+def _compact_json(value):
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":")
+    )
+
+
+def _pick_fields(data, fields):
+    return {
+        key: data[key]
+        for key in fields
+        if key in data
+    }
+
+
+def _format_locked_state(data):
+    lines = [
+        "[LOCKED CURRENT STORY STATE]",
+        "Facts in this section are authoritative current story facts.",
+        "Character references and story_bible.json provide additional authoritative canon.",
+        "Material story facts not established by those sources are UNKNOWN.",
+        "Ordinary prose may add temporary sensory detail, incidental movement, body language, mood, and other non-material texture.",
+        "Do not invent material plot facts, important objects, locations, relationships, backstory, clues, motives, knowledge, or events.",
+        "Do not turn guesses or possibilities into established facts.",
+        "",
+        f"Chapter: {data.get('chapter')}",
+        f"Scene: {data.get('scene')}",
+        f"Scene completed: {data.get('scene_completed')}",
+        f"Status: {data.get('status')}",
+    ]
+
+    location = data.get("location")
+    if isinstance(location, dict):
+        lines.append("")
+        lines.append("CURRENT LOCATIONS:")
+        for character, place in location.items():
+            lines.append(f"- {character}: {place}")
+    elif location:
+        lines.extend([
+            "",
+            f"CURRENT LOCATION: {location}",
+        ])
+
+    for label, key in [
+        ("CURRENT SITUATION", "current_situation"),
+        ("CHARACTER KNOWLEDGE", "character_knowledge"),
+        ("ESTABLISHED EVENTS", "completed_events"),
+        ("ACTIVE CLUES", "active_clues"),
+        ("NEW CLUES FROM LAST SECTION", "new_clues"),
+        ("UNKNOWN QUESTIONS", "unresolved_questions"),
+        ("CURRENT OBJECTIVES", "active_objectives"),
+        ("CONTINUITY REQUIREMENTS", "continuity_requirements"),
+    ]:
+        value = data.get(key)
+
+        if not value:
+            continue
+
+        lines.append("")
+        lines.append(label + ":")
+
+        if isinstance(value, dict):
+            for name, item in value.items():
+                if isinstance(item, list):
+                    lines.append(f"- {name}:")
+                    for fact in item:
+                        lines.append(f"  - {fact}")
+                else:
+                    lines.append(f"- {name}: {item}")
+
+        elif isinstance(value, list):
+            for item in value:
+                lines.append(f"- {item}")
+
+        else:
+            lines.append(str(value))
+
+    lines.extend([
+        "",
+        "PRIORITY SCENE BOUNDARY:",
+        "The current locations and current situation above are literal facts.",
+        "Creative prose may add temporary atmosphere, incidental movement, body language, and mood.",
+        "Do not use creative detail to change distances, locations, visibility, audibility, or who is present.",
+        "Do not infer a sighting, conversation, knowledge, or awareness merely because characters are nearby.",
+        "Do not invent backstory, shared history, routines, elapsed time, motives, or psychological history.",
+        "When a plausible detail conflicts with an established scene fact, the established scene fact wins.",
+        "",
+        "END LOCKED CURRENT STORY STATE",
+    ])
+
+    return "\n".join(lines)
+
+
+def build_runtime_story_context(files):
+    sections = []
+
+    # Character files are declared by the active story_bible.json.
+    # The application does not know character names in advance.
+    character_files = set()
+
+    for ref_name, ref_content in files:
+        if ref_name != "story_bible.json":
+            continue
+
+        try:
+            ref_data = json.loads(ref_content)
+        except Exception:
+            ref_data = {}
+
+        cards = ref_data.get("character_cards", [])
+
+        if isinstance(cards, list):
+            character_files = {
+                str(item).strip()
+                for item in cards
+                if str(item).strip()
+            }
+
+        break
+
+    for name, content in files:
+        try:
+            data = json.loads(content)
+        except Exception:
+            sections.append(
+                f"[Reference File: {name}]\n{content}"
+            )
+            continue
+
+        if name in character_files:
+            filtered = _pick_fields(
+                data,
+                CHARACTER_CONTEXT_FIELDS
+            )
+
+            sections.append(
+                f"[Runtime Reference: {name}]\n"
+                + _compact_json(filtered)
+            )
+
+        elif name == "current_state.json":
+            filtered = _pick_fields(
+                data,
+                CURRENT_STATE_CONTEXT_FIELDS
+            )
+
+            knowledge = filtered.get("character_knowledge")
+
+            if isinstance(knowledge, dict):
+                compact_knowledge = {}
+
+                for character, facts in knowledge.items():
+                    if isinstance(facts, list):
+                        compact_knowledge[character] = facts[-8:]
+                    else:
+                        compact_knowledge[character] = facts
+
+                filtered["character_knowledge"] = compact_knowledge
+
+            sections.append(
+                _format_locked_state(filtered)
+            )
+
+        elif name == "story_bible.json":
+            filtered = _pick_fields(
+                data,
+                STORY_BIBLE_CONTEXT_FIELDS
+            )
+
+            sections.append(
+                f"[Runtime Reference: {name}]\n"
+                + _compact_json(filtered)
+            )
+
+        else:
+            sections.append(
+                f"[Runtime Reference: {name}]\n"
+                + _compact_json(data)
+            )
+
+    if not sections:
+        return ""
+
+    return (
+        "\nRUNTIME STORY CONTEXT START\n"
+        + "\n\n".join(sections)
+        + "\nRUNTIME STORY CONTEXT END\n"
+    )
+
+
+def build_scene_anchor(files):
+    for name, content in files:
+        if name != "current_state.json":
+            continue
+
+        try:
+            data = json.loads(content)
+        except Exception:
+            return ""
+
+        lines = [
+            "[SCENE ANCHOR]",
+        ]
+
+        location = data.get("location")
+        if isinstance(location, dict):
+            for character, place in location.items():
+                lines.append(f"- {character}: {place}")
+
+        situation = data.get("current_situation")
+        if situation:
+            lines.append(f"- {situation}")
+
+        lines.extend([
+            "",
+            "Preserve these established facts.",
+            "Write naturally and creatively unless the prose would contradict established canon.",
+            "[END SCENE ANCHOR]",
+        ])
+
+        return "\n".join(lines)
+
+    return ""
 
 
 class LlamaSession:
@@ -436,6 +1450,7 @@ class LlamaSession:
         self.lock = threading.RLock()
         self.system_prompt = SYSTEM_PROMPT
         self.files = []
+        self.story_dir = STORY_DIR
         self.started_at = None
         self.buffer = ""
         self.model_path = DEFAULT_MODEL.resolve() if DEFAULT_MODEL.exists() else None
@@ -472,13 +1487,10 @@ class LlamaSession:
     def _build_prompt(self, base_prompt, files):
         parts = [base_prompt.strip()]
 
-        if files:
-            parts.append("\nAUTHORITATIVE STORY FILES START HERE\n")
+        runtime_context = build_runtime_story_context(files)
 
-            for name, content in files:
-                parts.append(f"\n[Attached File: {name}]\n{content}\n")
-
-            parts.append("\nAUTHORITATIVE STORY FILES END HERE\n")
+        if runtime_context:
+            parts.append(runtime_context)
 
         return "\n".join(parts)
 
@@ -642,7 +1654,9 @@ class LlamaSession:
                 "-m", str(self.model_path),
                 "-ngl", "0",
                 "--device", "none",
-                "-c", "12288",
+                "-t", "4",
+                "-c", "8192",
+                "--temp", "0.65",
                 "--reasoning", "off",
                 "--repeat-last-n", "256",
                 "--repeat-penalty", "1.08",
@@ -696,10 +1710,33 @@ class LlamaSession:
             started = time.time()
 
             try:
+                # Clear llama.cpp's conversation history without unloading
+                # the model or rebuilding the model process.
                 proc.stdin.write(
-                    (text + "\n").encode("utf-8")
+                    b"/clear\n"
+                )
+                proc.stdin.flush()
+
+                self._wait_for_prompt(
+                    30,
+                    initial=False
                 )
 
+                scene_anchor = build_scene_anchor(
+                    self.files
+                )
+
+                user_prompt = (
+                    scene_anchor
+                    + "\n\nUSER REQUEST:\n"
+                    + text
+                    if scene_anchor
+                    else text
+                )
+
+                proc.stdin.write(
+                    (user_prompt + "\n").encode("utf-8")
+                )
                 proc.stdin.flush()
 
                 raw = self._wait_for_prompt(
@@ -714,6 +1751,63 @@ class LlamaSession:
                         "llama-cli returned an empty response"
                     )
 
+                # Give short story-writing responses one chance to continue
+                # naturally. The same llama-cli session is kept, so the model
+                # can continue from exactly where it stopped.
+                story_request_markers = (
+                    "write",
+                    "begin",
+                    "start",
+                    "continue",
+                    "scene",
+                    "chapter",
+                    "story",
+                    "prose",
+                )
+
+                request_lower = text.lower()
+
+                is_story_request = any(
+                    marker in request_lower
+                    for marker in story_request_markers
+                )
+
+                word_count = len(answer.split())
+
+                if is_story_request and word_count < 650:
+                    continuation_prompt = (
+                        "Continue the same story scene naturally from exactly "
+                        "where you stopped. Do not restart, repeat, summarize, "
+                        "or explain the previous text. Add substantial prose "
+                        "so the overall section approaches 800 to 1,200 words. "
+                        "Let the scene breathe with natural action, dialogue, "
+                        "atmosphere, and character interaction. Preserve "
+                        "established canon and current scene boundaries, but "
+                        "do not sweat harmless small details. End only at a "
+                        "natural scene break."
+                    )
+
+                    proc.stdin.write(
+                        (continuation_prompt + "\n").encode("utf-8")
+                    )
+                    proc.stdin.flush()
+
+                    continuation_raw = self._wait_for_prompt(
+                        900,
+                        initial=False
+                    )
+
+                    continuation = self.clean_output(
+                        continuation_raw
+                    )
+
+                    if continuation:
+                        answer = (
+                            answer.rstrip()
+                            + "\n\n"
+                            + continuation.lstrip()
+                        )
+
                 return answer, time.time() - started
 
             except BrokenPipeError as exc:
@@ -725,11 +1819,12 @@ class LlamaSession:
                 raise RuntimeError(str(exc)) from exc
 
     def estimate_context(self, extra=""):
-        total = (
-            len(self.system_prompt)
-            + sum(len(c) for _, c in self.files)
-            + len(extra)
+        rendered_prompt = self._build_prompt(
+            self.system_prompt,
+            self.files
         )
+
+        total = len(rendered_prompt) + len(extra)
 
         return max(
             0,
@@ -816,14 +1911,15 @@ class Handler(BaseHTTPRequestHandler):
                 "available_json": [
                     {
                         "name": name,
-                        "exists": (STORY_DIR / name).exists()
+                        "exists": (STORY_DIR / name).exists(),
+                            "default": name in discover_story_names(),
                     }
-                    for name in STORY_NAMES
+                    for name in available_story_names()
                 ],
                 "available_models": available_models(),
                 "story_dir": str(STORY_DIR),
                 "models_dir": str(MODELS_DIR),
-                "context_size": 12288,
+                "context_size": 8192,
                 "gpu_layers": 0,
                 "reasoning": "off",
                 "n_predict": 2000,
@@ -862,6 +1958,23 @@ class Handler(BaseHTTPRequestHandler):
 
             return
 
+        if path == "/api/stories":
+            self._json(
+                200,
+                {
+                    "stories": [
+                        {
+                            "name": story.name,
+                            "active": story.resolve() == STORY_DIR.resolve()
+                        }
+                        for story in available_story_dirs()
+                    ],
+                    "active": STORY_DIR.name,
+                }
+            )
+
+            return
+
         if path == "/api/default-files":
             files = load_default_story_files()
 
@@ -888,12 +2001,13 @@ class Handler(BaseHTTPRequestHandler):
                         {
                             "name": name,
                             "exists": (STORY_DIR / name).exists(),
+                            "default": name in discover_story_names(),
                             "loaded": any(
                                 loaded_name == name
                                 for loaded_name, _ in session.files
                             )
                         }
-                        for name in STORY_NAMES
+                        for name in available_story_names()
                     ]
                 }
             )
@@ -957,6 +2071,52 @@ class Handler(BaseHTTPRequestHandler):
         try:
             body = self._body()
 
+            if path == "/api/story/select":
+                name = str(body.get("name", "")).strip()
+
+                if not name:
+                    raise ValueError("No story was selected.")
+
+                story_dir = STORIES_ROOT / name
+                set_active_story_dir(story_dir)
+
+                session.stop()
+                session.files = load_story_files(
+                    discover_story_names()
+                )
+                session.story_dir = STORY_DIR
+                pending_state = None
+
+                self._json(
+                    200,
+                    {
+                        "ok": True,
+                        "story": STORY_DIR.name,
+                        "story_dir": str(STORY_DIR),
+                        "files": discover_story_names()
+                    }
+                )
+
+                return
+
+            if path == "/api/scene-prompt":
+                prompt = build_scene_prompt(body)
+
+                state = read_current_state()
+
+                self._json(
+                    200,
+                    {
+                        "ok": True,
+                        "prompt": prompt,
+                        "chapter": state.get("chapter"),
+                        "scene": state.get("scene"),
+                        "status": state.get("status"),
+                    }
+                )
+
+                return
+
             if path == "/api/model/load":
                 requested = str(
                     body.get("path", "")
@@ -1007,7 +2167,7 @@ class Handler(BaseHTTPRequestHandler):
                 names = body.get("names")
 
                 if names is None:
-                    names = STORY_NAMES
+                    names = discover_story_names()
 
                 names = [
                     str(name)
@@ -1085,7 +2245,7 @@ class Handler(BaseHTTPRequestHandler):
                         "estimated_system_tokens": (
                             session.estimate_context()
                         ),
-                        "context_size": 12288
+                        "context_size": 8192
                     }
                 )
 
@@ -1156,7 +2316,7 @@ class Handler(BaseHTTPRequestHandler):
                         "estimated_system_tokens": (
                             session.estimate_context()
                         ),
-                        "context_size": 12288
+                        "context_size": 8192
                     }
                 )
 
@@ -1268,10 +2428,66 @@ class Handler(BaseHTTPRequestHandler):
                                 text + "\n" + answer
                             )
                         ),
-                        "context_size": 12288
+                        "context_size": 8192
                     }
                 )
 
+                return
+
+            if path == "/api/save-story":
+                story = str(body.get("story", "")).strip()
+
+                if not story:
+                    self._json(
+                        400,
+                        {
+                            "error": "Story text is empty"
+                        }
+                    )
+                    return
+
+                try:
+                    state = read_current_state()
+                except Exception as exc:
+                    self._json(
+                        500,
+                        {
+                            "error": "Could not read current_state.json: " + str(exc)
+                        }
+                    )
+                    return
+
+                chapter = state.get("chapter")
+                scene = state.get("scene")
+
+                if not isinstance(chapter, int) or not isinstance(scene, int):
+                    self._json(
+                        500,
+                        {
+                            "error": "current_state.json does not contain valid chapter and scene numbers"
+                        }
+                    )
+                    return
+
+                chapter_dir = MANUSCRIPT_DIR / "Chapters" / f"Chapter_{chapter:02d}"
+                chapter_dir.mkdir(parents=True, exist_ok=True)
+
+                filename = f"Chapter_{chapter:02d}_Section_{scene:02d}.txt"
+                path_out = chapter_dir / filename
+
+                path_out.write_text(
+                    story + "\n",
+                    encoding="utf-8"
+                )
+
+                self._json(
+                    200,
+                    {
+                        "ok": True,
+                        "filename": filename,
+                        "path": str(path_out)
+                    }
+                )
                 return
 
             if path == "/api/stop":

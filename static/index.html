@@ -43,6 +43,13 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
 .send{min-height:56px;padding:0 18px}
 .note{font-size:11px;color:var(--muted);margin-top:7px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .error{color:#fecdd3;background:#2b151b;border:1px solid #6b2636;padding:10px;border-radius:10px}
+.prompt-grid{display:grid;grid-template-columns:120px 120px minmax(0,1fr);gap:8px;margin-bottom:8px}
+.prompt-grid.two{grid-template-columns:1fr 1fr}
+.prompt-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.prompt-output{min-height:260px;max-height:420px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.45}
+.small-input{min-height:42px;max-height:42px}
+.prompt-field label{display:block;font-weight:600;margin-bottom:6px}.prompt-field{min-width:0}.prompt-field.full{grid-column:1/-1}
+@media(max-width:760px){.prompt-grid,.prompt-grid.two{grid-template-columns:1fr}}
 @media(max-width:760px){
   main{padding:12px}
   .toolbar{width:100%;justify-content:stretch}
@@ -73,9 +80,27 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
   <div class="pill">Backend: <strong id="backend">checking…</strong></div>
   <div class="pill">Model: <strong id="modelStatus">none</strong></div>
   <div class="pill">JSON: <strong id="fileCount">0</strong> loaded</div>
-  <div class="pill">Context: <strong>12288</strong></div>
+  <div class="pill">Context: <strong>8192</strong></div>
   <div class="pill">Thinking: <strong>off</strong></div><div class="pill">State: <strong id="stateStatus">checking…</strong></div>
 </div>
+
+<section class="files">
+  <div class="files-head">
+    <h2>Story</h2>
+  </div>
+
+  <div class="controls">
+    <select id="storySelect" aria-label="Select story">
+      <option value="">Loading stories…</option>
+    </select>
+
+    <button id="switchStory" class="btn ok">Switch Story</button>
+  </div>
+
+  <div class="sub">
+    Each story is isolated in its own folder. Characters, plot, state, and manuscript stay with the selected story.
+  </div>
+</section>
 
 <section class="files">
   <div class="files-head">
@@ -97,7 +122,7 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
     <h2>Story reference files</h2>
 
     <div class="toolbar">
-      <button id="loadJson" class="btn ok">Load JSON</button>
+      <button id="loadJson" class="btn ok">Load Selected JSON</button>
       <button id="unloadJson" class="btn danger">Unload JSON</button>
     </div>
   </div>
@@ -128,11 +153,92 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
     placeholder="A proposed current_state.json will appear here."></textarea>
 </section>
 
+<section class="files">
+  <div class="files-head">
+    <div>
+      <h2>Scene Prompt Builder</h2>
+      <div class="sub">Build the next scene prompt without rewriting your permanent writing rules.</div>
+    </div>
+    <div class="toolbar">
+      <button id="resetPrompt" class="btn">Reset</button>
+      <button id="buildPrompt" class="btn primary">Build Prompt</button>
+    </div>
+  </div>
+
+  <div class="prompt-grid">
+    <div class="prompt-field">
+      <label for="promptChapter">Chapter</label>
+      <input id="promptChapter" class="small-input" type="text" placeholder="Chapter" aria-label="Chapter">
+    </div>
+
+    <div class="prompt-field">
+      <label for="promptScene">Scene</label>
+      <input id="promptScene" class="small-input" type="text" placeholder="Scene" aria-label="Scene">
+    </div>
+
+    <div class="prompt-field">
+      <label for="promptCharacters">Characters</label>
+      <input id="promptCharacters" class="small-input" type="text" placeholder="Primary characters first, e.g. Tiffany, Maya, Tony" aria-label="Characters">
+    </div>
+  </div>
+
+  <div class="prompt-field full">
+    <label for="promptGoal">Scene Goal</label>
+    <textarea id="promptGoal" rows="3" placeholder="What is the main purpose of this scene?"></textarea>
+  </div>
+
+  <div class="prompt-grid two">
+    <div class="prompt-field">
+      <label for="promptRequired">What Must Happen</label>
+      <textarea id="promptRequired" rows="4" placeholder="What must happen in this scene? Use one item per line."></textarea>
+    </div>
+
+    <div class="prompt-field">
+      <label for="promptAvoid">What Must NOT Happen Yet</label>
+      <textarea id="promptAvoid" rows="4" placeholder="What must not happen yet? Use one item per line."></textarea>
+    </div>
+  </div>
+
+  <div class="prompt-grid two">
+    <div class="prompt-field">
+      <label for="promptTone">Tone / Style</label>
+      <input id="promptTone" class="small-input" type="text" placeholder="Relaxed, warm, lightly humorous" aria-label="Tone and style">
+    </div>
+
+    <div class="prompt-field">
+      <label for="promptLength">Word Count</label>
+      <input id="promptLength" class="small-input" type="text" value="800 to 1,200" placeholder="Word count" aria-label="Word count">
+    </div>
+  </div>
+
+  <div class="prompt-field full">
+    <label for="promptGuidance">Creative Guidance</label>
+    <textarea id="promptGuidance" rows="3" placeholder="Optional details you want the writer to emphasize."></textarea>
+  </div>
+
+  <div class="prompt-actions">
+    <button id="copyPrompt" class="btn" disabled>Copy Prompt</button>
+    <button id="usePrompt" class="btn ok" disabled>Use in Chat</button>
+  </div>
+
+  <textarea id="promptOutput" class="prompt-output" rows="14" readonly placeholder="Your finished scene prompt will appear here."></textarea>
+</section>
+
 <section id="chat" class="chat">
   <div class="empty" id="empty">
     Load a model and JSON files, then click New Chat.
   </div>
 </section>
+
+<div id="savePrompt" class="files" style="display:none">
+  <div class="files-head">
+    <h2 id="savePromptText">Save this story section?</h2>
+    <div class="toolbar">
+      <button id="saveYes" class="btn ok">Save</button>
+      <button id="saveNo" class="btn">Don't Save</button>
+    </div>
+  </div>
+</div>
 
 <section class="composer">
   <div class="row">
@@ -141,7 +247,7 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
   </div>
 
   <div class="note">
-    <span>CPU mode • 12,288 context • repetition penalty 1.08 • reasoning off</span>
+    <span>CPU mode • 8,192 context • repetition penalty 1.08 • reasoning off</span>
     <span id="timing"></span>
   </div>
 </section>
@@ -153,9 +259,11 @@ const chat=$('#chat');
 const input=$('#input');
 
 let pendingState=null;
-function addMsg(role,text){
+let selectedSectionFile=null;
+let builtScenePrompt="";
+function addMsg(role,text,isStory=false){
   const d=document.createElement('div');
-  d.className='msg '+role;
+  d.className='msg '+role+(isStory?' story':'');
   d.textContent=text;
   chat.appendChild(d);
   d.scrollIntoView({block:'end'});
@@ -211,6 +319,7 @@ function restoreWorkingButton(buttonId){
 
 function setBusy(value){
   $('#newChat').disabled=value;
+  $('#switchStory').disabled=value;
   $('#stop').disabled=value;
   $('#loadModel').disabled=value;
   $('#unloadModel').disabled=value;
@@ -223,24 +332,105 @@ function setBusy(value){
   $('#discardState').disabled=value || !pendingState;
 }
 
-function renderFiles(files){
+function renderFiles(files, loadedFiles){
   const list=$('#fileList');
   list.innerHTML='';
 
   if(!files.length){
     const d=document.createElement('div');
     d.className='file none';
-    d.textContent='No JSON files loaded';
+    d.textContent='No JSON files found in StoryJSON';
     list.appendChild(d);
     return;
   }
 
+  const hasLoaded=loadedFiles && loadedFiles.length>0;
+  const loadedSet=new Set((loadedFiles || []).map(f=>f.name));
+
   files.forEach(f=>{
-    const d=document.createElement('div');
-    d.className='file loaded';
-    d.textContent=f.name;
+    const d=document.createElement('label');
+    d.className='file';
+    d.style.cursor='pointer';
+
+    const cb=document.createElement('input');
+    cb.type='checkbox';
+    cb.value=f.name;
+    cb.checked=hasLoaded ? loadedSet.has(f.name) : !!f.default;
+    cb.style.marginRight='8px';
+
+    const span=document.createElement('span');
+    span.textContent=f.name;
+
+    d.appendChild(cb);
+    d.appendChild(span);
     list.appendChild(d);
   });
+}
+
+function resetPromptBuilder(){
+  const state = window._storyState || {};
+  $('#promptChapter').value = state.chapter || '';
+  $('#promptScene').value = state.scene || '';
+  $('#promptCharacters').value = '';
+  $('#promptGoal').value = '';
+  $('#promptRequired').value = '';
+  $('#promptAvoid').value = '';
+  $('#promptTone').value = '';
+  $('#promptLength').value = '800 to 1,200';
+  $('#promptGuidance').value = '';
+  $('#promptOutput').value = '';
+  builtScenePrompt = '';
+  $('#copyPrompt').disabled = true;
+  $('#usePrompt').disabled = true;
+}
+
+async function buildScenePrompt(){
+  setWorkingButton('buildPrompt','Building Prompt...');
+
+  try{
+    const j = await api('/api/scene-prompt',{
+      method:'POST',
+      body:JSON.stringify({
+        chapter:$('#promptChapter').value,
+        scene:$('#promptScene').value,
+        characters:$('#promptCharacters').value,
+        goal:$('#promptGoal').value,
+        required:$('#promptRequired').value,
+        avoid:$('#promptAvoid').value,
+        tone:$('#promptTone').value,
+        length:$('#promptLength').value,
+        guidance:$('#promptGuidance').value
+      })
+    });
+
+    builtScenePrompt = j.prompt;
+    $('#promptOutput').value = builtScenePrompt;
+    $('#copyPrompt').disabled = false;
+    $('#usePrompt').disabled = false;
+  }catch(e){
+    showError(e.message);
+  }finally{
+    restoreWorkingButton('buildPrompt');
+  }
+}
+
+async function copyScenePrompt(){
+  if(!builtScenePrompt)return;
+
+  try{
+    await navigator.clipboard.writeText(builtScenePrompt);
+    $('#copyPrompt').textContent='Copied ✓';
+    setTimeout(()=>$('#copyPrompt').textContent='Copy Prompt',1200);
+  }catch(e){
+    showError('Could not copy the prompt: '+e.message);
+  }
+}
+
+function useScenePrompt(){
+  if(!builtScenePrompt)return;
+  input.value = builtScenePrompt;
+  input.focus();
+  input.scrollIntoView({block:'center'});
 }
 
 async function refresh(){
@@ -257,7 +447,33 @@ async function refresh(){
         (s.state.pending?' • proposal':'');
     }
 
-    renderFiles(s.files);
+    renderFiles(s.available_json || [], s.files);
+
+    const storyData = await api('/api/stories');
+    const storySelect = $('#storySelect');
+    const currentStory = storySelect.value;
+
+    storySelect.innerHTML = '';
+
+    if(!storyData.stories.length){
+      const o=document.createElement('option');
+      o.value='';
+      o.textContent='No stories found';
+      storySelect.appendChild(o);
+    }else{
+      storyData.stories.forEach(story=>{
+        const o=document.createElement('option');
+        o.value=story.name;
+        o.textContent=story.name;
+        storySelect.appendChild(o);
+      });
+
+      if(storyData.active){
+        storySelect.value=storyData.active;
+      }else if(currentStory){
+        storySelect.value=currentStory;
+      }
+    }
 
     const select=$('#modelSelect');
     const current=select.value;
@@ -286,6 +502,41 @@ async function refresh(){
   }catch(e){
     $('#backend').textContent='error';
     showError(e.message);
+  }
+}
+
+async function switchStory(){
+  const name = $('#storySelect').value;
+
+  if(!name){
+    showError('Select a story first.');
+    return;
+  }
+
+  setBusy(true);
+  setWorkingButton('switchStory','Switching Story...');
+
+  try{
+    const j = await api('/api/story/select',{
+      method:'POST',
+      body:JSON.stringify({name})
+    });
+
+    clearChat();
+
+    addMsg(
+      'assistant',
+      'Story selected: '+j.story+
+      '. Loaded JSON files: '+j.files.join(', ')+
+      '. Click New Chat to start a fresh model session.'
+    );
+
+    await refresh();
+  }catch(e){
+    showError(e.message);
+  }finally{
+    restoreWorkingButton('switchStory');
+    setBusy(false);
   }
 }
 
@@ -345,13 +596,22 @@ async function unloadModel(){
 }
 
 async function loadJson(){
+  const checked = Array.from(
+    document.querySelectorAll('#fileList input[type="checkbox"]:checked')
+  ).map(cb => cb.value);
+
+  if(!checked.length){
+    showError('Select at least one JSON file.');
+    return;
+  }
+
   setBusy(true);
-  setWorkingButton('loadJson','Loading JSON...');
+  setWorkingButton('loadJson','Loading Selected JSON...');
 
   try{
     const j=await api('/api/json/load',{
       method:'POST',
-      body:JSON.stringify({})
+      body:JSON.stringify({names:checked})
     });
 
     clearChat();
@@ -398,7 +658,7 @@ async function unloadJson(){
 
 
 function latestAssistantText(){
-  const items=chat.querySelectorAll('.msg.assistant');
+  const items=chat.querySelectorAll('.msg.assistant.story');
   if(!items.length)return '';
   return items[items.length-1].textContent.trim();
 }
@@ -568,6 +828,76 @@ async function stopSession(){
   }
 }
 
+let pendingStorySave = null;
+
+async function saveStory(story){
+  try{
+    const status = await api('/api/status');
+
+    const chapter = status.state?.chapter;
+    const scene = status.state?.scene;
+
+    if(!Number.isInteger(chapter) || !Number.isInteger(scene)){
+      throw new Error('Current chapter and section numbers are not available.');
+    }
+
+    const filename =
+      'Chapter_'+String(chapter).padStart(2,'0')+
+      '_Section_'+String(scene).padStart(2,'0')+
+      '.txt';
+
+    pendingStorySave = {
+      story: story,
+      filename: filename
+    };
+
+    $('#savePromptText').textContent =
+      'Save this story section as ' + filename + '?';
+
+    $('#savePrompt').style.display='block';
+
+    $('#send').disabled=true;
+    $('#newChat').disabled=true;
+  }catch(e){
+    showError(e.message);
+  }
+}
+
+async function confirmSaveStory(){
+  if(!pendingStorySave)return;
+
+  try{
+    const j = await api('/api/save-story',{
+      method:'POST',
+      body:JSON.stringify({
+        story: pendingStorySave.story
+      })
+    });
+
+    $('#stateStatus').textContent='saved: '+j.filename;
+    pendingStorySave=null;
+    $('#savePrompt').style.display='none';
+  }catch(e){
+    showError(e.message);
+  }finally{
+    $('#send').disabled=false;
+    $('#newChat').disabled=false;
+    input.focus();
+  }
+}
+
+function discardStorySave(){
+  pendingStorySave=null;
+  $('#savePrompt').style.display='none';
+  $('#stateStatus').textContent='story section not saved';
+  $('#send').disabled=false;
+  $('#newChat').disabled=false;
+  input.focus();
+}
+
+$('#saveYes').addEventListener('click',confirmSaveStory);
+$('#saveNo').addEventListener('click',discardStorySave);
+
 async function send(){
   const text=input.value.trim();
 
@@ -585,13 +915,14 @@ async function send(){
       body:JSON.stringify({message:text})
     });
 
-    addMsg('assistant',j.content);
+    addMsg('assistant',j.content,true);
+    await saveStory(j.content);
 
     $('#timing').textContent=
       j.seconds+
       ' s • estimated context '+
       j.estimated_context_tokens+
-      '/12288';
+      '/8192';
   }catch(e){
     showError(e.message);
   }finally{
@@ -602,6 +933,7 @@ async function send(){
 }
 
 $('#newChat').addEventListener('click',newChat);
+$('#switchStory').addEventListener('click',switchStory);
 $('#stop').addEventListener('click',stopSession);
 $('#loadModel').addEventListener('click',loadModel);
 $('#unloadModel').addEventListener('click',unloadModel);
@@ -613,6 +945,10 @@ $('#updateFromFile').addEventListener('click',updateStateFromFile);
 $('#sectionFile').addEventListener('change',selectSectionFile);
 $('#applyState').addEventListener('click',applyState);
 $('#discardState').addEventListener('click',discardState);
+$('#buildPrompt').addEventListener('click',buildScenePrompt);
+$('#copyPrompt').addEventListener('click',copyScenePrompt);
+$('#usePrompt').addEventListener('click',useScenePrompt);
+$('#resetPrompt').addEventListener('click',resetPromptBuilder);
 
 input.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&!e.shiftKey){
