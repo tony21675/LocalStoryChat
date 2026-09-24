@@ -1911,6 +1911,14 @@ class LlamaSession:
                     initial=False
                 )
 
+                # /clear intentionally resets llama.cpp's internal conversation
+                # so each story request uses only the current scene packet.
+                # Discard its status output before reading the actual response.
+                self.buffer = ""
+                self._drain_pending_output(
+                    quiet_window=0.5
+                )
+
                 proc.stdin.write(
                     ("USER REQUEST:\n" + text + "\n").encode("utf-8")
                 )
