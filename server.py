@@ -22,6 +22,7 @@ except Exception as exc:
 HOST = "127.0.0.1"
 PORT = 8787
 BASE = Path.home()
+APP_ROOT = Path(__file__).resolve().parent
 
 LLAMA = Path(os.path.expanduser(
     "~/Documents/llama.cpp/build/bin/llama-cli"
@@ -33,7 +34,7 @@ DEFAULT_MODEL = Path(os.path.expanduser(
     "~/Documents/Models/llmfan46--gemma-4-E4B-it-ultra-uncensored-heretic-GGUF--gemma-4-E4B-it-ultra-uncensored-heretic-Q4_K_M.gguf"
 ))
 
-STORIES_ROOT = BASE / "Documents" / "LocalStoryStories"
+STORIES_ROOT = APP_ROOT / "stories"
 ACTIVE_STORY_FILE = STORIES_ROOT / ".active_story"
 
 
@@ -58,7 +59,7 @@ def _validate_story_dir(path):
         path.relative_to(root)
     except ValueError as exc:
         raise ValueError(
-            "Story folder must be inside ~/Documents/LocalStoryStories"
+            "Story folder must be inside the application stories directory"
         ) from exc
 
     if not path.is_dir():
@@ -118,7 +119,7 @@ def discover_initial_story_dir():
 
     if not stories:
         raise FileNotFoundError(
-            "No story folders found in ~/Documents/LocalStoryStories"
+            "No story folders found in the application stories directory"
         )
 
     raise RuntimeError(
