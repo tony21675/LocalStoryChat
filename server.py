@@ -1764,6 +1764,79 @@ class LlamaSession:
                             + continuation.lstrip()
                         )
 
+                if is_story_request:
+                    review = review_story_draft(
+                        text,
+                        answer
+                    )
+
+                    if not review.get("approved", True):
+                        violations = review.get("violations", [])
+
+                        repair_prompt = (
+                            "Rewrite the story draft below to remove ONLY the "
+                            "unsupported or contradictory details identified "
+                            "by the canon review. Preserve everything that is "
+                            "already valid, including natural dialogue, the "
+                            "established relationships, the current location, "
+                            "and the present scene. Do not replace removed "
+                            "details with new names, people, places, objects, "
+                            "events, clues, threats, or other invented facts. "
+                            "Do not add suspense or foreshadowing. Keep the "
+                            "scene simple and natural. Output only the "
+                            "corrected story prose.\n\n"
+                            "CANON REVIEW VIOLATIONS:\n"
+                            + json.dumps(
+                                violations,
+                                ensure_ascii=False,
+                                indent=2
+                            )
+                            + "\n\n"
+                            "DRAFT TO CORRECT:\n"
+                            + answer
+                        )
+
+                        proc.stdin.write(
+                            (repair_prompt + "\n").encode("utf-8")
+                        )
+                        proc.stdin.flush()
+
+                        repaired_raw = self._wait_for_prompt(
+                            900,
+                            initial=False
+                        )
+
+                        repaired = self.clean_output(
+                            repaired_raw
+                        )
+
+                        if repaired:
+                            repaired_review = review_story_draft(
+                                text,
+                                repaired
+                            )
+
+                            if repaired_review.get("approved", False):
+                                answer = repaired
+                            else:
+                                print(
+                                    "\n--- CANON REVIEW REMAINED UNRESOLVED ---",
+                                    flush=True
+                                )
+                                print(
+                                    json.dumps(
+                                        repaired_review,
+                                        ensure_ascii=False,
+                                        indent=2
+                                    ),
+                                    flush=True
+                                )
+                                print(
+                                    "--- END CANON REVIEW ---\n",
+                                    flush=True
+                                )
+                                answer = repaired
+
                 return answer, time.time() - started
 
             except BrokenPipeError as exc:
