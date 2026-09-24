@@ -177,41 +177,37 @@ def discover_story_names():
 
     return names
 
-SYSTEM_PROMPT = r'''You are the story generation engine for an ongoing fictional story.
+SYSTEM_PROMPT = r'''You are the story writer for an ongoing fictional story.
 
-The supplied JSON files are private reference material. Use them silently. Never quote, dump, summarize, or expose their contents during normal story writing.
+Use the supplied JSON reference material as private canon. Never quote, summarize, expose, or discuss the reference files unless explicitly asked.
 
-Write only the requested story prose. Do not output analysis, notes, JSON, summaries, explanations, or reference-file contents unless the user explicitly asks for them.
+Write only the requested story prose.
 
-Treat the supplied story context as the authoritative fictional world:
-- Character files define established character facts.
-- story_bible.json defines permanent canon and required story rules.
-- current_state.json defines the exact current situation and what each character currently knows.
-- Established story events override assumptions or guesses.
+AUTHORITATIVE ORDER:
+1. Character files define character identity, personality, relationships, background, and other established character facts.
+2. story_bible.json defines permanent world canon and story rules.
+3. current_state.json defines the exact present situation, character knowledge, active constraints, and scene boundary.
+4. The user's current request provides the immediate writing task.
 
-Characters may know only what they have witnessed, experienced, been told, or can reasonably infer from established information. Keep unknown information unknown. Do not reveal hidden information merely because it exists in the reference material.
+CONTINUITY:
+- Treat established facts as fixed.
+- Characters know only what they have witnessed, experienced, been told, or can reasonably infer.
+- Unknown information stays unknown.
+- Do not invent material plot facts, clues, evidence, locations, destinations, people, identities, motives, relationships, backstory, important objects, memories, or knowledge.
+- Do not reveal or foreshadow hidden information that the current scene has not established.
+- Do not change who is present, where they are, or what they can see or hear.
+- Follow explicit REQUIRED and DO NOT ADVANCE instructions as hard scene boundaries.
+- Do not restart the story or repeat the current situation as exposition.
 
-Do not invent concrete story facts that are not established or requested, including new plot events, clues, evidence, locations, destinations, people, identities, motives, objects, memories, relationships, backstory, or character knowledge.
+WRITING:
+Begin in the immediate present and let the scene develop through concrete action, dialogue, character reactions, and meaningful detail. Keep narrative attention on the characters and interactions that matter to the current scene. Ordinary temporary sensory detail, movement, body language, and mood are allowed when they do not create new material facts.
 
-Do not turn possibilities or speculation into established facts.
+Avoid padding. Do not repeatedly tell the reader that nothing is happening, that the situation is normal, or that a character is still doing the same thing. Do not turn the state file into a checklist or narration of facts. Show the scene instead.
 
-Begin from the exact current story state and continue naturally from the requested point. Preserve established continuity, character behavior, scene order, and required events. Do not restart or repeat the story unless explicitly asked.
+For a normal story section, aim for 800 to 1,200 words unless the request specifies another length. End at a natural scene break or when the requested event is complete.
 
-Scene-specific instructions marked as REQUIRED or DO NOT ADVANCE are binding constraints for the scene, not suggestions. When a creative assumption conflicts with an explicit scene instruction or established canon, follow the explicit instruction or canon.
+Silently check continuity before writing. Output only the story prose.'''
 
-- Treat explicit locations, relative positions, travel distance, who is present, and the state of physical things such as doors, vehicles, rooms, or gates as fixed facts. Do not change them for convenience, atmosphere, or pacing.
-- Do not reinterpret an established physical fact. For example, a closed garage must remain closed unless the story explicitly establishes that it is opened.
-- Do not invent routes, distances, destinations, or spatial relationships when the prompt or canon already establishes them.
-- Treat explicit DO NOT ADVANCE instructions as hard scene boundaries. Do not introduce, foreshadow, imply, partially perform, or rush toward a forbidden event unless the user explicitly asks for that advancement.
-- When a scene requires specific characters to interact, establish that interaction through actual action and dialogue rather than vague summaries such as "they chatted about something."
-- Do not use hedging placeholders such as "maybe," "perhaps," or "possibly" to fill in concrete story details. Either establish a harmless detail directly when appropriate or leave it unspecified.
-- Avoid repetitive description of the same action, object, sensation, or activity. Keep the scene moving through varied action, interaction, dialogue, and meaningful detail.
-
-Use natural prose and dialogue, with ordinary sensory detail allowed when it does not introduce new plot facts or clues.
-
-For a normal story section, write at least 700 words and aim for 800 to 1,200 words. Continue developing the scene naturally rather than ending after only a few paragraphs. Do not pad the scene merely to reach the word target. Advance the scene through new action, interaction, dialogue, or meaningful description, and avoid repeatedly restating established scene facts. A section should end when there is a natural scene break or the requested event has been completed.
-
-Before writing, silently check the scene against the supplied context for continuity.'''
 
 CANON_REVIEW_SYSTEM_PROMPT = r"""You are a continuity and canon reviewer for an ongoing fictional story.
 
@@ -1427,37 +1423,9 @@ def build_runtime_story_context(files):
 
 
 def build_scene_anchor(files):
-    for name, content in files:
-        if name != "current_state.json":
-            continue
-
-        try:
-            data = json.loads(content)
-        except Exception:
-            return ""
-
-        lines = [
-            "[SCENE ANCHOR]",
-        ]
-
-        location = data.get("location")
-        if isinstance(location, dict):
-            for character, place in location.items():
-                lines.append(f"- {character}: {place}")
-
-        situation = data.get("current_situation")
-        if situation:
-            lines.append(f"- {situation}")
-
-        lines.extend([
-            "",
-            "Preserve these established facts.",
-            "Write naturally and creatively unless the prose would contradict established canon.",
-            "[END SCENE ANCHOR]",
-        ])
-
-        return "\n".join(lines)
-
+    # Runtime story context is already supplied in the system prompt.
+    # Repeating current_state here encourages the writer to narrate the
+    # state instead of writing the scene.
     return ""
 
 
@@ -1739,20 +1707,8 @@ class LlamaSession:
                     initial=False
                 )
 
-                scene_anchor = build_scene_anchor(
-                    self.files
-                )
-
-                user_prompt = (
-                    scene_anchor
-                    + "\n\nUSER REQUEST:\n"
-                    + text
-                    if scene_anchor
-                    else text
-                )
-
                 proc.stdin.write(
-                    (user_prompt + "\n").encode("utf-8")
+                    ("USER REQUEST:\n" + text + "\n").encode("utf-8")
                 )
                 proc.stdin.flush()
 
