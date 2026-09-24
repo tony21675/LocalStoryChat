@@ -288,8 +288,20 @@ Reject invented backstory, motives, destinations, evidence, clues, witnesses, id
 Reject premature reveals of hidden or unknown information.
 
 CONSERVATIVE BUT PROPORTIONAL:
-Do not reject ordinary prose merely because it is not explicitly in the JSON.
-Reject when an unsupported detail would materially change the story or become something the story should remember.
+Do not reject ordinary temporary prose merely because it is not explicitly in the JSON.
+
+However, be strict about SPECIFICITY. In a sparse scene, reject concrete details that create factual information the story did not establish, including:
+- named teachers, classmates, neighbors, parents, or other people
+- specific assignments, classes, school events, or academic history
+- named streets, parks, businesses, landmarks, routes, or home features
+- pets, vehicles, objects, or possessions not established by canon
+- specific family routines, prior events, traditions, or plans
+- claims about what another person is doing, has done, or normally does
+- new sightings, sounds, movements, or environmental events that could become story facts
+- internal thoughts that create unsupported history, attraction, suspicion, anticipation, or relationship dynamics
+- wording that turns an ordinary moment into an implied threat, mystery, or future setup
+
+Generic temporary texture remains acceptable, such as ordinary walking, a pebble underfoot, generic weather, light, a brief laugh, or disposable nonspecific chatter.
 
 For every violation, return:
 {
@@ -1727,43 +1739,9 @@ class LlamaSession:
                     for marker in story_request_markers
                 )
 
-                word_count = len(answer.split())
-
-                if is_story_request and word_count < 650:
-                    continuation_prompt = (
-                        "Continue the same story scene naturally from exactly "
-                        "where you stopped. Do not restart, repeat, summarize, "
-                        "or explain the previous text. Add only as much prose "
-                        "as the scene genuinely needs, normally keeping the "
-                        "overall section around 400 to 800 words. Let the scene "
-                        "develop through natural action, dialogue, reactions, "
-                        "and ordinary interaction. Preserve established canon "
-                        "and the present scene boundary. Do not invent a new "
-                        "external incident merely to add length. End at a "
-                        "natural scene break."
-                    )
-
-                    proc.stdin.write(
-                        (continuation_prompt + "\n").encode("utf-8")
-                    )
-                    proc.stdin.flush()
-
-                    continuation_raw = self._wait_for_prompt(
-                        900,
-                        initial=False
-                    )
-
-                    continuation = self.clean_output(
-                        continuation_raw
-                    )
-
-                    if continuation:
-                        answer = (
-                            answer.rstrip()
-                            + "\n\n"
-                            + continuation.lstrip()
-                        )
-
+                # Review the first complete generation directly.
+                # Do not automatically extend short scenes before review.
+                # Extra generation encourages the model to invent filler.
                 if is_story_request:
                     review = review_story_draft(
                         text,
