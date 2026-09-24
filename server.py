@@ -1139,6 +1139,22 @@ def available_story_names():
 def load_story_files(names=None):
     names = discover_story_names() if names is None else names
 
+    # These files are mandatory for every story session.
+    # Character cards and other reference files remain selectable.
+    mandatory = [
+        "story_bible.json",
+        "current_state.json",
+    ]
+
+    names = (
+        mandatory
+        + [
+            name
+            for name in names
+            if name not in mandatory
+        ]
+    )
+
     unknown = [name for name in names if name not in available_story_names()]
     if unknown:
         raise ValueError(
@@ -2200,12 +2216,21 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/json/unload":
                 session.stop()
-                session.files = []
+                session.files = load_story_files(
+                    [
+                        "story_bible.json",
+                        "current_state.json",
+                    ]
+                )
 
                 self._json(
                     200,
                     {
-                        "ok": True
+                        "ok": True,
+                        "files": [
+                            name
+                            for name, _ in session.files
+                        ]
                     }
                 )
 

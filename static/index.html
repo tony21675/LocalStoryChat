@@ -347,15 +347,26 @@ function renderFiles(files, loadedFiles){
   const hasLoaded=loadedFiles && loadedFiles.length>0;
   const loadedSet=new Set((loadedFiles || []).map(f=>f.name));
 
+  const mandatoryFiles = new Set([
+    'story_bible.json',
+    'current_state.json'
+  ]);
+
   files.forEach(f=>{
     const d=document.createElement('label');
     d.className='file';
-    d.style.cursor='pointer';
+
+    const required = mandatoryFiles.has(f.name);
+
+    d.style.cursor = required ? 'default' : 'pointer';
 
     const cb=document.createElement('input');
     cb.type='checkbox';
     cb.value=f.name;
-    cb.checked=hasLoaded ? loadedSet.has(f.name) : !!f.default;
+    cb.checked = required
+      ? true
+      : (hasLoaded ? loadedSet.has(f.name) : !!f.default);
+    cb.disabled = required;
     cb.style.marginRight='8px';
 
     const span=document.createElement('span');
@@ -363,6 +374,15 @@ function renderFiles(files, loadedFiles){
 
     d.appendChild(cb);
     d.appendChild(span);
+
+    if(required){
+      const badge=document.createElement('span');
+      badge.textContent=' Required';
+      badge.style.opacity='0.65';
+      badge.style.fontSize='0.85em';
+      d.appendChild(badge);
+    }
+
     list.appendChild(d);
   });
 }
@@ -644,7 +664,7 @@ async function unloadJson(){
     clearChat();
     addMsg(
       'assistant',
-      'JSON reference files unloaded from the active session. The files were not deleted.'
+      'Optional JSON reference files unloaded. story_bible.json and current_state.json remain loaded.'
     );
 
     await refresh();
