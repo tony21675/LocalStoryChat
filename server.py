@@ -207,6 +207,8 @@ SCENE:
 - Do not repeat the same state, movement, atmosphere, or explanation just to add length.
 - Prefer concrete interaction over decorative description.
 - Use only temporary sensory detail that does not create new material facts.
+- When a previous saved section is supplied, continue directly from its ending instead of restarting or recapping it.
+- The previous saved section is a continuity bridge only. It does not override character files, story_bible.json, current_state.json, or the user's current request.
 - For an ordinary continuation, write only as much as the moment needs, typically about 400 to 800 words. Write longer only when the request calls for it or the scene genuinely requires it.
 - End at a natural break or when the requested moment is complete.
 
@@ -1633,6 +1635,90 @@ def build_scene_anchor(files):
     return ""
 
 
+def build_previous_section_context(max_chars=12000):
+    """Load the latest saved manuscript section as a continuity bridge.
+
+    The writer process intentionally clears llama.cpp's conversation before
+    each request, so it cannot remember the last generated prose by itself.
+    The latest saved manuscript section provides the missing prose continuity
+    without relying on browser chat history.
+
+    This text is continuity context only. Character files, story_bible.json,
+    current_state.json, and the user's current request remain authoritative.
+    """
+    try:
+        state = read_current_state()
+    except Exception:
+        return ""
+
+    chapter = state.get("chapter")
+
+    if not isinstance(chapter, int):
+        return ""
+
+    chapter_dir = (
+        MANUSCRIPT_DIR
+        / "Chapters"
+        / f"Chapter_{chapter:02d}"
+    )
+
+    if not chapter_dir.is_dir():
+        return ""
+
+    candidates = []
+
+    for path in chapter_dir.glob(
+        f"Chapter_{chapter:02d}_Section_*.txt"
+    ):
+        match = re.search(
+            r"_Section_(\d+)\.txt$",
+            path.name
+        )
+
+        if not match:
+            continue
+
+        try:
+            number = int(match.group(1))
+        except ValueError:
+            continue
+
+        candidates.append((number, path))
+
+    if not candidates:
+        return ""
+
+    candidates.sort(
+        key=lambda item: item[0],
+        reverse=True
+    )
+
+    _, previous_path = candidates[0]
+
+    try:
+        previous_text = previous_path.read_text(
+            encoding="utf-8"
+        ).strip()
+    except Exception:
+        return ""
+
+    if not previous_text:
+        return ""
+
+    if len(previous_text) > max_chars:
+        previous_text = previous_text[-max_chars:]
+
+    return (
+        "\n[PREVIOUS SAVED STORY SECTION]\n"
+        "Continue directly from the end of this section. "
+        "Do not restart it or recap it. "
+        "Use it only as a continuity bridge. "
+        "It does not override authoritative story context.\n\n"
+        + previous_text
+        + "\n[END PREVIOUS SAVED STORY SECTION]\n"
+    )
+
+
 class LlamaSession:
     def __init__(self):
         self.child = None
@@ -1680,6 +1766,11 @@ class LlamaSession:
 
         if scene_packet:
             parts.append(scene_packet)
+
+        previous_section = build_previous_section_context()
+
+        if previous_section:
+            parts.append(previous_section)
 
         return "\n".join(parts)
 
