@@ -18,17 +18,16 @@
     "Tony": [
       "Knows Tiffany is his daughter.",
       "Knows Maya is a friend of his and Tiffany's.",
-      "Knows Tiffany and Maya are walking home from school together.",
       "Does not know of any kidnapping or threat to Tiffany."
     ],
     "Tiffany": [
       "Is walking home from school with Maya.",
-      "Knows Tony is at home in the garage.",
+      "Knows Tony is at home.",
       "Knows Maya is walking home with her."
     ],
     "Maya": [
       "Is walking home from school with Tiffany.",
-      "Knows Tony is at home in the garage.",
+      "Knows Tony is at home.",
       "Knows Tiffany is safe at the start of the story."
     ]
   },
@@ -48,6 +47,8 @@
     "Tiffany is safe at the start of the story.",
     "Tiffany and Maya are walking home from school together.",
     "Tiffany and Maya have not reached Tony and Tiffany's house yet.",
+    "Maya and Tiffany are friends; their relationship is platonic.",
+    "Maya is attracted to Tony.",
     "Do not reveal the kidnapping before it occurs in the story.",
     "Do not invent threats, clues, kidnappers, motives, destinations, or other investigative information before it is established.",
     "Do not reveal the hidden tracker or its activation method.",
