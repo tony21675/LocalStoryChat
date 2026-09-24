@@ -416,6 +416,7 @@ Evidence rules:
 - For changed string or nested values, provide evidence for the changed value.
 - Controlled bookkeeping fields such as chapter, scene, scene_completed, and status do not require quotation evidence.
 - Do not use evidence to justify information that is merely inferred or possible.
+- Do not use evidence to turn temporary scene behavior into permanent character knowledge or continuity rules.
 - If the story section does not explicitly support a proposed change, do not include that change.
 - Do not output markdown, explanations, notes, analysis, or code fences.
 """
@@ -991,6 +992,10 @@ Rules:
 - Treat location and physical position as literal continuity data. Do not infer arrival at a place from language such as approaching, nearing, heading toward, or not yet reached.
 - Do not make a character appear to be at or passing a location unless the completed story section explicitly establishes that position.
 - Do not create active_clues or unresolved_questions from ordinary objects, dialogue, or curiosity unless the story section explicitly establishes them as plot-relevant clues or unresolved story questions.
+- Do not add temporary observations, gestures, glances, blushes, emotions, or ordinary sensory details to character_knowledge unless the section establishes a meaningful new fact that the character learned and may need to remember later.
+- Do not add already-established character traits, possessions, relationships, or background facts to current state merely because the section mentions or shows them.
+- Do not add a continuity_requirement for a one-time action, observation, or ordinary piece of scene texture. Continuity requirements are only for facts or constraints that must remain true in later scenes.
+- In particular, a character noticing an established object is not a state change unless the noticing itself creates a meaningful new plot or knowledge consequence.
 - If nothing changed, return exactly:
   {{"patch": {{}}, "evidence": []}}
 
