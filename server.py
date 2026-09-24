@@ -1368,6 +1368,167 @@ def _format_locked_state(data):
     return "\n".join(lines)
 
 
+def build_writer_scene_packet(files):
+    """Build the smallest useful context for the prose writer.
+
+    The writer sees the current scene, active characters, their relevant
+    established traits/relationships, current knowledge, objectives, and
+    established locations. Future plot rules and hidden canon stay outside
+    the normal writing context.
+    """
+    parsed = {}
+
+    for name, raw in files:
+        try:
+            parsed[name] = json.loads(raw)
+        except Exception:
+            continue
+
+    state = parsed.get("current_state.json", {})
+    bible = parsed.get("story_bible.json", {})
+
+    character_files = {
+        str(name).strip()
+        for name in bible.get("character_cards", [])
+        if str(name).strip()
+    }
+
+    location = state.get("location")
+    active_names = []
+
+    if isinstance(location, dict):
+        for name in location:
+            if any(
+                card_data.get("name") == name
+                for card_name, card_data in parsed.items()
+                if card_name in character_files
+                and isinstance(card_data, dict)
+            ):
+                active_names.append(name)
+
+    if not active_names:
+        for card_name in character_files:
+            card_data = parsed.get(card_name)
+            if isinstance(card_data, dict) and card_data.get("name"):
+                active_names.append(card_data["name"])
+
+    lines = [
+        "[SCENE PACKET]",
+        f"Chapter: {state.get('chapter')}",
+        f"Scene: {state.get('scene')}",
+    ]
+
+    time_data = state.get("time")
+    if time_data:
+        lines.append(f"Time: {json.dumps(time_data, ensure_ascii=False)}")
+
+    if isinstance(location, dict):
+        lines.append("")
+        lines.append("WHERE:")
+        for name, place in location.items():
+            lines.append(f"- {name}: {place}")
+    elif location:
+        lines.extend(["", f"WHERE: {location}"])
+
+    situation = state.get("current_situation")
+    if situation:
+        lines.extend(["", "RIGHT NOW:", str(situation)])
+
+    knowledge = state.get("character_knowledge")
+    if isinstance(knowledge, dict):
+        relevant_knowledge = []
+        for name in active_names:
+            facts = knowledge.get(name)
+            if isinstance(facts, list):
+                relevant_knowledge.append(
+                    f"- {name}: " + "; ".join(str(f) for f in facts)
+                )
+            elif facts:
+                relevant_knowledge.append(
+                    f"- {name}: {facts}"
+                )
+
+        if relevant_knowledge:
+            lines.extend(["", "WHAT THEY KNOW:"] + relevant_knowledge)
+
+    objectives = state.get("active_objectives")
+    if isinstance(objectives, dict):
+        relevant_objectives = []
+        for name in active_names:
+            objective = objectives.get(name)
+            if objective:
+                relevant_objectives.append(
+                    f"- {name}: {objective}"
+                )
+
+        if relevant_objectives:
+            lines.extend(["", "WHAT THEY ARE DOING:"] + relevant_objectives)
+
+    character_fields = (
+        "name",
+        "age",
+        "appearance",
+        "personality",
+        "relationships",
+        "background",
+        "skills",
+        "strengths",
+        "weaknesses",
+        "important_items",
+    )
+
+    for card_name in character_files:
+        data = parsed.get(card_name)
+        if not isinstance(data, dict):
+            continue
+
+        name = data.get("name")
+        if name not in active_names:
+            continue
+
+        filtered = _pick_fields(data, character_fields)
+
+        lines.extend([
+            "",
+            f"CHARACTER: {name}",
+            _compact_json(filtered),
+        ])
+
+    locations = bible.get("locations")
+    if isinstance(locations, dict) and locations:
+        lines.append("")
+        lines.append("ESTABLISHED LOCATIONS:")
+        for name, description in locations.items():
+            lines.append(f"- {name}: {description}")
+
+    completed = state.get("completed_events")
+    if completed:
+        lines.append("")
+        lines.append("ESTABLISHED EVENTS:")
+        for item in completed:
+            lines.append(f"- {item}")
+
+    clues = state.get("active_clues")
+    if clues:
+        lines.append("")
+        lines.append("ESTABLISHED CLUES:")
+        for item in clues:
+            lines.append(f"- {item}")
+
+    lines.extend([
+        "",
+        "Write from this packet. Do not narrate the packet itself.",
+        "The packet describes the present scene, not future story information.",
+        "Ordinary conversation and temporary sensory detail may be creative.",
+        "Do not invent material plot facts, hidden information, or persistent canon.",
+        "Do not make characters search for danger without a concrete reason.",
+        "",
+        "[END SCENE PACKET]",
+    ])
+
+    return "\n".join(lines)
+
+
 def build_runtime_story_context(files):
     sections = []
 
@@ -1515,10 +1676,10 @@ class LlamaSession:
     def _build_prompt(self, base_prompt, files):
         parts = [base_prompt.strip()]
 
-        runtime_context = build_runtime_story_context(files)
+        scene_packet = build_writer_scene_packet(files)
 
-        if runtime_context:
-            parts.append(runtime_context)
+        if scene_packet:
+            parts.append(scene_packet)
 
         return "\n".join(parts)
 
@@ -1770,117 +1931,6 @@ class LlamaSession:
                 # Give short story-writing responses one chance to continue
                 # naturally. The same llama-cli session is kept, so the model
                 # can continue from exactly where it stopped.
-                story_request_markers = (
-                    "write",
-                    "begin",
-                    "start",
-                    "continue",
-                    "scene",
-                    "chapter",
-                    "story",
-                    "prose",
-                )
-
-                request_lower = text.lower()
-
-                is_story_request = any(
-                    marker in request_lower
-                    for marker in story_request_markers
-                )
-
-                # Review the first complete generation directly.
-                # Do not automatically extend short scenes before review.
-                # Extra generation encourages the model to invent filler.
-                if is_story_request:
-                    review = review_story_draft(
-                        text,
-                        answer
-                    )
-
-                    unsupported_named_people = _find_unsupported_named_people(
-                        answer
-                    )
-
-                    if unsupported_named_people:
-                        review = {
-                            "approved": False,
-                            "violations": review.get("violations", []) + [
-                                {
-                                    "quote": name,
-                                    "reason": "The draft introduces a newly named person not established by the runtime story context.",
-                                    "category": "dialogue",
-                                }
-                                for name in unsupported_named_people
-                            ],
-                        }
-
-                    if not review.get("approved", True):
-                        violations = review.get("violations", [])
-
-                        repair_prompt = (
-                            "Rewrite the story draft below to remove ONLY the "
-                            "unsupported or contradictory details identified "
-                            "by the canon review. Preserve everything that is "
-                            "already valid, including natural dialogue, the "
-                            "established relationships, the current location, "
-                            "and the present scene. Do not replace removed "
-                            "details with new names, people, places, objects, "
-                            "events, clues, threats, or other invented facts. "
-                            "Do not add suspense or foreshadowing. Keep the "
-                            "scene simple and natural. Output only the "
-                            "corrected story prose.\n\n"
-                            "CANON REVIEW VIOLATIONS:\n"
-                            + json.dumps(
-                                violations,
-                                ensure_ascii=False,
-                                indent=2
-                            )
-                            + "\n\n"
-                            "DRAFT TO CORRECT:\n"
-                            + answer
-                        )
-
-                        proc.stdin.write(
-                            (repair_prompt + "\n").encode("utf-8")
-                        )
-                        proc.stdin.flush()
-
-                        repaired_raw = self._wait_for_prompt(
-                            900,
-                            initial=False
-                        )
-
-                        repaired = self.clean_output(
-                            repaired_raw
-                        )
-
-                        if repaired:
-                            repaired_review = review_story_draft(
-                                text,
-                                repaired
-                            )
-
-                            if repaired_review.get("approved", False):
-                                answer = repaired
-                            else:
-                                print(
-                                    "\n--- CANON REVIEW REMAINED UNRESOLVED ---",
-                                    flush=True
-                                )
-                                print(
-                                    json.dumps(
-                                        repaired_review,
-                                        ensure_ascii=False,
-                                        indent=2
-                                    ),
-                                    flush=True
-                                )
-                                print(
-                                    "--- END CANON REVIEW ---\n",
-                                    flush=True
-                                )
-                                answer = repaired
-
                 return answer, time.time() - started
 
             except BrokenPipeError as exc:
