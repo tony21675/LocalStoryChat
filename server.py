@@ -193,6 +193,7 @@ CANON:
 - During ordinary moments, characters focus on their current activity and each other. Observant or cautious characters do not continuously scan for danger without a concrete reason.
 - Do not invent material plot events, clues, evidence, identities, motives, destinations, important objects, backstory, persistent setting facts, or new relationships.
 - Do not add unexplained people, animals, vehicles, objects, suspicious activity, or environmental anomalies just to make prose more interesting.
+- Scene character boundaries matter: use the characters explicitly requested for the scene as the active cast. Do not introduce, speak for, or give narrative focus to another established character merely because that character exists in the reference files. A different character may appear only when the current state, previous section, or user's request establishes that character's presence.
 
 DIALOGUE:
 - Normal everyday conversation may be invented.
@@ -208,6 +209,7 @@ SCENE:
 - Prefer concrete interaction over decorative description.
 - Use only temporary sensory detail that does not create new material facts.
 - When a previous saved section is supplied, continue directly from its ending instead of restarting or recapping it.
+- Treat explicit scene requirements in the user's request as requirements to fulfill naturally within the scene. Do not omit a requested character beat, reaction, interaction, or event merely because it is subtle; express it through natural prose rather than explaining the instruction.
 - The previous saved section is a continuity bridge only. It does not override character files, story_bible.json, current_state.json, or the user's current request.
 - For an ordinary continuation, write only as much as the moment needs, typically about 400 to 800 words. Write longer only when the request calls for it or the scene genuinely requires it.
 - End at a natural break or when the requested moment is complete.
@@ -2971,11 +2973,61 @@ class Handler(BaseHTTPRequestHandler):
                     )
                     return
 
-                with STORY_SAVE_LOCK:
+                requested_filename = str(
+                    body.get("filename", "")
+                ).strip()
+
+                overwrite = bool(
+                    body.get("overwrite", False)
+                )
+
+                if requested_filename:
+                    match = re.fullmatch(
+                        r"Chapter_(\d+)_Section_(\d+)\.txt",
+                        requested_filename,
+                        re.IGNORECASE
+                    )
+
+                    if not match:
+                        raise ValueError(
+                            "Invalid manuscript section filename."
+                        )
+
+                    target_chapter = int(match.group(1))
+                    target_scene = int(match.group(2))
+
+                    if target_chapter != chapter:
+                        raise ValueError(
+                            "Manuscript section must belong to the current chapter."
+                        )
+
+                    if target_scene <= scene:
+                        raise ValueError(
+                            "Manuscript section must be later than the current state scene."
+                        )
+
+                    filename = (
+                        f"Chapter_{target_chapter:02d}_Section_{target_scene:02d}.txt"
+                    )
+                    path_out = (
+                        MANUSCRIPT_DIR
+                        / "Chapters"
+                        / f"Chapter_{target_chapter:02d}"
+                        / filename
+                    )
+                else:
                     _, filename, path_out = next_story_section_path(
                         chapter, scene
                     )
+
+                with STORY_SAVE_LOCK:
                     path_out.parent.mkdir(parents=True, exist_ok=True)
+
+                    if path_out.exists() and not overwrite:
+                        raise ValueError(
+                            f"Manuscript section already exists: {filename}"
+                        )
+
                     path_out.write_text(
                         story + "\n",
                         encoding="utf-8"
