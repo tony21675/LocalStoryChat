@@ -644,6 +644,12 @@ def validate_state_patch(base, patch, story_text, evidence):
         story_text
     )
 
+    changed_claims = {
+        (field, _claim_key(claim))
+        for field, claim in _iter_changed_claims(base, patch)
+        if field.split(".", 1)[0] not in _STATE_METADATA_FIELDS
+    }
+
     evidence_keys = set()
 
     for entry in evidence:
@@ -671,6 +677,18 @@ def validate_state_patch(base, patch, story_text, evidence):
                 "State proposal rejected. Every evidence entry needs a non-empty quote."
             )
 
+        key = (
+            field.strip(),
+            _claim_key(claim)
+        )
+
+        # The state model may echo evidence for unchanged facts from the
+        # baseline. Those are not state changes and should not block an
+        # otherwise valid proposal. Only evidence attached to a genuinely
+        # changed claim is validated.
+        if key not in changed_claims:
+            continue
+
         normalized_quote = _normalize_evidence_text(
             quote
         )
@@ -682,22 +700,15 @@ def validate_state_patch(base, patch, story_text, evidence):
                 f"{quote!r}"
             )
 
-        evidence_keys.add(
-            (
-                field.strip(),
-                _claim_key(claim)
-            )
-        )
+        evidence_keys.add(key)
 
-    for field, claim in _iter_changed_claims(base, patch):
-        top_level = field.split(".", 1)[0]
-
-        if top_level in _STATE_METADATA_FIELDS:
-            continue
-
-        key = (
-            field,
-            _claim_key(claim)
+    for key in changed_claims:
+        field = key[0]
+        claim = next(
+            claim
+            for changed_field, changed_claim in _iter_changed_claims(base, patch)
+            if changed_field == field
+            and _claim_key(changed_claim) == key[1]
         )
 
         if key not in evidence_keys:
