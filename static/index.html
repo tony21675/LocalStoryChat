@@ -161,6 +161,7 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
     </div>
     <div class="toolbar">
       <button id="resetPrompt" class="btn">Reset</button>
+      <button id="carryPrompt" class="btn">Next Scene</button>
       <button id="buildPrompt" class="btn primary">Build Prompt</button>
     </div>
   </div>
@@ -261,7 +262,9 @@ const input=$('#input');
 let pendingState=null;
 let selectedSectionFile=null;
 let builtScenePrompt="";
+let promptBuilderDirty=false;
 const CHAT_STORAGE_KEY='localStoryChat.history.v1';
+const PROMPT_STORAGE_KEY='localStoryChat.scenePrompt.v1';
 
 function readChatHistory(){
   try{
@@ -437,21 +440,95 @@ function renderFiles(files, loadedFiles){
   });
 }
 
-function resetPromptBuilder(){
+function currentStoryKey(){
+  const value = window._activeStoryName || 'default';
+  return value.replace(/[^a-zA-Z0-9._-]/g,'_');
+}
+
+function promptStorageKey(){
+  return PROMPT_STORAGE_KEY + '.' + currentStoryKey();
+}
+
+function readPromptTemplate(){
+  try{
+    const raw=localStorage.getItem(promptStorageKey());
+    const data=raw?JSON.parse(raw):null;
+    return data && typeof data==='object' ? data : null;
+  }catch(e){
+    return null;
+  }
+}
+
+function writePromptTemplate(){
+  try{
+    localStorage.setItem(promptStorageKey(),JSON.stringify({
+      chapter:$('#promptChapter').value,
+      scene:$('#promptScene').value,
+      characters:$('#promptCharacters').value,
+      goal:$('#promptGoal').value,
+      required:$('#promptRequired').value,
+      avoid:$('#promptAvoid').value,
+      tone:$('#promptTone').value,
+      length:$('#promptLength').value,
+      guidance:$('#promptGuidance').value
+    }));
+  }catch(e){
+    // Prompt memory is optional.
+  }
+}
+
+function fillPromptFields(data, nextScene=false){
   const state = window._storyState || {};
-  $('#promptChapter').value = state.chapter || '';
-  $('#promptScene').value = state.scene || '';
-  $('#promptCharacters').value = '';
-  $('#promptGoal').value = '';
-  $('#promptRequired').value = '';
-  $('#promptAvoid').value = '';
-  $('#promptTone').value = '';
-  $('#promptLength').value = '800 to 1,200';
-  $('#promptGuidance').value = '';
+  const chapter = Number.isInteger(state.chapter)
+    ? state.chapter
+    : (data?.chapter || '');
+
+  let scene = data?.scene || state.scene || '';
+  if(nextScene && Number.isInteger(state.scene)){
+    scene = state.scene + 1;
+  }
+
+  $('#promptChapter').value = chapter;
+  $('#promptScene').value = scene;
+  $('#promptCharacters').value = data?.characters || '';
+  $('#promptGoal').value = data?.goal || '';
+  $('#promptRequired').value = data?.required || '';
+  $('#promptAvoid').value = data?.avoid || '';
+  $('#promptTone').value = data?.tone || '';
+  $('#promptLength').value = data?.length || '800 to 1,200';
+  $('#promptGuidance').value = data?.guidance || '';
   $('#promptOutput').value = '';
   builtScenePrompt = '';
   $('#copyPrompt').disabled = true;
   $('#usePrompt').disabled = true;
+  promptBuilderDirty = false;
+}
+
+function resetPromptBuilder(){
+  const template = readPromptTemplate();
+  if(template){
+    fillPromptFields(template, false);
+    return;
+  }
+
+  fillPromptFields({}, false);
+}
+
+function carryForwardPrompt(){
+  const template = readPromptTemplate() || {
+    chapter: $('#promptChapter').value,
+    scene: $('#promptScene').value,
+    characters: $('#promptCharacters').value,
+    goal: $('#promptGoal').value,
+    required: $('#promptRequired').value,
+    avoid: $('#promptAvoid').value,
+    tone: $('#promptTone').value,
+    length: $('#promptLength').value || '800 to 1,200',
+    guidance: $('#promptGuidance').value
+  };
+
+  fillPromptFields(template, true);
+  $('#promptGoal').focus();
 }
 
 async function buildScenePrompt(){
@@ -475,6 +552,8 @@ async function buildScenePrompt(){
 
     builtScenePrompt = j.prompt;
     $('#promptOutput').value = builtScenePrompt;
+    writePromptTemplate();
+    promptBuilderDirty = false;
     $('#copyPrompt').disabled = false;
     $('#usePrompt').disabled = false;
   }catch(e){
@@ -520,6 +599,7 @@ async function refresh(){
     renderFiles(s.available_json || [], s.files);
 
     const storyData = await api('/api/stories');
+    window._activeStoryName = storyData.active || 'default';
     const storySelect = $('#storySelect');
     const currentStory = storySelect.value;
 
@@ -1022,6 +1102,23 @@ $('#buildPrompt').addEventListener('click',buildScenePrompt);
 $('#copyPrompt').addEventListener('click',copyScenePrompt);
 $('#usePrompt').addEventListener('click',useScenePrompt);
 $('#resetPrompt').addEventListener('click',resetPromptBuilder);
+$('#carryPrompt').addEventListener('click',carryForwardPrompt);
+
+[
+  '#promptChapter',
+  '#promptScene',
+  '#promptCharacters',
+  '#promptGoal',
+  '#promptRequired',
+  '#promptAvoid',
+  '#promptTone',
+  '#promptLength',
+  '#promptGuidance'
+].forEach(selector=>{
+  $(selector).addEventListener('input',()=>{
+    promptBuilderDirty=true;
+  });
+});
 
 input.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&!e.shiftKey){
@@ -1031,7 +1128,13 @@ input.addEventListener('keydown',e=>{
 });
 
 restoreChatHistory();
-refresh();
+refresh().then(()=>{
+  if(!promptBuilderDirty && readPromptTemplate()){
+    fillPromptFields(readPromptTemplate(), false);
+  }else{
+    resetPromptBuilder();
+  }
+});
 </script>
 </body>
 </html>
