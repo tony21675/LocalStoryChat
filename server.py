@@ -933,8 +933,16 @@ new_clues, unresolved_questions, active_objectives, continuity_requirements.
 
 Never invent or create any other top-level field.
 
+CURRENT STATE BEFORE THIS SECTION:
+{json.dumps(current_state, ensure_ascii=False, indent=2)}
+
 COMPLETED STORY SECTION:
 {story_text}
+
+Use CURRENT STATE BEFORE THIS SECTION as the baseline for comparison.
+Only propose information that is genuinely new or changed because of the completed story section.
+If a fact already exists in current state, do NOT include it again.
+Do not treat ordinary restatement, repeated context, or pre-existing knowledge as a change.
 
 Return ONLY this JSON structure:
 
@@ -944,8 +952,9 @@ Return ONLY this JSON structure:
 }}
 
 Rules:
-- "patch" contains ONLY information newly established by this story section.
-- Do NOT copy information from any previous state.
+- "patch" contains ONLY information newly established or changed by this story section relative to CURRENT STATE BEFORE THIS SECTION.
+- Use the supplied current state as the comparison baseline. Do NOT treat existing facts as new.
+- Do NOT copy unchanged information from current state.
 - Do NOT invent information.
 - Do NOT include unchanged information.
 - For array fields, include ONLY new items introduced by this section.
@@ -987,7 +996,7 @@ Do not return current_state.json.
         "--top-p", "0.80",
         "--repeat-last-n", "256",
         "--repeat-penalty", "1.08",
-        "--n-predict", "1000",
+        "--n-predict", "2000",
         "--system-prompt", STATE_SYSTEM_PROMPT,
         "--prompt", prompt,
         "--color", "off",
