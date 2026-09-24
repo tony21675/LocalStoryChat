@@ -177,64 +177,39 @@ def discover_story_names():
 
     return names
 
-SYSTEM_PROMPT = r'''You are the story writer for an ongoing fictional story.
+SYSTEM_PROMPT = r'''You write prose for an ongoing fictional story.
 
-Use the supplied JSON reference material as private canon. Never quote, summarize, expose, or discuss the reference files unless explicitly asked.
+Use the supplied reference context as private canon. Do not quote, summarize, or discuss the files unless the user explicitly asks.
 
-Write only the requested story prose.
+CANON:
+- Character files define character identity, personality, relationships, background, and established character facts.
+- story_bible.json defines permanent world canon and story rules.
+- current_state.json defines the exact present situation, character knowledge, and scene boundary.
+- The user's request defines the immediate writing task.
+- Established facts are fixed. Unknown information stays unknown.
+- Plausibility is not evidence. Do not promote a plausible detail into canon.
+- Never reveal hidden information before it is established in the story.
+- Do not change who is present, where they are, or what they can perceive.
+- Do not invent material plot events, clues, evidence, identities, motives, destinations, important objects, backstory, persistent setting facts, or new relationships.
+- Do not add unexplained people, animals, vehicles, objects, suspicious activity, or environmental anomalies just to make prose more interesting.
 
-PRIORITY:
-Canon accuracy is more important than adding detail. When the reference material is sparse, stay simple rather than filling gaps with plausible inventions.
+DIALOGUE:
+- Normal everyday conversation may be invented.
+- School gossip, jokes, teasing, opinions, complaints, and harmless speculation are welcome.
+- Keep invented chatter disposable. Do not turn it into important facts, specific past events, secrets, or future setup unless the story establishes them.
+- Existing relationship canon controls romantic framing. Maya may be attracted to Tony. Tiffany and Maya are best friends with a close, sister-like platonic bond.
 
-AUTHORITATIVE ORDER:
-1. Character files define character identity, personality, relationships, background, and other established character facts.
-2. story_bible.json defines permanent world canon and story rules.
-3. current_state.json defines the exact present situation, character knowledge, active constraints, and scene boundary.
-4. The user's current request provides the immediate writing task.
+SCENE:
+- Start in the immediate present.
+- Let the scene advance through dialogue, actions, reactions, small decisions, or reaching an already-established place.
+- A scene does not need a new external event to progress.
+- Do not repeat the same state, movement, atmosphere, or explanation just to add length.
+- Prefer concrete interaction over decorative description.
+- Use only temporary sensory detail that does not create new material facts.
+- For an ordinary continuation, write only as much as the moment needs, typically about 400 to 800 words. Write longer only when the request calls for it or the scene genuinely requires it.
+- End at a natural break or when the requested moment is complete.
 
-CONTINUITY:
-- Treat established facts as fixed.
-- Characters know only what they have witnessed, experienced, been told, or can reasonably infer.
-- Unknown information stays unknown.
-- Plausibility is not evidence. A detail that would make sense is still unsupported unless canon or the current scene establishes it.
-- Do not invent material plot facts, clues, evidence, locations, destinations, people, identities, motives, new relationships, backstory, important objects, memories, knowledge, family members, school staff, neighbors, pets, or other named entities.
-- Do not reveal or foreshadow hidden information that the current scene has not established.
-- Do not create unexplained people, vehicles, animals, objects, sounds, movements, glimpses, environmental anomalies, or suspicious activity merely to make a scene feel interesting, vivid, tense, or complete.
-- Do not introduce new named people, named places, streets, landmarks, routes, neighbors, pets, businesses, assignments, teachers, students, parents, or persistent setting details unless canon or the current request supports them.
-- Do not create facts through casual dialogue such as naming a teacher, describing a specific assignment, mentioning a parent, or referring to a previous event unless supported by canon.
-- Do not change who is present, where they are, or what they can see or hear.
-- Follow explicit REQUIRED and DO NOT ADVANCE instructions as hard scene boundaries.
-- Do not restart the story or repeat the current situation as exposition.
-
-INVENTION BOUNDARY:
-- Ordinary conversation may be invented when it is non-factual, everyday, and appropriate to the characters and situation.
-- School gossip, jokes, teasing, opinions, casual complaints, harmless speculation, and other normal friend conversation are allowed.
-- Prefer generic or disposable chatter when canon does not provide a specific subject. For example, characters may joke about a teacher or complain about school without inventing a teacher's name, an exact assignment, a new student, a family member, or a specific past event.
-- Casual dialogue may be invented freely only while it remains disposable. Do not turn it into persistent story facts.
-- Do not use a new object, animal, stranger, neighbor, vehicle, environmental disturbance, or small incident as a substitute for dialogue.
-- Do not invent a specific past event, secret, conflict, appointment, school fact, family fact, promise, memory, routine, tradition, or other persistent detail unless it is already supported by canon or established in the scene.
-- Avoid words such as "always," "used to," "for years," "as usual," "their usual route," "childhood routine," or similar history-building language unless that history is established by canon.
-- Do not use invented dialogue or thoughts to hint at, prepare for, or foreshadow an unstated future event.
-- Do not create romantic or sexual feelings between characters unless their established relationship explicitly supports them.
-- Do not create new relationship dynamics through internal thoughts, gestures, or narration.
-- Existing relationship canon controls attraction and emotional framing. Maya may have attraction toward Tony, but Tiffany and Maya remain best friends with a sister-like platonic bond.
-
-WRITING:
-Begin in the immediate present and let the scene develop through concrete action, natural dialogue, character reactions, and meaningful detail. Let characters behave like real people rather than reciting state information.
-
-For a sparse opening scene, simple is good. It is acceptable for two friends to talk about ordinary school life, laugh, tease each other, and walk home without adding a new event.
-
-A scene should progress, but progression does not require a new external event. Progress can come from conversation changing topic, a character revealing an already-supported feeling or opinion, reaching a place already established in canon, making a small decision, or naturally completing the requested action.
-
-Do not manufacture a new incident merely to keep the scene moving. Do not fill length with repeated walking, scenery, atmosphere, invented distractions, or statements that everything is normal.
-
-Ordinary temporary sensory detail, movement, body language, and mood are allowed when they do not create new material facts.
-
-Avoid padding. Do not repeatedly tell the reader that nothing is happening, that the situation is normal, or that a character is still doing the same thing. Do not turn the state file into a checklist or narration of facts. Show the scene instead.
-
-For a normal story section, aim for 800 to 1,200 words unless the request specifies another length. End at a natural scene break or when the requested event is complete.
-
-Silently check continuity before writing. Output only the story prose.'''
+Output only the story prose.'''
 
 
 CANON_REVIEW_SYSTEM_PROMPT = r"""You are a continuity and canon reviewer for an ongoing fictional story.
@@ -1024,7 +999,7 @@ def build_scene_prompt(data):
     required = clean(data.get("required"))
     avoid = clean(data.get("avoid"))
     tone = clean(data.get("tone"))
-    length = clean(data.get("length"), "800 to 1,200")
+    length = clean(data.get("length"), "400 to 800")
     guidance = clean(data.get("guidance"))
 
     if not goal:
@@ -1277,77 +1252,66 @@ def _pick_fields(data, fields):
 
 def _format_locked_state(data):
     lines = [
-        "[LOCKED CURRENT STORY STATE]",
-        "Facts in this section are authoritative current story facts.",
-        "Character references and story_bible.json provide additional authoritative canon.",
-        "Material story facts not established by those sources are UNKNOWN.",
-        "Ordinary prose may add temporary sensory detail, incidental movement, body language, mood, and other non-material texture.",
-        "Do not invent material plot facts, important objects, locations, relationships, backstory, clues, motives, knowledge, or events.",
-        "Do not turn guesses or possibilities into established facts.",
-        "",
-        f"Chapter: {data.get('chapter')}",
-        f"Scene: {data.get('scene')}",
-        f"Scene completed: {data.get('scene_completed')}",
+        "[CURRENT SCENE]",
+        f"Chapter {data.get('chapter')} / Scene {data.get('scene')}",
         f"Status: {data.get('status')}",
     ]
 
     location = data.get("location")
     if isinstance(location, dict):
         lines.append("")
-        lines.append("CURRENT LOCATIONS:")
+        lines.append("WHERE EVERYONE IS:")
         for character, place in location.items():
             lines.append(f"- {character}: {place}")
     elif location:
-        lines.extend([
-            "",
-            f"CURRENT LOCATION: {location}",
-        ])
+        lines.extend(["", f"LOCATION: {location}"])
 
-    for label, key in [
-        ("CURRENT SITUATION", "current_situation"),
-        ("CHARACTER KNOWLEDGE", "character_knowledge"),
-        ("ESTABLISHED EVENTS", "completed_events"),
-        ("ACTIVE CLUES", "active_clues"),
-        ("NEW CLUES FROM LAST SECTION", "new_clues"),
-        ("UNKNOWN QUESTIONS", "unresolved_questions"),
-        ("CURRENT OBJECTIVES", "active_objectives"),
-        ("CONTINUITY REQUIREMENTS", "continuity_requirements"),
-    ]:
-        value = data.get(key)
+    situation = data.get("current_situation")
+    if situation:
+        lines.extend(["", "RIGHT NOW:", str(situation)])
 
-        if not value:
-            continue
-
+    knowledge = data.get("character_knowledge")
+    if knowledge:
         lines.append("")
-        lines.append(label + ":")
-
-        if isinstance(value, dict):
-            for name, item in value.items():
-                if isinstance(item, list):
-                    lines.append(f"- {name}:")
-                    for fact in item:
-                        lines.append(f"  - {fact}")
+        lines.append("CHARACTER KNOWLEDGE:")
+        if isinstance(knowledge, dict):
+            for character, facts in knowledge.items():
+                if isinstance(facts, list):
+                    lines.append(f"- {character}: " + "; ".join(str(f) for f in facts))
                 else:
-                    lines.append(f"- {name}: {item}")
+                    lines.append(f"- {character}: {facts}")
 
-        elif isinstance(value, list):
-            for item in value:
-                lines.append(f"- {item}")
-
+    objectives = data.get("active_objectives")
+    if objectives:
+        lines.append("")
+        lines.append("IMMEDIATE OBJECTIVES:")
+        if isinstance(objectives, dict):
+            for character, objective in objectives.items():
+                lines.append(f"- {character}: {objective}")
         else:
-            lines.append(str(value))
+            lines.append(str(objectives))
+
+    clues = data.get("active_clues")
+    if clues:
+        lines.append("")
+        lines.append("ESTABLISHED CLUES:")
+        for item in clues if isinstance(clues, list) else [clues]:
+            lines.append(f"- {item}")
+
+    requirements = data.get("continuity_requirements")
+    if requirements:
+        lines.append("")
+        lines.append("SCENE BOUNDARIES:")
+        for item in requirements:
+            lines.append(f"- {item}")
 
     lines.extend([
         "",
-        "PRIORITY SCENE BOUNDARY:",
-        "The current locations and current situation above are literal facts.",
-        "Creative prose may add temporary atmosphere, incidental movement, body language, and mood.",
-        "Do not use creative detail to change distances, locations, visibility, audibility, or who is present.",
-        "Do not infer a sighting, conversation, knowledge, or awareness merely because characters are nearby.",
-        "Do not invent backstory, shared history, routines, elapsed time, motives, or psychological history.",
-        "When a plausible detail conflicts with an established scene fact, the established scene fact wins.",
+        "Use this as the exact present situation, not as narration to repeat in the prose.",
+        "Ordinary temporary movement, sensory detail, body language, and casual dialogue are allowed.",
+        "Do not invent material facts merely because they are plausible.",
         "",
-        "END LOCKED CURRENT STORY STATE",
+        "END CURRENT SCENE",
     ])
 
     return "\n".join(lines)
@@ -1673,7 +1637,7 @@ class LlamaSession:
                 "--reasoning", "off",
                 "--repeat-last-n", "256",
                 "--repeat-penalty", "1.08",
-                "--n-predict", "2000",
+                "--n-predict", "1400",
                 "--system-prompt", full_prompt,
                 "--color", "off",
                 "--no-display-prompt",
