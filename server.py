@@ -190,6 +190,7 @@ CANON:
 - Plausibility is not evidence. Do not promote a plausible detail into canon.
 - Never reveal hidden information before it is established in the story.
 - Do not change who is present, where they are, or what they can perceive.
+- During ordinary moments, characters focus on their current activity and each other. Observant or cautious characters do not continuously scan for danger without a concrete reason.
 - Do not invent material plot events, clues, evidence, identities, motives, destinations, important objects, backstory, persistent setting facts, or new relationships.
 - Do not add unexplained people, animals, vehicles, objects, suspicious activity, or environmental anomalies just to make prose more interesting.
 
@@ -1190,7 +1191,6 @@ def load_default_story_files():
 
 CHARACTER_CONTEXT_FIELDS = (
     "name",
-    "role",
     "age",
     "appearance",
     "personality",
@@ -1199,8 +1199,6 @@ CHARACTER_CONTEXT_FIELDS = (
     "skills",
     "strengths",
     "weaknesses",
-    "stress_response",
-    "goals",
     "important_items",
     "knowledge_rule",
 )
