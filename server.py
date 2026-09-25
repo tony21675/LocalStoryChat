@@ -213,7 +213,7 @@ SCENE:
 - Treat DO NOT ADVANCE YET as a hard scene boundary. Do not advance, reveal, or invent any listed event.
 - Physical continuity is monotonic: if the previous section establishes that a character has passed a location or reached a point on the route, the next scene starts from that position. Never move characters backward to an earlier location unless the user's current request explicitly requires it.
 - The previous saved section is a continuity bridge only. It does not override character files, story_bible.json, current_state.json, or the user's current request.
-- For an ordinary continuation, write only as much as the moment needs, typically about 400 to 800 words. Write longer only when the request calls for it or the scene genuinely requires it.
+- For an ordinary continuation, write only as much as the moment needs. When the user's request specifies a word-count range, treat that requested range as the target and do not stop substantially below it unless the scene is genuinely complete.
 - End at a natural break or when the requested moment is complete.
 
 Output only the story prose.'''
@@ -969,10 +969,18 @@ def scene_requires_revision(user_request, draft, review):
     requested_min, requested_max = requested_word_range(user_request)
 
     if requested_min is not None and story_word_count(draft) < requested_min:
-        return True
+        actual = story_word_count(draft)
+        return f"Draft is too short: {actual} words; minimum requested is {requested_min}."
 
     if not isinstance(review, dict) or review.get("approved") is not True:
-        return True
+        violations = (
+            review.get("violations", [])
+            if isinstance(review, dict)
+            else []
+        )
+        if violations:
+            return "Reviewer rejected the draft: " + "; ".join(str(v) for v in violations[:3])
+        return "Reviewer did not approve the draft."
 
     draft_lower = str(draft or "").lower()
     opening = re.sub(
@@ -992,8 +1000,9 @@ def scene_requires_revision(user_request, draft, review):
         "the scene is about",
     ]
 
-    if any(marker in opening for marker in meta_markers):
-        return True
+    for marker in meta_markers:
+        if marker in opening:
+            return f"Meta-response detected near the opening: '{marker}'."
 
     # Parse the explicit hard boundary from the user's request.
     avoid = ""
@@ -1029,8 +1038,9 @@ def scene_requires_revision(user_request, draft, review):
             "entered the house",
         ]
 
-        if any(term in draft_lower for term in forbidden_location_terms):
-            return True
+        for term in forbidden_location_terms:
+            if term in draft_lower:
+                return f"Hard scene boundary violated: home/arrival language found ('{term}')."
 
     # For the explicit Maya/Tony beat used by the scene builder, require the
     # concrete behavioral markers requested by the user. This is intentionally
@@ -1054,7 +1064,7 @@ def scene_requires_revision(user_request, draft, review):
             ]
 
             if not any(term in draft_lower for term in blush_terms):
-                return True
+                return "Required Maya blush beat was not detected."
 
         if requires_evasive:
             evasive_terms = [
@@ -1070,7 +1080,7 @@ def scene_requires_revision(user_request, draft, review):
             ]
 
             if not any(term in draft_lower for term in evasive_terms):
-                return True
+                return "Required Maya evasive-behavior beat was not detected."
 
     return False
 
@@ -3107,6 +3117,45 @@ class Handler(BaseHTTPRequestHandler):
 
                 requested_min, requested_max = requested_word_range(text)
 
+                # If the model stops substantially short of an explicitly
+                # requested minimum, continue from the actual ending once
+                # before running review/revision. This preserves the prose
+                # already written instead of throwing it away and asking for a
+                # completely new scene.
+                if (
+                    requested_min is not None
+                    and story_word_count(answer) < requested_min
+                ):
+                    continuation_request = (
+                        "CONTINUE THE FICTIONAL SCENE FROM EXACTLY WHERE THE "
+                        "DRAFT ENDS.\n"
+                        "Return only the continuation prose.\n"
+                        "Do not restart the scene. Do not recap or repeat text "
+                        "that is already in the draft.\n"
+                        "Continue naturally from the final action, dialogue, "
+                        "emotion, and location already established.\n"
+                        f"The complete scene must reach at least {requested_min} "
+                        "words while staying within the user's requested range "
+                        "when practical.\n\n"
+                        "USER REQUEST:\n"
+                        + text
+                        + "\n\n"
+                        "DRAFT TO CONTINUE FROM:\n"
+                        + answer
+                    )
+
+                    continuation, continuation_elapsed = session.ask(
+                        continuation_request
+                    )
+
+                    if continuation.strip():
+                        answer = (
+                            answer.rstrip()
+                            + "\n\n"
+                            + continuation.lstrip()
+                        )
+                        measured += continuation_elapsed
+
                 try:
                     review = review_story_draft(
                         text,
@@ -3193,16 +3242,18 @@ class Handler(BaseHTTPRequestHandler):
                         answer = final_answer
                         measured += final_elapsed
 
-                    # Never return a draft that still violates a hard,
+                                    # Never return a draft that still violates a hard,
                     # deterministic scene boundary or requested beat.
-                    if scene_requires_revision(
+                    final_failure = scene_requires_revision(
                         text,
                         answer,
                         {"approved": True}
-                    ):
+                    )
+                    if final_failure:
                         raise ValueError(
                             "The model produced a draft that does not satisfy "
                             "the requested scene boundaries or required beats. "
+                            f"Reason: {final_failure} "
                             "The draft was not saved."
                         )
 
