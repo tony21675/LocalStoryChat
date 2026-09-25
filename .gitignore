@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+# Runtime state backups are local safety copies, not manuscript canon
+stories/*/state_backups/
