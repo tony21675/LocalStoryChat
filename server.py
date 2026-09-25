@@ -2438,7 +2438,7 @@ class LlamaSession:
                     f"Backend output:\n{tail}"
                 )
 
-    def ask(self, text):
+    def ask(self, text, clear_history=True):
         with self.lock:
             proc = self.child
 
@@ -2450,25 +2450,26 @@ class LlamaSession:
             started = time.time()
 
             try:
-                # Clear llama.cpp's conversation history without unloading
-                # the model or rebuilding the model process.
-                proc.stdin.write(
-                    b"/clear\n"
-                )
-                proc.stdin.flush()
+                if clear_history:
+                    # Clear llama.cpp's conversation history without unloading
+                    # the model or rebuilding the model process.
+                    proc.stdin.write(
+                        b"/clear\n"
+                    )
+                    proc.stdin.flush()
 
-                self._wait_for_prompt(
-                    30,
-                    initial=False
-                )
+                    self._wait_for_prompt(
+                        30,
+                        initial=False
+                    )
 
-                # /clear intentionally resets llama.cpp's internal conversation
-                # so each story request uses only the current scene packet.
-                # Discard its status output before reading the actual response.
-                self.buffer = ""
-                self._drain_pending_output(
-                    quiet_window=0.5
-                )
+                    # /clear intentionally resets llama.cpp's internal
+                    # conversation so each normal story request uses only the
+                    # current scene packet.
+                    self.buffer = ""
+                    self._drain_pending_output(
+                        quiet_window=0.5
+                    )
 
                 proc.stdin.write(
                     ("USER REQUEST:\n" + text + "\n").encode("utf-8")
@@ -3127,25 +3128,22 @@ class Handler(BaseHTTPRequestHandler):
                     and story_word_count(answer) < requested_min
                 ):
                     continuation_request = (
-                        "CONTINUE THE FICTIONAL SCENE FROM EXACTLY WHERE THE "
-                        "DRAFT ENDS.\n"
+                        "Continue the fictional scene from exactly where your "
+                        "previous response stopped.\n"
                         "Return only the continuation prose.\n"
-                        "Do not restart the scene. Do not recap or repeat text "
-                        "that is already in the draft.\n"
-                        "Continue naturally from the final action, dialogue, "
-                        "emotion, and location already established.\n"
-                        f"The complete scene must reach at least {requested_min} "
+                        "Do not restart the scene. Do not recap or repeat "
+                        "anything already written.\n"
+                        "Preserve the same characters, location, tone, "
+                        "continuity, and hard scene boundaries from the "
+                        "original request.\n"
+                        f"The combined scene must reach at least {requested_min} "
                         "words while staying within the user's requested range "
-                        "when practical.\n\n"
-                        "USER REQUEST:\n"
-                        + text
-                        + "\n\n"
-                        "DRAFT TO CONTINUE FROM:\n"
-                        + answer
+                        "when practical."
                     )
 
                     continuation, continuation_elapsed = session.ask(
-                        continuation_request
+                        continuation_request,
+                        clear_history=False
                     )
 
                     if continuation.strip():
