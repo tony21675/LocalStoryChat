@@ -209,7 +209,9 @@ SCENE:
 - Prefer concrete interaction over decorative description.
 - Use only temporary sensory detail that does not create new material facts.
 - When a previous saved section is supplied, continue directly from its ending instead of restarting or recapping it.
-- Treat explicit scene requirements in the user's request as requirements to fulfill naturally within the scene. Do not omit a requested character beat, reaction, interaction, or event merely because it is subtle; express it through natural prose rather than explaining the instruction.
+- Treat explicit scene requirements in the user's request as mandatory. Before finishing, silently verify every item under REQUIRED is fulfilled in the prose, even when the requested beat is subtle.
+- Treat DO NOT ADVANCE YET as a hard scene boundary. Do not advance, reveal, or invent any listed event.
+- Physical continuity is monotonic: if the previous section establishes that a character has passed a location or reached a point on the route, the next scene starts from that position. Never move characters backward to an earlier location unless the user's current request explicitly requires it.
 - The previous saved section is a continuity bridge only. It does not override character files, story_bible.json, current_state.json, or the user's current request.
 - For an ordinary continuation, write only as much as the moment needs, typically about 400 to 800 words. Write longer only when the request calls for it or the scene genuinely requires it.
 - End at a natural break or when the requested moment is complete.
@@ -232,6 +234,13 @@ CORE STANDARD:
 Protect established canon without making the prose sterile.
 
 Approve ordinary creative prose when it is temporary, incidental, and does not create a material story fact.
+
+TASK REQUIREMENTS:
+- Treat the user's SCENE GOAL, REQUIRED items, DO NOT ADVANCE YET items, requested character list, and requested word count as actual requirements.
+- Reject a draft when it clearly omits a required character beat, reaction, interaction, or event.
+- Reject a draft when it clearly advances an explicitly prohibited event.
+- Reject a draft when physical movement contradicts current state or the ending position of the previous saved section.
+- A subtle requested beat still counts as required. Mentioning the topic without performing the requested action or reaction is not enough.
 
 Reject a detail when it changes or establishes information the story may need to remember later.
 
@@ -930,6 +939,38 @@ def extract_json_with_keys(text, required_keys):
     )
 
 
+def requested_word_range(user_request):
+    match = re.search(
+        r"Write\s+approximately\s+([\d,]+)\s+to\s+([\d,]+)\s+words",
+        str(user_request or ""),
+        re.IGNORECASE
+    )
+
+    if not match:
+        return None, None
+
+    return (
+        int(match.group(1).replace(",", "")),
+        int(match.group(2).replace(",", ""))
+    )
+
+
+def story_word_count(text):
+    return len(
+        re.findall(
+            r"\b[\w’'-]+\b",
+            str(text or "")
+        )
+    )
+
+
+def _review_result_is_approved(result):
+    return (
+        isinstance(result, dict)
+        and result.get("approved") is True
+    )
+
+
 def review_story_draft(user_request, draft):
     if session.model_path is None:
         raise RuntimeError(
@@ -940,7 +981,9 @@ def review_story_draft(user_request, draft):
         session.files
     )
 
-    prompt = f"""Review the following generated story draft for canon and continuity.
+    requested_min, requested_max = requested_word_range(user_request)
+
+    prompt = f"""Review the following generated story draft for canon, continuity, and task compliance.
 
 USER REQUEST:
 {user_request}
@@ -950,6 +993,12 @@ RUNTIME STORY CONTEXT:
 
 GENERATED STORY DRAFT:
 {draft}
+
+REQUESTED WORD COUNT:
+{requested_min if requested_min is not None else "not specified"} to {requested_max if requested_max is not None else "not specified"} words
+
+ACTUAL WORD COUNT:
+{story_word_count(draft)}
 
 Return ONLY the required JSON object.
 """
@@ -1153,6 +1202,7 @@ Rules:
 - If a claim cannot be supported by a direct contiguous quote from the completed story section, do NOT include that claim in the patch.
 - Never create an update merely because a fact from current state remains true. Existing facts are not changes.
 - Treat location and physical position as literal continuity data. Do not infer arrival at a place from language such as approaching, nearing, heading toward, or not yet reached.
+- When a character's physical position changes, update current_situation as needed so it remains consistent with the changed location. Do not leave current_situation describing an earlier physical position when location has advanced.
 - Do not make a character appear to be at or passing a location unless the completed story section explicitly establishes that position.
 - Do not create active_clues or unresolved_questions from ordinary objects, dialogue, or curiosity unless the story section explicitly establishes them as plot-relevant clues or unresolved story questions.
 - Do not add temporary observations, gestures, glances, blushes, emotions, or ordinary sensory details to character_knowledge unless the section establishes a meaningful new fact that the character learned and may need to remember later.
@@ -2224,7 +2274,7 @@ class LlamaSession:
                 "--reasoning", "off",
                 "--repeat-last-n", "256",
                 "--repeat-penalty", "1.08",
-                "--n-predict", "1400",
+                "--n-predict", "2400",
                 "--system-prompt", full_prompt,
                 "--color", "off",
                 "--no-display-prompt",
@@ -2428,7 +2478,7 @@ class Handler(BaseHTTPRequestHandler):
                 "context_size": 8192,
                 "gpu_layers": 0,
                 "reasoning": "off",
-                "n_predict": 2000,
+                "n_predict": 2400,
                 "repeat_penalty": 1.08,
                 "state": {
                     "chapter": (
@@ -2939,25 +2989,94 @@ class Handler(BaseHTTPRequestHandler):
                     text
                 )
 
+                requested_min, requested_max = requested_word_range(text)
+
+                try:
+                    review = review_story_draft(
+                        text,
+                        answer
+                    )
+                except Exception as exc:
+                    print(
+                        "Scene review skipped: " + str(exc),
+                        flush=True
+                    )
+                    review = {
+                        "approved": True,
+                        "violations": []
+                    }
+
+                needs_revision = not _review_result_is_approved(
+                    review
+                )
+
+                if (
+                    requested_min is not None
+                    and story_word_count(answer) < requested_min
+                ):
+                    needs_revision = True
+
+                if needs_revision:
+                    violations = (
+                        review.get("violations", [])
+                        if isinstance(review, dict)
+                        else []
+                    )
+
+                    revision_lines = [
+                        "REVISION REQUIRED:",
+                        "Rewrite the complete scene from the original request.",
+                        "Return only the replacement story prose.",
+                        "Do not explain the revision or mention this review.",
+                    ]
+
+                    if requested_min is not None:
+                        revision_lines.append(
+                            f"Write at least {requested_min} words and stay within the requested range when practical."
+                        )
+
+                    if violations:
+                        revision_lines.append(
+                            "Correct these specific problems:"
+                        )
+
+                        for item in violations[:8]:
+                            message = (
+                                item.get("message")
+                                if isinstance(item, dict)
+                                else str(item)
+                            )
+
+                            if message:
+                                revision_lines.append(
+                                    "- " + str(message)
+                                )
+
+                    revised_answer, revised_elapsed = session.ask(
+                        text
+                        + "\n\n"
+                        + "\n".join(revision_lines)
+                    )
+
+                    answer = revised_answer
+                    measured += revised_elapsed
+
                 elapsed = measured
 
-                self._json(
-                    200,
-                    {
-                        "ok": True,
-                        "content": answer,
-                        "seconds": round(
-                            elapsed,
-                            1
-                        ),
-                        "estimated_context_tokens": (
-                            session.estimate_context(
-                                text + "\n" + answer
-                            )
-                        ),
-                        "context_size": 8192
-                    }
-                )
+                self._json(200, {
+                    "ok": True,
+                    "content": answer,
+                    "seconds": round(
+                        elapsed,
+                        1
+                    ),
+                    "estimated_context_tokens": (
+                        session.estimate_context(
+                            text + "\n" + answer
+                        )
+                    ),
+                    "context_size": 8192
+                })
 
                 return
 
