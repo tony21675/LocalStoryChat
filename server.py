@@ -974,15 +974,14 @@ def scene_requires_revision(user_request, draft, review):
     if not isinstance(review, dict) or review.get("approved") is not True:
         return True
 
-    # Reject obvious meta-responses rather than allowing them to become
-    # manuscript content. A story response should begin with narrative prose,
-    # not an explanation of the assignment.
+    draft_lower = str(draft or "").lower()
     opening = re.sub(
         r"\s+",
         " ",
         str(draft or "").strip()
     ).lower()[:500]
 
+    # Never allow a meta response to reach the manuscript.
     meta_markers = [
         "the scene goal is",
         "the scene focuses on",
@@ -996,18 +995,23 @@ def scene_requires_revision(user_request, draft, review):
     if any(marker in opening for marker in meta_markers):
         return True
 
+    # Parse the explicit hard boundary from the user's request.
     avoid = ""
     match = re.search(
-        r"DO NOT ADVANCE YET:\s*(.*?)(?:\n\n[A-Z][A-Z /_-]+:|\nOutput only|$)",
+        r"DO NOT ADVANCE YET:\s*(.*?)(?:\n\s*\n[A-Z][A-Z /_-]+:|\nOutput only|$)",
         str(user_request or ""),
         re.IGNORECASE | re.DOTALL
     )
+
     if match:
         avoid = match.group(1).lower()
 
-    draft_lower = str(draft or "").lower()
-
-    if "have not reached home" in avoid or "have not reached home yet" in avoid:
+    # A scene explicitly held before arriving home must not contain concrete
+    # arrival language or doorway/house-entry beats.
+    if (
+        "have not reached home" in avoid
+        or "have not reached home yet" in avoid
+    ):
         forbidden_location_terms = [
             "reached home",
             "reached the house",
@@ -1015,10 +1019,58 @@ def scene_requires_revision(user_request, draft, review):
             "arrived home",
             "arrived at the house",
             "front door",
+            "screen door",
+            "entryway",
+            "porch steps",
+            "porch light",
+            "walkway to the house",
+            "inside the house",
+            "went inside",
+            "entered the house",
         ]
 
         if any(term in draft_lower for term in forbidden_location_terms):
             return True
+
+    # For the explicit Maya/Tony beat used by the scene builder, require the
+    # concrete behavioral markers requested by the user. This is intentionally
+    # conservative and only activates when those concepts are present in the
+    # request.
+    request_lower = str(user_request or "").lower()
+
+    if "maria" not in request_lower and "maya" in request_lower and "tony" in request_lower:
+        requires_blush = "blush" in request_lower
+        requires_evasive = "evasive" in request_lower
+
+        if requires_blush:
+            blush_terms = [
+                "blush",
+                "blushed",
+                "blushing",
+                "flushed",
+                "cheeks warmed",
+                "cheeks turned",
+                "face warmed",
+            ]
+
+            if not any(term in draft_lower for term in blush_terms):
+                return True
+
+        if requires_evasive:
+            evasive_terms = [
+                "evasive",
+                "avoided the question",
+                "changed the subject",
+                "deflected",
+                "brushed it off",
+                "looked away",
+                "quickly changed",
+                "stammered",
+                "stumbled over her words",
+            ]
+
+            if not any(term in draft_lower for term in evasive_terms):
+                return True
 
     return False
 
@@ -3111,26 +3163,27 @@ class Handler(BaseHTTPRequestHandler):
                     answer = revised_answer
                     measured += revised_elapsed
 
-                    # One clean final pass only when the replacement is still
-                    # obviously too short or still reads like meta prose.
-                    if (
-                        requested_min is not None
-                        and (
-                            story_word_count(answer) < requested_min
-                            or scene_requires_revision(
-                                text,
-                                answer,
-                                {"approved": True}
-                            )
-                        )
+                    if scene_requires_revision(
+                        text,
+                        answer,
+                        {"approved": True}
                     ):
                         final_request = (
-                            "WRITE THIS FICTIONAL SCENE AS PROSE ONLY. "
-                            "Do not discuss or restate the instructions. "
-                            "Begin immediately with character action or dialogue. "
-                            + text
+                            "WRITE THE COMPLETE FICTIONAL SCENE AS PROSE ONLY. "
+                            "Do not discuss the assignment, summarize it, or explain your choices. "
+                            "Begin immediately with action or dialogue. "
+                            "Stay in the requested scene and stop before every event listed under "
+                            "DO NOT ADVANCE YET. "
+                            "Do not move the characters into a house, onto a porch, through a doorway, "
+                            "or to an arrival at home when the request says they have not reached home. "
+                            "Fulfill every REQUIRED beat, including the requested emotional reactions. "
+                            + (
+                                f"Write at least {requested_min} words. "
+                                if requested_min is not None
+                                else ""
+                            )
                             + "\n\n"
-                            + f"Minimum length: {requested_min} words."
+                            + text
                         )
 
                         final_answer, final_elapsed = session.ask(
@@ -3139,6 +3192,19 @@ class Handler(BaseHTTPRequestHandler):
 
                         answer = final_answer
                         measured += final_elapsed
+
+                    # Never return a draft that still violates a hard,
+                    # deterministic scene boundary or requested beat.
+                    if scene_requires_revision(
+                        text,
+                        answer,
+                        {"approved": True}
+                    ):
+                        raise ValueError(
+                            "The model produced a draft that does not satisfy "
+                            "the requested scene boundaries or required beats. "
+                            "The draft was not saved."
+                        )
 
                 elapsed = measured
 
