@@ -305,8 +305,35 @@ function addMsg(role,text,isStory=false,persist=true){
   return d;
 }
 
-function restoreChatHistory(){
+function normalizeStoredChatHistory(){
   const history=readChatHistory();
+  let changed=false;
+
+  const normalized=history.map(item=>{
+    if(
+      item &&
+      item.role === 'user' &&
+      typeof item.text === 'string' &&
+      /^Begin Chapter\s+\d+,\s+Scene\s+\d+\./i.test(item.text.trim())
+    ){
+      changed=true;
+      const match=item.text.trim().match(
+        /^Begin Chapter\s+(\d+),\s+Scene\s+(\d+)\./i
+      );
+      return {
+        ...item,
+        text:'Scene prompt submitted: Chapter '+match[1]+', Scene '+match[2]
+      };
+    }
+    return item;
+  });
+
+  if(changed)writeChatHistory(normalized);
+  return normalized;
+}
+
+function restoreChatHistory(){
+  const history=normalizeStoredChatHistory();
 
   if(!history.length)return;
 
