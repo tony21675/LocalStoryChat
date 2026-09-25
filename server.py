@@ -3159,6 +3159,38 @@ class Handler(BaseHTTPRequestHandler):
                             f"Write at least {requested_min} words and stay within the requested range when practical."
                         )
 
+                    if violations:
+                        revision_lines.append(
+                            "FIX THESE SPECIFIC REVIEW PROBLEMS IN THE REPLACEMENT:"
+                        )
+                        for violation in violations[:3]:
+                            if isinstance(violation, dict):
+                                quote = str(
+                                    violation.get("quote", "")
+                                ).strip()
+                                reason = str(
+                                    violation.get("reason", "")
+                                ).strip()
+                                category = str(
+                                    violation.get("category", "")
+                                ).strip()
+
+                                detail = (
+                                    "- Remove or rewrite this unsupported detail"
+                                    + (f" [{category}]" if category else "")
+                                    + (f': "{quote}"' if quote else "")
+                                    + (f" Reason: {reason}" if reason else "")
+                                )
+                            else:
+                                detail = f"- {str(violation).strip()}"
+
+                            if detail.strip() != "-":
+                                revision_lines.append(detail)
+
+                        revision_lines.append(
+                            "Do not replace one unsupported named person with another. Keep the same scene boundaries and required beats."
+                        )
+
                     revision_request = (
                         text
                         + "\n\n"
