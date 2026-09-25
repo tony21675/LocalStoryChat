@@ -3147,26 +3147,47 @@ class Handler(BaseHTTPRequestHandler):
                     requested_min is not None
                     and story_word_count(answer) < requested_min
                 ):
+                    # Use a fresh writer turn for continuation rather than
+                    # feeding another USER REQUEST into the existing
+                    # conversation. This avoids confusing interactive
+                    # llama-cli state and keeps the continuation prompt small.
+                    words_so_far = story_word_count(answer)
+                    remaining = max(
+                        150,
+                        requested_min - words_so_far
+                    )
+
+                    draft_tail_words = answer.split()
+                    draft_tail = " ".join(
+                        draft_tail_words[-600:]
+                    )
+
                     continuation_request = (
-                        "Continue the fictional scene from exactly where your "
-                        "previous response stopped.\n"
-                        "Return only the continuation prose.\n"
-                        "Do not restart the scene. Do not recap or repeat "
-                        "anything already written.\n"
-                        "Preserve the same characters, location, tone, "
-                        "continuity, and hard scene boundaries from the "
+                        "CONTINUE THIS FICTIONAL SCENE.\n"
+                        "Return only new story prose that follows the supplied "
+                        "ending.\n"
+                        "Do not restart the scene. Do not summarize or repeat "
+                        "the existing draft.\n"
+                        "Preserve the characters, location, tone, continuity, "
+                        "required beats, and hard scene boundaries from the "
                         "original request.\n"
-                        f"The combined scene must reach at least {requested_min} "
-                        "words while staying within the user's requested range "
-                        "when practical."
+                        f"Write at least {remaining} additional words so the "
+                        f"combined scene reaches at least {requested_min} words.\n\n"
+                        "ORIGINAL SCENE REQUEST:\n"
+                        + text
+                        + "\n\n"
+                        "ENDING OF DRAFT SO FAR:\n"
+                        + draft_tail
                     )
 
                     continuation, continuation_elapsed = session.ask(
-                        continuation_request,
-                        clear_history=False
+                        continuation_request
                     )
 
-                    if continuation.strip():
+                    if (
+                        continuation.strip()
+                        and story_word_count(continuation) >= 50
+                    ):
                         answer = (
                             answer.rstrip()
                             + "\n\n"
