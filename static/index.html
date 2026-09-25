@@ -208,7 +208,7 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
 
     <div class="prompt-field">
       <label for="promptLength">Word Count</label>
-      <input id="promptLength" class="small-input" type="text" value="800 to 1,200" placeholder="Word count" aria-label="Word count">
+      <input id="promptLength" class="small-input" type="text" value="500 to 650" placeholder="Word count" aria-label="Word count">
     </div>
   </div>
 
@@ -496,7 +496,7 @@ function fillPromptFields(data, nextScene=false){
   $('#promptRequired').value = data?.required || '';
   $('#promptAvoid').value = data?.avoid || '';
   $('#promptTone').value = data?.tone || '';
-  $('#promptLength').value = data?.length || '800 to 1,200';
+  $('#promptLength').value = data?.length || '500 to 650';
   $('#promptGuidance').value = data?.guidance || '';
   $('#promptOutput').value = '';
   builtScenePrompt = '';
@@ -524,7 +524,7 @@ function carryForwardPrompt(){
     required: $('#promptRequired').value,
     avoid: $('#promptAvoid').value,
     tone: $('#promptTone').value,
-    length: $('#promptLength').value || '800 to 1,200',
+    length: $('#promptLength').value || '500 to 650',
     guidance: $('#promptGuidance').value
   };
 
