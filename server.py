@@ -2293,9 +2293,24 @@ class LlamaSession:
 
     @staticmethod
     def clean_output(text):
+        raw = (text or "").replace("\r", "")
+
+        # llama-cli may echo its banner and the complete prompt even when
+        # --no-display-prompt is supplied. Strip that transport output before
+        # the story reaches the chat UI or validation.
+        if "USER REQUEST:" in raw:
+            raw = raw.rsplit("USER REQUEST:", 1)[1]
+
+        for marker in (
+            "[END PREVIOUS SAVED STORY SECTION]",
+            "[END SCENE PACKET]",
+        ):
+            if marker in raw:
+                raw = raw.rsplit(marker, 1)[1]
+
         lines = []
 
-        for line in (text or "").replace("\r", "").splitlines():
+        for line in raw.splitlines():
             s = line.strip()
 
             if not s:
@@ -2307,6 +2322,9 @@ class LlamaSession:
                 continue
 
             if s.startswith("Exiting..."):
+                continue
+
+            if s == ">":
                 continue
 
             lines.append(line)
