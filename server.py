@@ -3138,66 +3138,8 @@ class Handler(BaseHTTPRequestHandler):
 
                 requested_min, requested_max = requested_word_range(text)
 
-                # If the model stops substantially short of an explicitly
-                # requested minimum, continue from the actual ending once
-                # before running review/revision. This preserves the prose
-                # already written instead of throwing it away and asking for a
-                # completely new scene.
-                if (
-                    requested_min is not None
-                    and story_word_count(answer) < requested_min
-                ):
-                    # Use a fresh writer turn for continuation rather than
-                    # feeding another USER REQUEST into the existing
-                    # conversation. This avoids confusing interactive
-                    # llama-cli state and keeps the continuation prompt small.
-                    words_so_far = story_word_count(answer)
-                    remaining = max(
-                        150,
-                        requested_min - words_so_far
-                    )
-
-                    draft_tail_words = answer.split()
-                    draft_tail = " ".join(
-                        draft_tail_words[-600:]
-                    )
-
-                    continuation_request = (
-                        "CONTINUE THIS FICTIONAL SCENE.\n"
-                        "Return only new story prose that follows the supplied "
-                        "ending.\n"
-                        "Do not restart the scene. Do not summarize or repeat "
-                        "the existing draft.\n"
-                        "Preserve the characters, location, tone, continuity, "
-                        "required beats, and hard scene boundaries from the "
-                        "original request.\n"
-                        f"Write at least {remaining} additional words so the "
-                        f"combined scene reaches at least {requested_min} words.\n\n"
-                        "ORIGINAL SCENE REQUEST:\n"
-                        + text
-                        + "\n\n"
-                        "ENDING OF DRAFT SO FAR:\n"
-                        + draft_tail
-                    )
-
-                    continuation, continuation_elapsed = session.ask(
-                        continuation_request
-                    )
-
-                    if (
-                        continuation.strip()
-                        and story_word_count(continuation) >= 50
-                    ):
-                        answer = (
-                            answer.rstrip()
-                            + "\n\n"
-                            + continuation.lstrip()
-                        )
-                        measured += continuation_elapsed
-
-                # Do not spend a full model pass on a draft that already
-                # fails the explicit minimum word count. A compact completion
-                # pass gets the draft to the requested length first.
+                # If the model stops below an explicit minimum, make one
+                # compact continuation pass before any expensive review.
                 if (
                     requested_min is not None
                     and story_word_count(answer) < requested_min
@@ -3239,6 +3181,19 @@ class Handler(BaseHTTPRequestHandler):
                             + completed.lstrip()
                         )
                         measured += completed_elapsed
+
+                # Do not invoke the canon reviewer or revision machinery until
+                # the explicit word-count gate has passed.
+                if (
+                    requested_min is not None
+                    and story_word_count(answer) < requested_min
+                ):
+                    actual = story_word_count(answer)
+                    raise ValueError(
+                        "The model did not reach the requested scene length. "
+                        f"Draft contains {actual} words; minimum requested is "
+                        f"{requested_min}. The draft was not saved."
+                    )
 
                 # A second full writer rewrite is not useful when the model
                 # still misses the minimum after its completion pass. Fail
