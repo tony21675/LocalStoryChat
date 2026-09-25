@@ -2255,102 +2255,34 @@ class LlamaSession:
         return "\n".join(parts)
 
     def _read_more(self, timeout):
+        # Retained for compatibility with older code paths. Writer generation
+        # no longer depends on interactive prompt detection.
         if self.child is None or self.child.stdout is None:
             raise RuntimeError("llama-cli stdout is unavailable")
 
         import select
 
-        ready, _, _ = select.select([self.child.stdout], [], [], timeout)
+        ready, _, _ = select.select(
+            [self.child.stdout],
+            [],
+            [],
+            timeout
+        )
 
         if not ready:
             return ""
 
-        chunk = os.read(self.child.stdout.fileno(), 8192)
+        chunk = os.read(
+            self.child.stdout.fileno(),
+            8192
+        )
 
         if not chunk:
             return ""
 
-        return chunk.decode("utf-8", errors="replace")
-
-    def _drain_pending_output(self, quiet_window=0.25):
-        if self.child is None or self.child.stdout is None:
-            return
-
-        import select
-
-        deadline = time.time() + quiet_window
-
-        while time.time() < deadline:
-            timeout = min(
-                0.05,
-                max(0.01, deadline - time.time())
-            )
-
-            ready, _, _ = select.select(
-                [self.child.stdout],
-                [],
-                [],
-                timeout
-            )
-
-            if not ready:
-                break
-
-            chunk = os.read(
-                self.child.stdout.fileno(),
-                8192
-            )
-
-            if not chunk:
-                break
-
-    def _wait_for_prompt(self, timeout, initial=False):
-        deadline = time.time() + timeout
-        text = self.buffer
-        prompt_index = -1
-
-        while time.time() < deadline:
-            if initial:
-                prompt_index = text.find("> ")
-            else:
-                prompt_index = text.rfind("\n> ")
-
-                if prompt_index < 0 and text.startswith("> "):
-                    prompt_index = 0
-
-            if prompt_index >= 0:
-                before = text[:prompt_index]
-
-                after = text[
-                    prompt_index + (2 if prompt_index == 0 else 3):
-                ]
-
-                self.buffer = after
-                return before
-
-            chunk = self._read_more(
-                min(
-                    1.0,
-                    max(0.05, deadline - time.time())
-                )
-            )
-
-            if chunk:
-                text += chunk
-                continue
-
-            if self.child and self.child.poll() is not None:
-                tail = text[-1600:]
-
-                raise RuntimeError(
-                    "llama-cli exited unexpectedly "
-                    f"(code {self.child.returncode}). "
-                    f"Backend output:\n{tail}"
-                )
-
-        raise TimeoutError(
-            "Timed out waiting for llama-cli prompt. "
-            f"Recent backend output:\n{text[-1600:]}"
+        return chunk.decode(
+            "utf-8",
+            errors="replace"
         )
 
     @staticmethod
@@ -2366,6 +2298,9 @@ class LlamaSession:
                 continue
 
             if s.startswith("[ Prompt:") or s.startswith("[ Generation:"):
+                continue
+
+            if s.startswith("Exiting..."):
                 continue
 
             lines.append(line)
@@ -2392,10 +2327,21 @@ class LlamaSession:
 
             self.system_prompt = system_prompt
             self.files = files
+            self.started_at = time.time()
+            self.buffer = ""
+
+    def ask(self, text):
+        with self.lock:
+            if self.model_path is None:
+                raise RuntimeError(
+                    "No model is loaded. Use Load Model first."
+                )
+
+            started = time.time()
 
             full_prompt = self._build_prompt(
-                system_prompt,
-                files
+                self.system_prompt or SYSTEM_PROMPT,
+                self.files
             )
 
             env = os.environ.copy()
@@ -2420,106 +2366,52 @@ class LlamaSession:
                 "--reasoning", "off",
                 "--repeat-last-n", "256",
                 "--repeat-penalty", "1.08",
-                "--n-predict", "2400",
+                "--n-predict", "1200",
                 "--system-prompt", full_prompt,
+                "--prompt", "USER REQUEST:\n" + text,
                 "--color", "off",
                 "--no-display-prompt",
                 "--simple-io",
+                "--single-turn",
             ]
 
             proc = subprocess.Popen(
                 args,
-                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 env=env,
-                bufsize=0,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
 
             self.child = proc
-            self.started_at = time.time()
-            self.buffer = ""
+            self.started_at = started
 
             try:
-                self._wait_for_prompt(
-                    180,
-                    initial=True
+                output, _ = proc.communicate(
+                    timeout=300
                 )
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                output, _ = proc.communicate()
 
+                raise TimeoutError(
+                    "Story generation timed out. "
+                    "The model did not finish within 5 minutes."
+                )
+            finally:
+                self.child = None
                 self.buffer = ""
-                self._drain_pending_output()
 
-            except Exception:
-                tail = self.buffer[-1600:]
-                self._stop_unlocked()
+            answer = self.clean_output(output)
 
+            if not answer:
                 raise RuntimeError(
-                    "llama-cli did not become ready. "
-                    f"Backend output:\n{tail}"
+                    "llama-cli returned an empty response."
                 )
 
-    def ask(self, text, clear_history=True):
-        with self.lock:
-            proc = self.child
-
-            if proc is None or proc.poll() is not None:
-                raise RuntimeError(
-                    "Session is not running. Click New Chat to start it."
-                )
-
-            started = time.time()
-
-            try:
-                if clear_history:
-                    # Clear llama.cpp's conversation history without unloading
-                    # the model or rebuilding the model process.
-                    proc.stdin.write(
-                        b"/clear\n"
-                    )
-                    proc.stdin.flush()
-
-                    self._wait_for_prompt(
-                        30,
-                        initial=False
-                    )
-
-                    # /clear intentionally resets llama.cpp's internal
-                    # conversation so each normal story request uses only the
-                    # current scene packet.
-                    self.buffer = ""
-                    self._drain_pending_output(
-                        quiet_window=0.5
-                    )
-
-                proc.stdin.write(
-                    ("USER REQUEST:\n" + text + "\n").encode("utf-8")
-                )
-                proc.stdin.flush()
-
-                raw = self._wait_for_prompt(
-                    900,
-                    initial=False
-                )
-
-                answer = self.clean_output(raw)
-
-                if not answer:
-                    raise RuntimeError(
-                        "llama-cli returned an empty response"
-                    )
-
-                # Give short story-writing responses one chance to continue
-                # naturally. The same llama-cli session is kept, so the model
-                # can continue from exactly where it stopped.
-                return answer, time.time() - started
-
-            except BrokenPipeError as exc:
-                raise RuntimeError(
-                    "The llama-cli session closed its input pipe."
-                ) from exc
-
-            except OSError as exc:
-                raise RuntimeError(str(exc)) from exc
+            return answer, time.time() - started
 
     def estimate_context(self, extra=""):
         rendered_prompt = self._build_prompt(
@@ -2594,10 +2486,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/status":
             self._json(200, {
-                "running": bool(
-                    session.child
-                    and session.child.poll() is None
-                ),
+                "running": True,
                 "model": (
                     str(session.model_path)
                     if session.model_path
