@@ -454,7 +454,20 @@ function readPromptTemplate(){
   try{
     const raw=localStorage.getItem(promptStorageKey());
     const data=raw?JSON.parse(raw):null;
-    return data && typeof data==='object' ? data : null;
+    if(data && typeof data==='object'){
+      // Migrate the old default so existing browser storage does not keep
+      // forcing new scenes back to the old 800-1,200 target.
+      if(data.length === '800 to 1,200'){
+        data.length = '500 to 650';
+        try{
+          localStorage.setItem(promptStorageKey(),JSON.stringify(data));
+        }catch(e){
+          // Ignore storage migration failures.
+        }
+      }
+      return data;
+    }
+    return null;
   }catch(e){
     return null;
   }
