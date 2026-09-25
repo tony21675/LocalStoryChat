@@ -848,6 +848,10 @@ def validate_state_patch(base, patch, story_text, evidence):
 def extract_json_object(text):
     decoder = json.JSONDecoder()
     text = text or ""
+
+    # llama-cli can echo part of the prompt before the actual response.
+    # Search every JSON object and keep the last object with the exact state
+    # proposal keys. Do not require the whole stdout stream to be JSON.
     candidates = []
 
     for index, char in enumerate(text):
@@ -864,11 +868,35 @@ def extract_json_object(text):
         if isinstance(obj, dict):
             candidates.append(obj)
 
-    # The llama-cli output may echo the prompt before the model response.
-    # Prefer the actual state-manager proposal over JSON copied from the prompt.
     for obj in reversed(candidates):
-        if "patch" in obj and "evidence" in obj:
+        if (
+            "patch" in obj
+            and "evidence" in obj
+            and isinstance(obj.get("patch"), dict)
+            and isinstance(obj.get("evidence"), list)
+        ):
             return obj
+
+    # Fallback for model output that contains valid JSON after echoed prompt
+    # text but has characters before/after it that prevent normal candidate
+    # discovery. Start at the final state-object marker and decode from there.
+    marker = text.rfind('{"patch"')
+    if marker >= 0:
+        try:
+            obj, _ = decoder.raw_decode(
+                text[marker:]
+            )
+
+            if (
+                isinstance(obj, dict)
+                and "patch" in obj
+                and "evidence" in obj
+                and isinstance(obj.get("patch"), dict)
+                and isinstance(obj.get("evidence"), list)
+            ):
+                return obj
+        except json.JSONDecodeError:
+            pass
 
     raise ValueError(
         "The state manager did not return a valid proposal with "
