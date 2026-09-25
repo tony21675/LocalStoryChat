@@ -213,7 +213,7 @@ SCENE:
 - Treat DO NOT ADVANCE YET as a hard scene boundary. Do not advance, reveal, or invent any listed event.
 - Physical continuity is monotonic: if the previous section establishes that a character has passed a location or reached a point on the route, the next scene starts from that position. Never move characters backward to an earlier location unless the user's current request explicitly requires it.
 - The previous saved section is a continuity bridge only. It does not override character files, story_bible.json, current_state.json, or the user's current request.
-- For an ordinary continuation, write only as much as the moment needs. When the user's request specifies a word-count range, treat that requested range as the target and do not stop substantially below it unless the scene is genuinely complete.
+- For an ordinary continuation, write roughly 400 to 650 words unless the user's request specifies a different range. Treat the requested range as guidance, not a reason to pad the scene artificially.
 - End at a natural break or when the requested moment is complete.
 
 Output only the story prose.'''
@@ -1543,7 +1543,7 @@ def build_scene_prompt(data):
     required = clean(data.get("required"))
     avoid = clean(data.get("avoid"))
     tone = clean(data.get("tone"))
-    length = clean(data.get("length"), "400 to 800")
+    length = clean(data.get("length"), "500 to 650")
     guidance = clean(data.get("guidance"))
 
     if not goal:
@@ -3138,79 +3138,8 @@ class Handler(BaseHTTPRequestHandler):
 
                 requested_min, requested_max = requested_word_range(text)
 
-                # If the model stops below an explicit minimum, make one
-                # compact continuation pass before any expensive review.
-                if (
-                    requested_min is not None
-                    and story_word_count(answer) < requested_min
-                ):
-                    words_so_far = story_word_count(answer)
-                    remaining = max(
-                        150,
-                        requested_min - words_so_far
-                    )
-
-                    draft_tail = " ".join(
-                        answer.split()[-700:]
-                    )
-
-                    completion_request = (
-                        "FINISH THIS FICTIONAL SCENE FROM THE SUPPLIED ENDING.\n"
-                        "Return only new story prose.\n"
-                        "Do not restart, recap, summarize, or discuss the assignment.\n"
-                        "Preserve all characters, location, continuity, required "
-                        "beats, and DO NOT ADVANCE YET boundaries from the original "
-                        "request.\n"
-                        f"Add at least {remaining} additional words so the "
-                        f"combined scene reaches {requested_min} words.\n\n"
-                        "ORIGINAL SCENE REQUEST:\n"
-                        + text
-                        + "\n\n"
-                        "ENDING OF THE CURRENT DRAFT:\n"
-                        + draft_tail
-                    )
-
-                    completed, completed_elapsed = session.ask(
-                        completion_request
-                    )
-
-                    if completed.strip():
-                        answer = (
-                            answer.rstrip()
-                            + "\n\n"
-                            + completed.lstrip()
-                        )
-                        measured += completed_elapsed
-
-                # Do not invoke the canon reviewer or revision machinery until
-                # the explicit word-count gate has passed.
-                if (
-                    requested_min is not None
-                    and story_word_count(answer) < requested_min
-                ):
-                    actual = story_word_count(answer)
-                    raise ValueError(
-                        "The model did not reach the requested scene length. "
-                        f"Draft contains {actual} words; minimum requested is "
-                        f"{requested_min}. The draft was not saved."
-                    )
-
-                # A second full writer rewrite is not useful when the model
-                # still misses the minimum after its completion pass. Fail
-                # quickly instead of spending another long generation.
-                length_failure = scene_requires_revision(
-                    text,
-                    answer,
-                    {"approved": True}
-                )
-
-                if length_failure:
-                    raise ValueError(
-                        "The model did not reach the requested scene length. "
-                        f"Reason: {length_failure} "
-                        "The draft was not saved."
-                    )
-
+                # Short sections are intentional. Do not spend another
+                # expensive model pass trying to force an arbitrary word minimum.
                 try:
                     review = review_story_draft(
                         text,
