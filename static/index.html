@@ -263,6 +263,7 @@ let pendingState=null;
 let selectedSectionFile=null;
 let builtScenePrompt="";
 let promptBuilderDirty=false;
+let pendingUnsavedChat=null;
 const CHAT_STORAGE_KEY='localStoryChat.history.v1';
 const PROMPT_STORAGE_KEY='localStoryChat.scenePrompt.v1';
 
@@ -1048,6 +1049,7 @@ async function confirmSaveStory(){
 
     $('#stateStatus').textContent='saved: '+j.filename;
     pendingStorySave=null;
+    pendingUnsavedChat=null;
     $('#savePrompt').style.display='none';
   }catch(e){
     showError(e.message);
@@ -1060,8 +1062,47 @@ async function confirmSaveStory(){
 
 function discardStorySave(){
   pendingStorySave=null;
+
+  if(pendingUnsavedChat){
+    const {userText, storyText, userElement, storyElement} = pendingUnsavedChat;
+
+    userElement?.remove();
+    storyElement?.remove();
+
+    const history=readChatHistory();
+    const next=[];
+
+    for(let i=0;i<history.length;i++){
+      const item=history[i];
+      const isUserMatch =
+        i === history.length-2 &&
+        item.role === 'user' &&
+        item.text === userText;
+
+      const isStoryMatch =
+        i === history.length-1 &&
+        item.role === 'assistant' &&
+        item.isStory === true &&
+        item.text === storyText;
+
+      if(isUserMatch || isStoryMatch){
+        continue;
+      }
+
+      next.push(item);
+    }
+
+    writeChatHistory(next);
+
+    if(!next.length){
+      chat.innerHTML='<div class="empty" id="empty">New chat. No previous conversation is loaded.</div>';
+    }
+
+    pendingUnsavedChat=null;
+  }
+
   $('#savePrompt').style.display='none';
-  $('#stateStatus').textContent='story section not saved';
+  $('#stateStatus').textContent='story section discarded';
   $('#send').disabled=false;
   $('#newChat').disabled=false;
   input.focus();
@@ -1076,7 +1117,7 @@ async function send(){
   if(!text)return;
 
   input.value='';
-  addMsg('user',text);
+  const userMessageElement=addMsg('user',text);
 
   $('#send').disabled=true;
   $('#newChat').disabled=true;
@@ -1087,7 +1128,15 @@ async function send(){
       body:JSON.stringify({message:text})
     });
 
-    addMsg('assistant',j.content,true);
+    const storyMessageElement=addMsg('assistant',j.content,true);
+
+    pendingUnsavedChat={
+      userText:text,
+      storyText:j.content,
+      userElement:userMessageElement,
+      storyElement:storyMessageElement
+    };
+
     await saveStory(j.content);
 
     $('#timing').textContent=
