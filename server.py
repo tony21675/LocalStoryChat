@@ -964,6 +964,43 @@ def story_word_count(text):
     )
 
 
+def scene_requires_revision(user_request, draft, review):
+    """Apply deterministic gates before trusting the local-model reviewer."""
+    requested_min, requested_max = requested_word_range(user_request)
+
+    if requested_min is not None and story_word_count(draft) < requested_min:
+        return True
+
+    if not isinstance(review, dict) or review.get("approved") is not True:
+        return True
+
+    avoid = ""
+    match = re.search(
+        r"DO NOT ADVANCE YET:\s*(.*?)(?:\n\n[A-Z][A-Z /_-]+:|\nOutput only|$)",
+        str(user_request or ""),
+        re.IGNORECASE | re.DOTALL
+    )
+    if match:
+        avoid = match.group(1).lower()
+
+    draft_lower = str(draft or "").lower()
+
+    if "have not reached home" in avoid or "have not reached home yet" in avoid:
+        forbidden_location_terms = [
+            "reached home",
+            "reached the house",
+            "reached their house",
+            "arrived home",
+            "arrived at the house",
+            "front door",
+        ]
+
+        if any(term in draft_lower for term in forbidden_location_terms):
+            return True
+
+    return False
+
+
 def _review_result_is_approved(result):
     return (
         isinstance(result, dict)
@@ -3011,15 +3048,11 @@ class Handler(BaseHTTPRequestHandler):
                         "violations": []
                     }
 
-                needs_revision = not _review_result_is_approved(
+                needs_revision = scene_requires_revision(
+                    text,
+                    answer,
                     review
                 )
-
-                if (
-                    requested_min is not None
-                    and story_word_count(answer) < requested_min
-                ):
-                    needs_revision = True
 
                 if needs_revision:
                     violations = (
@@ -3074,6 +3107,28 @@ class Handler(BaseHTTPRequestHandler):
 
                     answer = revised_answer
                     measured += revised_elapsed
+
+                    if (
+                        requested_min is not None
+                        and story_word_count(answer) < requested_min
+                    ):
+                        final_request = (
+                            text
+                            + "\n\n"
+                            + "The previous draft is incomplete. Rewrite the complete "
+                            + "scene from the beginning. Fulfill every REQUIRED item, "
+                            + "respect every DO NOT ADVANCE YET boundary, and write "
+                            + f"at least {requested_min} words. Return only story prose."
+                            + "\n\nINCOMPLETE DRAFT:\n"
+                            + answer
+                        )
+
+                        final_answer, final_elapsed = session.ask(
+                            final_request
+                        )
+
+                        answer = final_answer
+                        measured += final_elapsed
 
                 elapsed = measured
 
