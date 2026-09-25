@@ -1130,7 +1130,19 @@ async function send(){
   if(!text)return;
 
   input.value='';
-  const userMessageElement=addMsg('user',text);
+
+  // Scene-builder prompts can be very large and are implementation details,
+  // not useful story transcript content. Show a compact marker instead.
+  const sceneMatch = text.match(
+    /^Begin Chapter\s+(\d+),\s+Scene\s+(\d+)\./i
+  );
+
+  const displayText = sceneMatch
+    ? 'Scene prompt submitted: Chapter ' + sceneMatch[1] +
+      ', Scene ' + sceneMatch[2]
+    : text;
+
+  const userMessageElement=addMsg('user',displayText);
 
   $('#send').disabled=true;
   $('#newChat').disabled=true;
