@@ -2448,26 +2448,57 @@ class LlamaSession:
 
             raw_output = output
 
-            # llama-cli can echo the exact prompt it was given even with
-            # --no-display-prompt. Remove that echoed transport text before
-            # validation or display. The story itself is everything after the
-            # exact prompt sent for this turn.
-            prompt_prefixes = [
-                full_prompt + "\nUSER REQUEST:\n" + text,
-                "USER REQUEST:\n" + text,
-                full_prompt,
+            # llama-cli may echo the supplied prompt even when
+            # --no-display-prompt is used. The echo is not manuscript content.
+            # Strip it using the structural markers that bound our scene
+            # packet/continuity context, then fall back to the request text.
+            marker_candidates = [
+                "[END PREVIOUS SAVED STORY SECTION]",
+                "[END SCENE PACKET]",
             ]
 
-            for prefix in prompt_prefixes:
-                if prefix in raw_output:
-                    raw_output = raw_output.rsplit(prefix, 1)[1]
+            for marker in marker_candidates:
+                if marker in raw_output:
+                    raw_output = raw_output.rsplit(marker, 1)[1]
                     break
+            else:
+                prompt_prefixes = [
+                    full_prompt + "\nUSER REQUEST:\n" + text,
+                    "USER REQUEST:\n" + text,
+                    full_prompt,
+                ]
+
+                for prefix in prompt_prefixes:
+                    if prefix in raw_output:
+                        raw_output = raw_output.rsplit(prefix, 1)[1]
+                        break
 
             answer = self.clean_output(raw_output)
 
+            # Final transport-output backstop. A writer response beginning
+            # with the scene-builder instructions is contaminated even if the
+            # structural marker cleanup above was bypassed.
+            prompt_start_markers = (
+                "Begin Chapter ",
+                "SCENE GOAL:",
+                "CHARACTERS:",
+                "REQUIRED:",
+                "DO NOT ADVANCE YET:",
+            )
+
+            for marker in prompt_start_markers:
+                if answer.startswith(marker):
+                    request_pos = answer.find("DO NOT ADVANCE YET:")
+                    end_pos = answer.find("\n", request_pos)
+                    if request_pos >= 0 and end_pos >= 0:
+                        answer = answer[end_pos + 1:].lstrip()
+                    else:
+                        answer = ""
+                    break
+
             if not answer:
                 raise RuntimeError(
-                    "llama-cli returned an empty response."
+                    "llama-cli returned an empty or prompt-contaminated response."
                 )
 
             return answer, time.time() - started
