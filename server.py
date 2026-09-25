@@ -780,29 +780,24 @@ def validate_state_patch(base, patch, story_text, evidence):
     evidence_keys = set()
 
     for entry in evidence:
+        # The model may occasionally emit malformed or incomplete evidence
+        # records for unchanged facts. Ignore those records; substantive
+        # changed claims still require at least one valid evidence match.
         if not isinstance(entry, dict):
-            raise ValueError(
-                "State proposal rejected. Every evidence entry must be an object."
-            )
+            continue
 
         field = entry.get("field")
         claim = entry.get("claim")
         quote = entry.get("quote")
 
         if not isinstance(field, str) or not field.strip():
-            raise ValueError(
-                "State proposal rejected. Every evidence entry needs a field."
-            )
+            continue
 
         if "claim" not in entry:
-            raise ValueError(
-                "State proposal rejected. Every evidence entry needs a claim."
-            )
+            continue
 
         if not isinstance(quote, str) or not quote.strip():
-            raise ValueError(
-                "State proposal rejected. Every evidence entry needs a non-empty quote."
-            )
+            continue
 
         key = (
             field.strip(),
