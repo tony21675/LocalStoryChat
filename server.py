@@ -1004,6 +1004,12 @@ def scene_requires_revision(user_request, draft, review):
         if marker in opening:
             return f"Meta-response detected near the opening: '{marker}'."
 
+    # Deterministic backstop for newly invented titled people.
+    unsupported_people = _find_unsupported_named_people(draft)
+    if unsupported_people:
+        names = ", ".join(sorted(set(unsupported_people))[:3])
+        return f"Unsupported named person introduced: {names}."
+
     # Parse the explicit hard boundary from the user's request.
     avoid = ""
     match = re.search(
