@@ -2446,7 +2446,24 @@ class LlamaSession:
                 self.child = None
                 self.buffer = ""
 
-            answer = self.clean_output(output)
+            raw_output = output
+
+            # llama-cli can echo the exact prompt it was given even with
+            # --no-display-prompt. Remove that echoed transport text before
+            # validation or display. The story itself is everything after the
+            # exact prompt sent for this turn.
+            prompt_prefixes = [
+                full_prompt + "\nUSER REQUEST:\n" + text,
+                "USER REQUEST:\n" + text,
+                full_prompt,
+            ]
+
+            for prefix in prompt_prefixes:
+                if prefix in raw_output:
+                    raw_output = raw_output.rsplit(prefix, 1)[1]
+                    break
+
+            answer = self.clean_output(raw_output)
 
             if not answer:
                 raise RuntimeError(
