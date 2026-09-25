@@ -3195,6 +3195,67 @@ class Handler(BaseHTTPRequestHandler):
                         )
                         measured += continuation_elapsed
 
+                # Do not spend a full model pass on a draft that already
+                # fails the explicit minimum word count. A compact completion
+                # pass gets the draft to the requested length first.
+                if (
+                    requested_min is not None
+                    and story_word_count(answer) < requested_min
+                ):
+                    words_so_far = story_word_count(answer)
+                    remaining = max(
+                        150,
+                        requested_min - words_so_far
+                    )
+
+                    draft_tail = " ".join(
+                        answer.split()[-700:]
+                    )
+
+                    completion_request = (
+                        "FINISH THIS FICTIONAL SCENE FROM THE SUPPLIED ENDING.\n"
+                        "Return only new story prose.\n"
+                        "Do not restart, recap, summarize, or discuss the assignment.\n"
+                        "Preserve all characters, location, continuity, required "
+                        "beats, and DO NOT ADVANCE YET boundaries from the original "
+                        "request.\n"
+                        f"Add at least {remaining} additional words so the "
+                        f"combined scene reaches {requested_min} words.\n\n"
+                        "ORIGINAL SCENE REQUEST:\n"
+                        + text
+                        + "\n\n"
+                        "ENDING OF THE CURRENT DRAFT:\n"
+                        + draft_tail
+                    )
+
+                    completed, completed_elapsed = session.ask(
+                        completion_request
+                    )
+
+                    if completed.strip():
+                        answer = (
+                            answer.rstrip()
+                            + "\n\n"
+                            + completed.lstrip()
+                        )
+                        measured += completed_elapsed
+
+                # A second full writer rewrite is not useful when the model
+                # still misses the minimum after its completion pass. Fail
+                # quickly instead of spending another long generation.
+                length_failure = scene_requires_revision(
+                    text,
+                    answer,
+                    {"approved": True}
+                )
+
+                if length_failure:
+                    raise ValueError(
+                        "The model did not reach the requested scene length. "
+                        f"Reason: {length_failure} "
+                        "The draft was not saved."
+                    )
+
                 try:
                     review = review_story_draft(
                         text,
@@ -3235,9 +3296,6 @@ class Handler(BaseHTTPRequestHandler):
                             f"Write at least {requested_min} words and stay within the requested range when practical."
                         )
 
-                    # Keep reviewer internals out of the writer prompt. They
-                    # can bias a local model toward answering about the task
-                    # instead of writing the story.
                     revision_request = (
                         text
                         + "\n\n"
@@ -3251,38 +3309,6 @@ class Handler(BaseHTTPRequestHandler):
                     answer = revised_answer
                     measured += revised_elapsed
 
-                    if scene_requires_revision(
-                        text,
-                        answer,
-                        {"approved": True}
-                    ):
-                        final_request = (
-                            "WRITE THE COMPLETE FICTIONAL SCENE AS PROSE ONLY. "
-                            "Do not discuss the assignment, summarize it, or explain your choices. "
-                            "Begin immediately with action or dialogue. "
-                            "Stay in the requested scene and stop before every event listed under "
-                            "DO NOT ADVANCE YET. "
-                            "Do not move the characters into a house, onto a porch, through a doorway, "
-                            "or to an arrival at home when the request says they have not reached home. "
-                            "Fulfill every REQUIRED beat, including the requested emotional reactions. "
-                            + (
-                                f"Write at least {requested_min} words. "
-                                if requested_min is not None
-                                else ""
-                            )
-                            + "\n\n"
-                            + text
-                        )
-
-                        final_answer, final_elapsed = session.ask(
-                            final_request
-                        )
-
-                        answer = final_answer
-                        measured += final_elapsed
-
-                                    # Never return a draft that still violates a hard,
-                    # deterministic scene boundary or requested beat.
                     final_failure = scene_requires_revision(
                         text,
                         answer,
