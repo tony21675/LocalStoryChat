@@ -1226,8 +1226,6 @@ Return ONLY the required JSON object.
         return result
 
     finally:
-        # Restore the writer model before returning to the chat handler so
-        # normal revision and subsequent chat requests still work.
         session.start(
             saved_system_prompt,
             saved_files,
@@ -1288,7 +1286,7 @@ def generate_state_proposal(story_text, section_filename=None):
 
     if section_filename:
         match = re.search(
-            r"^Chapter_(\\d+)_Section_(\\d+)\\.txt$",
+            r"^Chapter_(\d+)_Section_(\d+)\.txt$",
             str(section_filename).strip(),
             re.IGNORECASE
         )
@@ -1346,11 +1344,16 @@ Rules:
 - If a claim cannot be supported by a direct contiguous quote from the completed story section, do NOT include that claim in the patch.
 - Never create an update merely because a fact from current state remains true. Existing facts are not changes.
 - Treat location and physical position as literal continuity data. Do not infer arrival at a place from language such as approaching, nearing, heading toward, or not yet reached.
-- When a character's physical position changes, update current_situation as needed so it remains consistent with the changed location.
+- When a character's physical position changes, update current_situation as needed so it remains consistent with the changed location. Do not leave current_situation describing an earlier physical position when location has advanced.
 - Do not make a character appear to be at or passing a location unless the completed story section explicitly establishes that position.
 - Do not create active_clues or unresolved_questions from ordinary objects, dialogue, or curiosity unless the story section explicitly establishes them as plot-relevant clues or unresolved story questions.
 - Do not add temporary observations, gestures, glances, blushes, emotions, or ordinary sensory details to character_knowledge unless the section establishes a meaningful new fact that the character learned and may need to remember later.
 - Do not add already-established character traits, possessions, relationships, or background facts to current state merely because the section mentions or shows them.
+- A temporary observation about an already-established person, possession, relationship, or setting is NOT a new character-knowledge fact. For example, noticing, glancing at, touching, carrying, or mentioning an established object does not create persistent knowledge.
+- Character knowledge should be updated only when the section gives the character a genuinely new fact, discovery, instruction, confession, witness account, or other information that can matter after the immediate scene.
+- Do not use character_knowledge as a log of moment-to-moment perception. Do not record ordinary noticing, looking, remembering an established fact, or wondering about something unless it creates a meaningful new piece of knowledge.
+- Do not add a continuity_requirement for a one-time action, observation, or ordinary piece of scene texture. Continuity requirements are only for facts or constraints that must remain true in later scenes.
+- In particular, a character noticing an established object is not a state change unless the noticing itself creates a meaningful new plot or knowledge consequence.
 - If nothing changed, return exactly:
   {{"patch": {{}}, "evidence": []}}
 
@@ -1461,7 +1464,6 @@ Do not return current_state.json.
                 "State manager 'evidence' must be an array."
             )
 
-        # Prevent the state model from creating unsupported top-level fields.
         unknown_top_level = sorted(
             set(patch.keys()) - STATE_REQUIRED_KEYS
         )
