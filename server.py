@@ -1129,92 +1129,110 @@ ACTUAL WORD COUNT:
 Return ONLY the required JSON object.
 """
 
-    env = os.environ.copy()
+    # The writer and canon reviewer must never hold two copies of the model
+    # in memory at the same time on low-memory machines. Save the writer
+    # session state, stop it, run the reviewer, then restore the writer.
+    saved_model_path = session.model_path
+    saved_system_prompt = session.system_prompt or SYSTEM_PROMPT
+    saved_files = list(session.files)
 
-    env["LD_LIBRARY_PATH"] = (
-        str(LLAMA.parent)
-        + (
-            ":" + env["LD_LIBRARY_PATH"]
-            if env.get("LD_LIBRARY_PATH")
-            else ""
-        )
-    )
-
-    args = [
-        str(LLAMA),
-        "-m", str(session.model_path),
-        "-ngl", "0",
-        "--device", "none",
-        "-c", "8192",
-        "--reasoning", "off",
-        "--temp", "0.02",
-        "--top-k", "20",
-        "--top-p", "0.80",
-        "--repeat-last-n", "256",
-        "--repeat-penalty", "1.08",
-        "--n-predict", "700",
-        "--system-prompt", CANON_REVIEW_SYSTEM_PROMPT,
-        "--prompt", prompt,
-        "--color", "off",
-        "--no-display-prompt",
-        "--simple-io",
-        "--single-turn",
-    ]
-
-    proc = subprocess.Popen(
-        args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=env,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    session.stop()
 
     try:
-        output, _ = proc.communicate(
-            timeout=600
-        )
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        output, _ = proc.communicate()
+        env = os.environ.copy()
 
-        raise TimeoutError(
-            "Canon review generation timed out."
-        )
-
-    if proc.returncode not in (0, None):
-        raise RuntimeError(
-            f"Canon reviewer exited with code {proc.returncode}.\\n"
-            f"{output[-2000:]}"
+        env["LD_LIBRARY_PATH"] = (
+            str(LLAMA.parent)
+            + (
+                ":" + env["LD_LIBRARY_PATH"]
+                if env.get("LD_LIBRARY_PATH")
+                else ""
+            )
         )
 
-    result = extract_json_with_keys(
-        output,
-        {"approved", "violations"}
-    )
+        args = [
+            str(LLAMA),
+            "-m", str(saved_model_path),
+            "-ngl", "0",
+            "--device", "none",
+            "-c", "6144",
+            "--reasoning", "off",
+            "--temp", "0.02",
+            "--top-k", "20",
+            "--top-p", "0.80",
+            "--repeat-last-n", "256",
+            "--repeat-penalty", "1.08",
+            "--n-predict", "350",
+            "--system-prompt", CANON_REVIEW_SYSTEM_PROMPT,
+            "--prompt", prompt,
+            "--color", "off",
+            "--no-display-prompt",
+            "--simple-io",
+            "--single-turn",
+        ]
 
-    if not isinstance(
-        result.get("approved"),
-        bool
-    ):
-        raise ValueError(
-            "Canon reviewer returned an invalid 'approved' value."
+        proc = subprocess.Popen(
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=env,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
 
-    violations = result.get("violations")
+        try:
+            output, _ = proc.communicate(
+                timeout=300
+            )
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            output, _ = proc.communicate()
 
-    if not isinstance(violations, list):
-        raise ValueError(
-            "Canon reviewer returned an invalid 'violations' array."
+            raise TimeoutError(
+                "Canon review generation timed out."
+            )
+
+        if proc.returncode not in (0, None):
+            raise RuntimeError(
+                f"Canon reviewer exited with code {proc.returncode}.\\n"
+                f"{output[-2000:]}"
+            )
+
+        result = extract_json_with_keys(
+            output,
+            {"approved", "violations"}
         )
 
-    print("\n--- CANON REVIEW ---", flush=True)
-    print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
-    print("--- END CANON REVIEW ---\n", flush=True)
+        if not isinstance(
+            result.get("approved"),
+            bool
+        ):
+            raise ValueError(
+                "Canon reviewer returned an invalid 'approved' value."
+            )
 
-    return result
+        violations = result.get("violations")
 
+        if not isinstance(violations, list):
+            raise ValueError(
+                "Canon reviewer returned an invalid 'violations' array."
+            )
+
+        print("\n--- CANON REVIEW ---", flush=True)
+        print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
+        print("--- END CANON REVIEW ---\n", flush=True)
+
+        return result
+
+    finally:
+        # Restore the writer model before returning to the chat handler so
+        # normal revision and subsequent chat requests still work.
+        session.start(
+            saved_system_prompt,
+            saved_files,
+            saved_model_path
+        )
 
 def _find_unsupported_named_people(text):
     """
@@ -1270,7 +1288,7 @@ def generate_state_proposal(story_text, section_filename=None):
 
     if section_filename:
         match = re.search(
-            r"^Chapter_(\d+)_Section_(\d+)\.txt$",
+            r"^Chapter_(\\d+)_Section_(\\d+)\\.txt$",
             str(section_filename).strip(),
             re.IGNORECASE
         )
@@ -1328,16 +1346,11 @@ Rules:
 - If a claim cannot be supported by a direct contiguous quote from the completed story section, do NOT include that claim in the patch.
 - Never create an update merely because a fact from current state remains true. Existing facts are not changes.
 - Treat location and physical position as literal continuity data. Do not infer arrival at a place from language such as approaching, nearing, heading toward, or not yet reached.
-- When a character's physical position changes, update current_situation as needed so it remains consistent with the changed location. Do not leave current_situation describing an earlier physical position when location has advanced.
+- When a character's physical position changes, update current_situation as needed so it remains consistent with the changed location.
 - Do not make a character appear to be at or passing a location unless the completed story section explicitly establishes that position.
 - Do not create active_clues or unresolved_questions from ordinary objects, dialogue, or curiosity unless the story section explicitly establishes them as plot-relevant clues or unresolved story questions.
 - Do not add temporary observations, gestures, glances, blushes, emotions, or ordinary sensory details to character_knowledge unless the section establishes a meaningful new fact that the character learned and may need to remember later.
 - Do not add already-established character traits, possessions, relationships, or background facts to current state merely because the section mentions or shows them.
-- A temporary observation about an already-established person, possession, relationship, or setting is NOT a new character-knowledge fact. For example, noticing, glancing at, touching, carrying, or mentioning an established object does not create persistent knowledge.
-- Character knowledge should be updated only when the section gives the character a genuinely new fact, discovery, instruction, confession, witness account, or other information that can matter after the immediate scene.
-- Do not use character_knowledge as a log of moment-to-moment perception. Do not record ordinary noticing, looking, remembering an established fact, or wondering about something unless it creates a meaningful new piece of knowledge.
-- Do not add a continuity_requirement for a one-time action, observation, or ordinary piece of scene texture. Continuity requirements are only for facts or constraints that must remain true in later scenes.
-- In particular, a character noticing an established object is not a state change unless the noticing itself creates a meaningful new plot or knowledge consequence.
 - If nothing changed, return exactly:
   {{"patch": {{}}, "evidence": []}}
 
@@ -1345,167 +1358,172 @@ Do not return markdown or explanations.
 Do not return current_state.json.
 """
 
-    env = os.environ.copy()
+    # Run the state manager only after the writer model has been stopped.
+    # This avoids loading a second copy of the model into an 8 GB machine.
+    saved_model_path = session.model_path
+    saved_system_prompt = session.system_prompt or SYSTEM_PROMPT
+    saved_files = list(session.files)
 
-    env["LD_LIBRARY_PATH"] = (
-        str(LLAMA.parent)
-        + (
-            ":" + env["LD_LIBRARY_PATH"]
-            if env.get("LD_LIBRARY_PATH")
-            else ""
-        )
-    )
-
-    args = [
-        str(LLAMA),
-        "-m", str(session.model_path),
-        "-ngl", "0",
-        "--device", "none",
-        "-c", "12288",
-        "--reasoning", "off",
-        "--temp", "0.10",
-        "--top-k", "20",
-        "--top-p", "0.80",
-        "--repeat-last-n", "256",
-        "--repeat-penalty", "1.08",
-        "--n-predict", "2000",
-        "--system-prompt", STATE_SYSTEM_PROMPT,
-        "--prompt", prompt,
-        "--color", "off",
-        "--no-display-prompt",
-        "--simple-io",
-        "--single-turn",
-    ]
-
-    proc = subprocess.Popen(
-        args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=env,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    session.stop()
 
     try:
-        output, _ = proc.communicate(
-            timeout=600
-        )
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        output, _ = proc.communicate()
+        env = os.environ.copy()
 
-        raise TimeoutError(
-            "State update generation timed out."
-        )
-
-    if proc.returncode not in (0, None):
-        raise RuntimeError(
-            f"State manager exited with code {proc.returncode}.\\n"
-            f"{output[-2000:]}"
+        env["LD_LIBRARY_PATH"] = (
+            str(LLAMA.parent)
+            + (
+                ":" + env["LD_LIBRARY_PATH"]
+                if env.get("LD_LIBRARY_PATH")
+                else ""
+            )
         )
 
+        args = [
+            str(LLAMA),
+            "-m", str(saved_model_path),
+            "-ngl", "0",
+            "--device", "none",
+            "-c", "8192",
+            "--reasoning", "off",
+            "--temp", "0.10",
+            "--top-k", "20",
+            "--top-p", "0.80",
+            "--repeat-last-n", "256",
+            "--repeat-penalty", "1.08",
+            "--n-predict", "900",
+            "--system-prompt", STATE_SYSTEM_PROMPT,
+            "--prompt", prompt,
+            "--color", "off",
+            "--no-display-prompt",
+            "--simple-io",
+            "--single-turn",
+        ]
 
-    print("\n--- RAW STATE MANAGER OUTPUT ---", flush=True)
-    print(output, flush=True)
-    print("--- END RAW STATE MANAGER OUTPUT ---\n", flush=True)
-
-    proposal = extract_json_object(output)
-
-    if not isinstance(proposal, dict):
-        raise ValueError(
-            "The state manager did not return a JSON object."
+        proc = subprocess.Popen(
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=env,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
 
-    patch = proposal.get("patch")
-    evidence = proposal.get("evidence")
+        try:
+            output, _ = proc.communicate(
+                timeout=300
+            )
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            output, _ = proc.communicate()
 
-    if patch is None:
-        raise ValueError(
-            "State manager response is missing 'patch'."
-        )
-
-    if evidence is None:
-        raise ValueError(
-            "State manager response is missing 'evidence'."
-        )
-
-    if not isinstance(patch, dict):
-        raise ValueError(
-            "State manager 'patch' must be a JSON object."
-        )
-
-    if not isinstance(evidence, list):
-        raise ValueError(
-            "State manager 'evidence' must be an array."
-        )
-
-    # Prevent the state model from creating unsupported top-level fields.
-    # The schema remains authoritative. Unknown fields are ignored rather than
-    # blocking an otherwise valid state proposal.
-    unknown_top_level = sorted(
-        set(patch.keys()) - STATE_REQUIRED_KEYS
-    )
-
-    if unknown_top_level:
-        print(
-            "Ignoring unsupported state fields: "
-            + ", ".join(unknown_top_level),
-            flush=True
-        )
-
-        for name in unknown_top_level:
-            patch.pop(name, None)
-
-    # Prevent the model from accidentally creating character fields
-    # at the top level of current_state.json.
-    current_characters = current_state.get("character_knowledge", {})
-
-    if isinstance(current_characters, dict):
-        for misplaced in current_characters:
-            patch.pop(misplaced, None)
-
-    # Manuscript section numbering is deterministic bookkeeping supplied by the app.
-    if section_chapter is not None and section_scene is not None:
-        if section_chapter < current_state.get("chapter", section_chapter):
-            raise ValueError(
-                "Selected manuscript section is older than the current story state."
+            raise TimeoutError(
+                "State update generation timed out."
             )
 
-        patch["chapter"] = section_chapter
-        patch["scene"] = section_scene
+        if proc.returncode not in (0, None):
+            raise RuntimeError(
+                f"State manager exited with code {proc.returncode}.\\n"
+                f"{output[-2000:]}"
+            )
 
-    # Drop only unsupported model-generated claims instead of rejecting
-    # the entire proposal. Proven claims remain eligible for the review UI.
-    patch = _filter_patch_to_supported_evidence(
-        current_state,
-        patch,
-        story_text,
-        evidence
-    )
+        print("\n--- RAW STATE MANAGER OUTPUT ---", flush=True)
+        print(output, flush=True)
+        print("--- END RAW STATE MANAGER OUTPUT ---\n", flush=True)
 
-    validate_state_patch(
-        current_state,
-        patch,
-        story_text,
-        evidence
-    )
+        proposal = extract_json_object(output)
 
-    proposed = merge_state(
-        current_state,
-        patch
-    )
+        if not isinstance(proposal, dict):
+            raise ValueError(
+                "The state manager did not return a JSON object."
+            )
 
-    # new_clues describes only clues introduced by THIS section.
-    # Never carry old section clues forward as "new".
-    proposed["new_clues"] = patch.get("new_clues", [])
+        patch = proposal.get("patch")
+        evidence = proposal.get("evidence")
 
-    validate_state(proposed)
+        if patch is None:
+            raise ValueError(
+                "State manager response is missing 'patch'."
+            )
 
-    pending_state = proposed
+        if evidence is None:
+            raise ValueError(
+                "State manager response is missing 'evidence'."
+            )
 
-    return proposed
+        if not isinstance(patch, dict):
+            raise ValueError(
+                "State manager 'patch' must be a JSON object."
+            )
 
+        if not isinstance(evidence, list):
+            raise ValueError(
+                "State manager 'evidence' must be an array."
+            )
+
+        # Prevent the state model from creating unsupported top-level fields.
+        unknown_top_level = sorted(
+            set(patch.keys()) - STATE_REQUIRED_KEYS
+        )
+
+        if unknown_top_level:
+            print(
+                "Ignoring unsupported state fields: "
+                + ", ".join(unknown_top_level),
+                flush=True
+            )
+
+            for name in unknown_top_level:
+                patch.pop(name, None)
+
+        current_characters = current_state.get("character_knowledge", {})
+
+        if isinstance(current_characters, dict):
+            for misplaced in current_characters:
+                patch.pop(misplaced, None)
+
+        if section_chapter is not None and section_scene is not None:
+            if section_chapter < current_state.get("chapter", section_chapter):
+                raise ValueError(
+                    "Selected manuscript section is older than the current story state."
+                )
+
+            patch["chapter"] = section_chapter
+            patch["scene"] = section_scene
+
+        patch = _filter_patch_to_supported_evidence(
+            current_state,
+            patch,
+            story_text,
+            evidence
+        )
+
+        validate_state_patch(
+            current_state,
+            patch,
+            story_text,
+            evidence
+        )
+
+        proposed = merge_state(
+            current_state,
+            patch
+        )
+
+        proposed["new_clues"] = patch.get("new_clues", [])
+
+        validate_state(proposed)
+
+        pending_state = proposed
+
+        return proposed
+
+    finally:
+        session.start(
+            saved_system_prompt,
+            saved_files,
+            saved_model_path
+        )
 
 def build_scene_prompt(data):
     """Build a compact, human-editable scene prompt from the UI fields.
