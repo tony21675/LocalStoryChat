@@ -981,6 +981,8 @@ def review_story_draft(user_request, draft):
         session.files
     )
 
+    previous_section = build_previous_section_context()
+
     requested_min, requested_max = requested_word_range(user_request)
 
     prompt = f"""Review the following generated story draft for canon, continuity, and task compliance.
@@ -990,6 +992,9 @@ USER REQUEST:
 
 RUNTIME STORY CONTEXT:
 {runtime_context}
+
+PREVIOUS SAVED STORY SECTION:
+{previous_section if previous_section else "No previous saved section is available."}
 
 GENERATED STORY DRAFT:
 {draft}
@@ -3041,11 +3046,20 @@ class Handler(BaseHTTPRequestHandler):
                         )
 
                         for item in violations[:8]:
-                            message = (
-                                item.get("message")
-                                if isinstance(item, dict)
-                                else str(item)
-                            )
+                            if isinstance(item, dict):
+                                reason = item.get("reason")
+                                quote = item.get("quote")
+
+                                if reason and quote:
+                                    message = (
+                                        str(reason)
+                                        + " Quote: "
+                                        + str(quote)
+                                    )
+                                else:
+                                    message = reason or quote or str(item)
+                            else:
+                                message = str(item)
 
                             if message:
                                 revision_lines.append(
