@@ -974,6 +974,28 @@ def scene_requires_revision(user_request, draft, review):
     if not isinstance(review, dict) or review.get("approved") is not True:
         return True
 
+    # Reject obvious meta-responses rather than allowing them to become
+    # manuscript content. A story response should begin with narrative prose,
+    # not an explanation of the assignment.
+    opening = re.sub(
+        r"\s+",
+        " ",
+        str(draft or "").strip()
+    ).lower()[:500]
+
+    meta_markers = [
+        "the scene goal is",
+        "the scene focuses on",
+        "the characters should",
+        "the story should",
+        "in this scene",
+        "this scene will",
+        "the scene is about",
+    ]
+
+    if any(marker in opening for marker in meta_markers):
+        return True
+
     avoid = ""
     match = re.search(
         r"DO NOT ADVANCE YET:\s*(.*?)(?:\n\n[A-Z][A-Z /_-]+:|\nOutput only|$)",
@@ -3062,10 +3084,10 @@ class Handler(BaseHTTPRequestHandler):
                     )
 
                     revision_lines = [
-                        "REVISION REQUIRED:",
-                        "Rewrite the complete scene from the original request.",
+                        "WRITE THE SCENE NOW.",
                         "Return only the replacement story prose.",
-                        "Do not explain the revision or mention this review.",
+                        "Do not describe the assignment, summarize the scene, explain what should happen, or output an outline.",
+                        "The first line of the response must be narrative prose or dialogue.",
                     ]
 
                     if requested_min is not None:
@@ -3073,54 +3095,42 @@ class Handler(BaseHTTPRequestHandler):
                             f"Write at least {requested_min} words and stay within the requested range when practical."
                         )
 
-                    if violations:
-                        revision_lines.append(
-                            "Correct these specific problems:"
-                        )
-
-                        for item in violations[:8]:
-                            if isinstance(item, dict):
-                                reason = item.get("reason")
-                                quote = item.get("quote")
-
-                                if reason and quote:
-                                    message = (
-                                        str(reason)
-                                        + " Quote: "
-                                        + str(quote)
-                                    )
-                                else:
-                                    message = reason or quote or str(item)
-                            else:
-                                message = str(item)
-
-                            if message:
-                                revision_lines.append(
-                                    "- " + str(message)
-                                )
-
-                    revised_answer, revised_elapsed = session.ask(
+                    # Keep reviewer internals out of the writer prompt. They
+                    # can bias a local model toward answering about the task
+                    # instead of writing the story.
+                    revision_request = (
                         text
                         + "\n\n"
                         + "\n".join(revision_lines)
                     )
 
+                    revised_answer, revised_elapsed = session.ask(
+                        revision_request
+                    )
+
                     answer = revised_answer
                     measured += revised_elapsed
 
+                    # One clean final pass only when the replacement is still
+                    # obviously too short or still reads like meta prose.
                     if (
                         requested_min is not None
-                        and story_word_count(answer) < requested_min
+                        and (
+                            story_word_count(answer) < requested_min
+                            or scene_requires_revision(
+                                text,
+                                answer,
+                                {"approved": True}
+                            )
+                        )
                     ):
                         final_request = (
-                            text
+                            "WRITE THIS FICTIONAL SCENE AS PROSE ONLY. "
+                            "Do not discuss or restate the instructions. "
+                            "Begin immediately with character action or dialogue. "
+                            + text
                             + "\n\n"
-                            + "The previous draft is incomplete. Rewrite the complete "
-                            + "scene from the beginning. Fulfill every REQUIRED item, "
-                            + "respect every DO NOT ADVANCE YET boundary, and write "
-                            + f"at least {requested_min} words. Return only story prose."
-                            + "\n\nINCOMPLETE DRAFT:\n"
-                            + answer
+                            + f"Minimum length: {requested_min} words."
                         )
 
                         final_answer, final_elapsed = session.ask(
