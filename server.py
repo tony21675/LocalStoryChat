@@ -193,6 +193,8 @@ CANON:
 - During ordinary moments, characters focus on their current activity and each other. Observant or cautious characters do not continuously scan for danger without a concrete reason.
 - Do not invent material plot events, clues, evidence, identities, motives, destinations, important objects, backstory, persistent setting facts, or new relationships.
 - Do not add unexplained people, animals, vehicles, objects, suspicious activity, or environmental anomalies just to make prose more interesting.
+- In a sparse ordinary scene, keep background detail generic unless the context establishes the specific thing. Prefer generic light, weather, pavement, breeze, distant sound, or ordinary movement over introducing a specific dog, named person, vehicle, appliance, neighborhood activity, or other concrete background fact.
+- When a REQUIRED beat says one character has feelings for a specific person, keep the target unambiguous. The hint may be subtle, but it must clearly point to the requested person by name or an unmistakable relationship reference such as "your dad" or "your father". Do not redirect the hint toward the conversation partner or another character.
 - Scene character boundaries matter: use the characters explicitly requested for the scene as the active cast. Do not introduce, speak for, or give narrative focus to another established character merely because that character exists in the reference files. A different character may appear only when the current state, previous section, or user's request establishes that character's presence.
 
 DIALOGUE:
@@ -1057,6 +1059,22 @@ def scene_requires_revision(user_request, draft, review):
     if "maria" not in request_lower and "maya" in request_lower and "tony" in request_lower:
         requires_blush = "blush" in request_lower
         requires_evasive = "evasive" in request_lower
+        requires_tony_reference = (
+            "like tony" in request_lower
+            or "likes tony" in request_lower
+            or "feelings for tony" in request_lower
+            or "crush on tony" in request_lower
+        )
+
+        if requires_tony_reference:
+            tony_terms = [
+                "tony",
+                "your dad",
+                "your father",
+            ]
+
+            if not any(term in draft_lower for term in tony_terms):
+                return "Required Maya-to-Tony hint was not detected: the draft does not clearly reference Tony or an unmistakable relationship reference."
 
         if requires_blush:
             blush_terms = [
