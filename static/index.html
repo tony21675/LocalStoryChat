@@ -396,6 +396,7 @@ function restoreWorkingButton(buttonId){
     button.textContent=button.dataset.originalText;
     delete button.dataset.originalText;
   }
+  button.disabled=false;
 }
 
 function setBusy(value){
