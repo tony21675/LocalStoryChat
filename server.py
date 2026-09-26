@@ -221,124 +221,36 @@ SCENE:
 Output only the story prose.'''
 
 
-CANON_REVIEW_SYSTEM_PROMPT = r"""You are a continuity and canon reviewer for an ongoing fictional story.
+CANON_REVIEW_SYSTEM_PROMPT = r"""You are a light-touch continuity reviewer for an ongoing fictional story.
 
-Review the generated story draft against the supplied runtime story context and the user's request.
+Review the generated draft against the user's request and the supplied story context.
 
-Return ONLY one valid JSON object:
-
-{
-  "approved": true,
-  "violations": []
-}
-
-CORE STANDARD:
-Protect established canon without making the prose sterile.
-
-Approve ordinary creative prose when it is temporary, incidental, and does not create a material story fact.
-
-TASK REQUIREMENTS:
-- Treat the user's SCENE GOAL, REQUIRED items, DO NOT ADVANCE YET items, requested character list, and requested word count as actual requirements.
-- Reject a draft when it clearly omits a required character beat, reaction, interaction, or event.
-- Reject a draft when it clearly advances an explicitly prohibited event.
-- Reject a draft when physical movement contradicts current state or the ending position of the previous saved section.
-- A subtle requested beat still counts as required. Mentioning the topic without performing the requested action or reaction is not enough.
-
-Reject a detail when it changes or establishes information the story may need to remember later.
-
-MATERIAL FACTS THAT REQUIRE SUPPORT:
-- new plot events
-- important actions that affect what happens in the story
-- new characters, identities, or relationships
-- backstory, memories, history, or prior events
-- specific locations, routes, destinations, or spatial relationships
-- important objects, possessions, vehicles, or persistent physical conditions
-- clues, evidence, witnesses, leads, motives, plans, or intentions
-- character knowledge, observations, discoveries, or information
-- injuries or other persistent bodily conditions
-- time, duration, sequence, or elapsed-time claims
-- dialogue that establishes new factual information
-- anything that contradicts established canon
-
-CREATIVE PROSE THAT MAY BE APPROVED:
-Ordinary temporary actions and sensory texture may be creative when they do not create material canon.
-
-Examples that may be acceptable:
-- wiping hands
-- shifting position
-- looking down or pausing
-- ordinary walking movements
-- generic light, weather, sound, smell, or mood
-- brief non-factual chatter
-- small transitional actions that do not affect the plot
-
-Do NOT reject such details merely because they were not explicitly listed in the JSON.
-
-However, reject them when the wording turns them into material facts.
-
-Examples:
-- "Tony wiped his hands on a rag." may be acceptable as temporary prose.
-- "Tony always kept a rag beside the truck." requires support because it establishes a habit or persistent detail.
-- "Maya kicked a pebble." may be acceptable as incidental movement.
-- "Maya took the shortcut she always used." requires support because it establishes a route and routine.
-- "They chatted as they walked." may be acceptable.
-- "They discussed a teacher's assignment due Friday." requires support because it creates specific story information.
-- "Tony looked toward the street." may be acceptable.
-- "Tony saw Tiffany approaching from the street." requires support because it establishes an observation and spatial relationship.
-
-UNKNOWN INFORMATION:
-- Plausibility is not evidence.
-- Keep unknown material unknown.
-- Never approve a new fact merely because it would make sense.
-- Never reveal hidden canon unless the story context or user request establishes the reveal.
-
-KNOWLEDGE AND OBSERVATION:
-Characters may know or notice only what is established by context, the user's request, or events occurring in the current scene.
-Reject unsupported important discoveries, sightings, overheard information, memories, or deductions presented as facts.
-
-CONTINUITY:
-Reject contradictions of established canon.
-Reject new material plot facts.
-Reject invented backstory, motives, destinations, evidence, clues, witnesses, identities, relationships, or persistent objects or conditions.
-Reject premature reveals of hidden or unknown information.
-
-CONSERVATIVE BUT PROPORTIONAL:
-Do not reject ordinary temporary prose merely because it is not explicitly in the JSON.
-
-However, be strict about SPECIFICITY. In a sparse scene, reject concrete details that create factual information the story did not establish, including:
-- named teachers, classmates, neighbors, parents, or other people
-- specific assignments, classes, school events, or academic history
-- named streets, parks, businesses, landmarks, routes, or home features
-- pets, vehicles, objects, or possessions not established by canon
-- specific family routines, prior events, traditions, or plans
-- claims about what another person is doing, has done, or normally does
-- new sightings, sounds, movements, or environmental events that could become story facts
-- internal thoughts that create unsupported history, attraction, suspicion, anticipation, or relationship dynamics
-- wording that turns an ordinary moment into an implied threat, mystery, or future setup
-
-Generic temporary texture remains acceptable, such as ordinary walking, a pebble underfoot, generic weather, light, a brief laugh, or disposable nonspecific chatter.
-
-IMPORTANT DECISION RULE:
-When deciding whether a detail is disposable or material, require support from the runtime context for concrete specificity.
-A named teacher, named neighbor, specific assignment, specific class topic, specific family member, specific route, specific home feature, or specific prior event is NOT disposable merely because it appears inside casual dialogue.
-Named entities and concrete factual claims are unsupported unless they appear in the runtime context or are established by the user's request/current scene.
-Do not approve a draft merely because an invented detail is plausible or sounds like normal teen conversation.
-
-For every violation, return:
-{
-  "quote": "EXACT QUOTE from the draft",
-  "reason": "why the quoted claim creates an unsupported or contradictory material story fact",
-  "category": "backstory|character_knowledge|plot|clue|location|relationship|contradiction|object|observation|dialogue|physical_state|time|other"
-}
-
-If there are no material continuity violations, return:
+Return ONLY:
 {"approved": true, "violations": []}
+or
+{"approved": false, "violations": [{"quote":"EXACT QUOTE","reason":"brief reason","category":"..."}]}
 
-If there is at least one material continuity violation, return:
-{"approved": false, "violations": [...]}
+Only reject clear, consequential problems:
+- contradiction of established canon or current location/state
+- revealing hidden information that the user did not ask to reveal
+- advancing an event the user explicitly said must not happen yet
+- using a character who is outside the requested scene without contextual justification
+- clearly omitting a REQUIRED event or interaction when the requirement is explicit
+- inventing a material plot fact, relationship, identity, clue, destination, or major backstory fact
 
-Do not output markdown, explanations, analysis, or code fences.
+Do NOT reject ordinary creative prose.
+Do NOT reject harmless temporary sensory detail, gestures, generic background detail, or disposable conversation.
+Do NOT require exact wording for a requested emotional or behavioral beat.
+Judge requested beats by meaning and context, not by keywords.
+Do NOT police every small factual detail.
+
+The user's current request is the authority for immediate scene direction.
+Character files, story_bible.json, and current_state.json are the authority for established canon.
+
+Return only the JSON object. Do not output markdown or explanations.
 """
+
+
 STATE_REQUIRED_KEYS = {
     "status",
     "chapter",
@@ -967,12 +879,20 @@ def story_word_count(text):
 
 
 def scene_requires_revision(user_request, draft, review):
-    """Apply deterministic gates before trusting the local-model reviewer."""
+    """Apply only a few deterministic safety rails.
+
+    Semantic scene requirements are reviewed by the local reviewer. This
+    function should not try to infer prose quality or emotional beats with
+    brittle keyword lists.
+    """
     requested_min, requested_max = requested_word_range(user_request)
 
     if requested_min is not None and story_word_count(draft) < requested_min:
         actual = story_word_count(draft)
-        return f"Draft is too short: {actual} words; minimum requested is {requested_min}."
+        return (
+            f"Draft is too short: {actual} words; "
+            f"minimum requested is {requested_min}."
+        )
 
     if not isinstance(review, dict) or review.get("approved") is not True:
         violations = (
@@ -980,8 +900,13 @@ def scene_requires_revision(user_request, draft, review):
             if isinstance(review, dict)
             else []
         )
+
         if violations:
-            return "Reviewer rejected the draft: " + "; ".join(str(v) for v in violations[:3])
+            return (
+                "Reviewer rejected the draft: "
+                + "; ".join(str(v) for v in violations[:3])
+            )
+
         return "Reviewer did not approve the draft."
 
     draft_lower = str(draft or "").lower()
@@ -991,28 +916,24 @@ def scene_requires_revision(user_request, draft, review):
         str(draft or "").strip()
     ).lower()[:500]
 
-    # Never allow a meta response to reach the manuscript.
+    # Keep this only as a transport-output backstop.
     meta_markers = [
         "the scene goal is",
         "the scene focuses on",
         "the characters should",
         "the story should",
-        "in this scene",
         "this scene will",
         "the scene is about",
     ]
 
     for marker in meta_markers:
         if marker in opening:
-            return f"Meta-response detected near the opening: '{marker}'."
+            return (
+                f"Meta-response detected near the opening: '{marker}'."
+            )
 
-    # Deterministic backstop for newly invented titled people.
-    unsupported_people = _find_unsupported_named_people(draft)
-    if unsupported_people:
-        names = ", ".join(sorted(set(unsupported_people))[:3])
-        return f"Unsupported named person introduced: {names}."
-
-    # Parse the explicit hard boundary from the user's request.
+    # Explicit hard boundary: when the user says the characters have not
+    # reached home yet, do not allow the draft to cross into the house.
     avoid = ""
     match = re.search(
         r"DO NOT ADVANCE YET:\s*(.*?)(?:\n\s*\n[A-Z][A-Z /_-]+:|\nOutput only|$)",
@@ -1023,8 +944,6 @@ def scene_requires_revision(user_request, draft, review):
     if match:
         avoid = match.group(1).lower()
 
-    # A scene explicitly held before arriving home must not contain concrete
-    # arrival language or doorway/house-entry beats.
     if (
         "have not reached home" in avoid
         or "have not reached home yet" in avoid
@@ -1038,9 +957,6 @@ def scene_requires_revision(user_request, draft, review):
             "front door",
             "screen door",
             "entryway",
-            "porch steps",
-            "porch light",
-            "walkway to the house",
             "inside the house",
             "went inside",
             "entered the house",
@@ -1048,65 +964,13 @@ def scene_requires_revision(user_request, draft, review):
 
         for term in forbidden_location_terms:
             if term in draft_lower:
-                return f"Hard scene boundary violated: home/arrival language found ('{term}')."
-
-    # For the explicit Maya/Tony beat used by the scene builder, require the
-    # concrete behavioral markers requested by the user. This is intentionally
-    # conservative and only activates when those concepts are present in the
-    # request.
-    request_lower = str(user_request or "").lower()
-
-    if "maria" not in request_lower and "maya" in request_lower and "tony" in request_lower:
-        requires_blush = "blush" in request_lower
-        requires_evasive = "evasive" in request_lower
-        requires_tony_reference = (
-            "like tony" in request_lower
-            or "likes tony" in request_lower
-            or "feelings for tony" in request_lower
-            or "crush on tony" in request_lower
-        )
-
-        if requires_tony_reference:
-            tony_terms = [
-                "tony",
-                "your dad",
-                "your father",
-            ]
-
-            if not any(term in draft_lower for term in tony_terms):
-                return "Required Maya-to-Tony hint was not detected: the draft does not clearly reference Tony or an unmistakable relationship reference."
-
-        if requires_blush:
-            blush_terms = [
-                "blush",
-                "blushed",
-                "blushing",
-                "flushed",
-                "cheeks warmed",
-                "cheeks turned",
-                "face warmed",
-            ]
-
-            if not any(term in draft_lower for term in blush_terms):
-                return "Required Maya blush beat was not detected."
-
-        if requires_evasive:
-            evasive_terms = [
-                "evasive",
-                "avoided the question",
-                "changed the subject",
-                "deflected",
-                "brushed it off",
-                "looked away",
-                "quickly changed",
-                "stammered",
-                "stumbled over her words",
-            ]
-
-            if not any(term in draft_lower for term in evasive_terms):
-                return "Required Maya evasive-behavior beat was not detected."
+                return (
+                    "Hard scene boundary violated: "
+                    f"home/arrival language found ('{term}')."
+                )
 
     return False
+
 
 
 def _review_result_is_approved(result):
