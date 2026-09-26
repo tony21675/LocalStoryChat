@@ -1514,9 +1514,36 @@ def build_scene_prompt(data):
         "Let the scene breathe. Use natural action, dialogue, sensory detail, personality, and small ordinary details where appropriate.",
     ]
 
-    # Put scene focus at the end so the model sees it immediately before writing.
+    # Put the final scene instructions immediately before generation.
+    # Smaller local models are more reliable when the actual required beat is
+    # repeated at the end of the request instead of being buried earlier.
     if narrative_focus_lines:
         lines += [""] + narrative_focus_lines
+
+    if required:
+        lines += [
+            "",
+            "FINAL REQUIREMENTS CHECK - DO THIS ON THE PAGE:",
+            "Before ending the scene, silently verify that every REQUIRED item below "
+            "actually occurs in the prose.",
+            "Do not satisfy a required interaction, reveal, action, or emotional beat "
+            "with narration that merely says it happened or implies it. Show it through "
+            "observable action, dialogue, or character reaction.",
+            "When a REQUIRED beat is an accidental spoken reveal, the character must "
+            "actually say the revealing thing in dialogue. The other character must "
+            "have an opportunity to hear or react to it.",
+            "REQUIRED ITEMS TO FULFILL:",
+            required,
+        ]
+
+    if avoid:
+        lines += [
+            "",
+            "FINAL BOUNDARY CHECK:",
+            "Do not cross or advance any event listed under DO NOT ADVANCE YET.",
+            "DO NOT ADVANCE YET:",
+            avoid,
+        ]
 
     lines += [
         "",
