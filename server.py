@@ -194,8 +194,6 @@ When a previous saved section is supplied, continue from its ending instead of r
 Output only the story prose.'''
 
 
-'''
-
 
 def generate_state_proposal(story_text, section_filename=None):
     global pending_state
