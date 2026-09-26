@@ -890,13 +890,116 @@ def story_word_count(text):
     )
 
 
+def _required_spoken_reveal_failure(user_request, draft):
+    """Detect a narrowly defined required spoken-reveal task.
+
+    This is intentionally limited to requests that explicitly ask for a
+    character to accidentally reveal feelings for a named person. It does not
+    attempt to judge general prose quality or ordinary emotional beats.
+    """
+    request = str(user_request or "")
+    lowered = request.lower()
+
+    if "accidentally reveals" not in lowered:
+        return False
+
+    if not any(
+        phrase in lowered
+        for phrase in (
+            "feelings for ",
+            "feelings toward ",
+            "attracted to ",
+            "has feelings for ",
+        )
+    ):
+        return False
+
+    speaker_match = re.search(
+        r"\\b([A-Z][A-Za-z]+)\\b[^.]{0,180}?"
+        r"(?:accidentally reveals|reveal(?:s|ed)?)[^.]{0,180}?"
+        r"(?:say|says|said|speaks|spoken dialogue)",
+        request,
+        re.IGNORECASE,
+    )
+
+    if speaker_match:
+        speaker = speaker_match.group(1)
+    else:
+        # Common scene-request phrasing puts the character at the start of the
+        # requirement. Fall back to the first capitalized name before the
+        # accidental-reveal wording.
+        prefix = request[:lowered.find("accidentally reveals")]
+        names = re.findall(r"\\b[A-Z][A-Za-z]+\\b", prefix)
+        speaker = names[-1] if names else None
+
+    target_match = re.search(
+        r"feelings\\s+(?:for|toward)\\s+([A-Z][A-Za-z]+)",
+        request,
+        re.IGNORECASE,
+    )
+
+    target = target_match.group(1) if target_match else None
+
+    if not speaker or not target:
+        return False
+
+    # Find quoted dialogue that is explicitly attributed to the required
+    # speaker. This avoids pretending that narrator description is dialogue.
+    quoted_by_speaker = re.findall(
+        rf"\\b{re.escape(speaker)}\\s+"
+        r"(?:said|asked|replied|answered|admitted|murmured|whispered|"
+        r"continued|remarked|added|explained|blurted|exclaimed)"
+        r"[^“”\\"]{0,40}[“\\"]([^”\\"]+)[”\\"]",
+        str(draft or ""),
+        re.IGNORECASE,
+    )
+
+    if not quoted_by_speaker:
+        return (
+            f"Required accidental reveal is missing: {speaker} must actually "
+            f"say something in dialogue that reveals feelings for {target} "
+            f"to the scene partner. Narration, glances, thoughts, or blushing "
+            f"do not satisfy this requirement."
+        )
+
+    target_lower = target.lower()
+    relationship_refs = ("your dad", "your father", "your parents' dad")
+    attraction_terms = (
+        "like", "liked", "likes", "love", "loved", "loves",
+        "crush", "attracted", "handsome", "cute", "pretty",
+        "feel about", "feel for", "into him", "into your dad",
+    )
+
+    for quote in quoted_by_speaker:
+        q = quote.lower()
+
+        if target_lower in q or any(ref in q for ref in relationship_refs):
+            if any(term in q for term in attraction_terms):
+                return False
+
+    return (
+        f"Required accidental reveal is still too indirect: {speaker}'s "
+        f"dialogue must itself reveal feelings for {target} (or an unmistakable "
+        f"relationship reference), rather than relying on narration or body language."
+    )
+
+
 def scene_requires_revision(user_request, draft, review):
     """Apply only a few deterministic safety rails.
 
-    Semantic scene requirements are reviewed by the local reviewer. This
-    function should not try to infer prose quality or emotional beats with
-    brittle keyword lists.
+    Semantic scene requirements are reviewed by the local reviewer. One
+    narrowly scoped deterministic check also protects explicit accidental-
+    spoken-reveal requests because those are easy for a small model to
+    silently replace with vague narration.
     """
+    required_spoken_failure = _required_spoken_reveal_failure(
+        user_request,
+        draft
+    )
+
+    if required_spoken_failure:
+        return required_spoken_failure
+
     # Requested word counts guide generation, but they are not a hard
     # rejection criterion. A model can produce a complete scene a little
     # shorter or longer than the requested range, and the prose should not
