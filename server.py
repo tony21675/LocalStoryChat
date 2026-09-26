@@ -2182,6 +2182,73 @@ class LlamaSession:
             errors="replace"
         )
 
+    def _drain_pending_output(self, quiet_window=0.25):
+        if self.child is None or self.child.stdout is None:
+            return
+
+        import select
+
+        deadline = time.time() + quiet_window
+
+        while time.time() < deadline:
+            timeout = min(
+                0.05,
+                max(0.01, deadline - time.time())
+            )
+
+            ready, _, _ = select.select(
+                [self.child.stdout], [], [], timeout
+            )
+
+            if not ready:
+                break
+
+            chunk = os.read(self.child.stdout.fileno(), 8192)
+
+            if not chunk:
+                break
+
+    def _wait_for_prompt(self, timeout, initial=False):
+        deadline = time.time() + timeout
+        text = self.buffer
+
+        while time.time() < deadline:
+            if initial:
+                prompt_index = text.find("> ")
+            else:
+                prompt_index = text.rfind("\n> ")
+                if prompt_index < 0 and text.startswith("> "):
+                    prompt_index = 0
+
+            if prompt_index >= 0:
+                before = text[:prompt_index]
+                after = text[
+                    prompt_index + (2 if prompt_index == 0 else 3):
+                ]
+                self.buffer = after
+                return before
+
+            chunk = self._read_more(
+                min(1.0, max(0.05, deadline - time.time()))
+            )
+
+            if chunk:
+                text += chunk
+                continue
+
+            if self.child and self.child.poll() is not None:
+                tail = text[-1600:]
+                raise RuntimeError(
+                    "llama-cli exited unexpectedly "
+                    f"(code {self.child.returncode}). "
+                    f"Backend output:\n{tail}"
+                )
+
+        raise TimeoutError(
+            "Timed out waiting for llama-cli prompt. "
+            f"Recent backend output:\n{text[-1600:]}"
+        )
+
     @staticmethod
     def clean_output(text):
         raw = (text or "").replace("\r", "")
