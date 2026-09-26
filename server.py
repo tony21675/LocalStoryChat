@@ -3159,6 +3159,21 @@ class Handler(BaseHTTPRequestHandler):
                             f"Write at least {requested_min} words and stay within the requested range when practical."
                         )
 
+                    # Always pass the actual deterministic failure back to the
+                    # writer. The local-model reviewer can approve a draft while
+                    # our hard scene validator still finds a missing required beat
+                    # or boundary violation.
+                    revision_lines.append(
+                        f"REQUIRED FIX: {needs_revision}"
+                    )
+                    revision_lines.append(
+                        "Make the smallest necessary changes to satisfy the required fix."
+                    )
+                    revision_lines.append(
+                        "Keep the same scene boundaries, character list, continuity, "
+                        "and all story beats that already work."
+                    )
+
                     if violations:
                         revision_lines.append(
                             "FIX THESE SPECIFIC REVIEW PROBLEMS IN THE REPLACEMENT:"
@@ -3187,9 +3202,10 @@ class Handler(BaseHTTPRequestHandler):
                             if detail.strip() != "-":
                                 revision_lines.append(detail)
 
-                        revision_lines.append(
-                            "Do not replace one unsupported named person with another. Keep the same scene boundaries and required beats."
-                        )
+                    revision_lines.append(
+                        "Do not replace one unsupported named person with another. "
+                        "Keep the same scene boundaries and required beats."
+                    )
 
                     revision_request = (
                         text
