@@ -3232,6 +3232,20 @@ class Handler(BaseHTTPRequestHandler):
                     revision_lines.append(
                         "Make the smallest necessary changes to satisfy the required fix."
                     )
+
+                    if "Required accidental reveal" in str(needs_revision):
+                        revision_lines.extend([
+                            "REVISE THE ACTUAL SCENE, NOT THE INSTRUCTIONS.",
+                            "Add a short natural exchange between the relevant characters "
+                            "where the required character accidentally says something that "
+                            "clearly reveals the requested feeling toward the requested person.",
+                            "The revealing sentence must be spoken by that character. "
+                            "Immediately afterward, let the character realize the slip and "
+                            "cover it naturally. Let the other character hear it and react.",
+                            "Do not substitute another glance, blush, internal thought, "
+                            "or narrator explanation for the spoken reveal.",
+                        ])
+
                     revision_lines.append(
                         "Keep the same scene boundaries, character list, continuity, "
                         "and all story beats that already work."
