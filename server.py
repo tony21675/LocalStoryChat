@@ -893,9 +893,9 @@ def story_word_count(text):
 def _required_spoken_reveal_failure(user_request, draft):
     """Detect a narrowly defined required spoken-reveal task.
 
-    This is intentionally limited to requests that explicitly ask for a
-    character to accidentally reveal feelings for a named person. It does not
-    attempt to judge general prose quality or ordinary emotional beats.
+    This check is deliberately small. It only protects an explicitly requested
+    accidental spoken reveal and uses known story-character names so pronouns
+    such as "she" or "he" can never become the supposed speaker name.
     """
     request = str(user_request or "")
     lowered = request.lower()
@@ -914,20 +914,43 @@ def _required_spoken_reveal_failure(user_request, draft):
     ):
         return False
 
-    speaker_match = re.search(
-        r"\b([A-Z][A-Za-z]+)\b[^.]{0,180}?"
-        r"(?:accidentally reveals|reveal(?:s|ed)?)[^.]{0,180}?"
-        r"(?:say|says|said|speaks|spoken dialogue)",
-        request,
-        re.IGNORECASE,
-    )
+    # Collect actual character names from the loaded story files.
+    known_names = []
+    for name, content in session.files:
+        try:
+            data = json.loads(content)
+        except Exception:
+            continue
 
-    if speaker_match:
-        speaker = speaker_match.group(1)
-    else:
-        prefix = request[:lowered.find("accidentally reveals")]
-        names = re.findall(r"\b[A-Z][A-Za-z]+\b", prefix)
-        speaker = names[-1] if names else None
+        if isinstance(data, dict):
+            value = data.get("name")
+            if isinstance(value, str) and value.strip():
+                known_names.append(value.strip())
+
+    # Prefer the known character name immediately before "accidentally reveals".
+    reveal_index = lowered.find("accidentally reveals")
+    before_reveal = request[:reveal_index]
+
+    speaker = None
+    named_before = [
+        name for name in known_names
+        if re.search(rf"\b{re.escape(name)}\b", before_reveal, re.IGNORECASE)
+    ]
+
+    if named_before:
+        speaker = max(
+            named_before,
+            key=lambda name: before_reveal.lower().rfind(name.lower())
+        )
+
+    if not speaker:
+        direct_match = re.search(
+            r"\b([A-Z][A-Za-z]+)\s+accidentally\s+reveals\b",
+            request,
+            re.IGNORECASE,
+        )
+        if direct_match and direct_match.group(1) in known_names:
+            speaker = direct_match.group(1)
 
     target_match = re.search(
         r"feelings\s+(?:for|toward)\s+([A-Z][A-Za-z]+)",
@@ -942,28 +965,38 @@ def _required_spoken_reveal_failure(user_request, draft):
 
     draft_text = str(draft or "")
 
-    # Support the two common dialogue-tag forms:
-    #   Maya said, "..."
-    #   "..." Maya said.
+    # Support normal dialogue-tag forms. The reveal can be in a quoted line
+    # even when the action immediately after the quote is not the tag.
     speaker_pattern = re.escape(speaker)
     tag_words = (
         r"(?:said|asked|replied|answered|admitted|murmured|whispered|"
-        r"continued|remarked|added|explained|blurted|exclaimed)"
+        r"continued|remarked|added|explained|blurted|exclaimed|"
+        r"laughed|joked|teased|started)"
     )
 
-    quoted_by_speaker = re.findall(
+    dialogue_quotes = []
+
+    dialogue_quotes += re.findall(
         rf'\b{speaker_pattern}\s+{tag_words}\s*,?\s*["“]([^"”]+)["”]',
         draft_text,
         re.IGNORECASE,
     )
 
-    quoted_by_speaker += re.findall(
+    dialogue_quotes += re.findall(
         rf'["“]([^"”]+)["”]\s*,?\s*{speaker_pattern}\s+{tag_words}',
         draft_text,
         re.IGNORECASE,
     )
 
-    if not quoted_by_speaker:
+    # Also accept a clearly attributed dialogue paragraph such as:
+    # Maya: "..."
+    dialogue_quotes += re.findall(
+        rf'\b{speaker_pattern}\s*:\s*["“]([^"”]+)["”]',
+        draft_text,
+        re.IGNORECASE,
+    )
+
+    if not dialogue_quotes:
         return (
             f"Required accidental reveal is missing: {speaker} must actually "
             f"say something in dialogue that reveals feelings for {target} "
@@ -979,7 +1012,7 @@ def _required_spoken_reveal_failure(user_request, draft):
         "feel about", "feel for", "into him", "into your dad",
     )
 
-    for quote in quoted_by_speaker:
+    for quote in dialogue_quotes:
         q = quote.lower()
 
         if target_lower in q or any(ref in q for ref in relationship_refs):
