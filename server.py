@@ -1173,8 +1173,9 @@ def build_scene_prompt(data):
     """Build the specific scene request for the writer.
 
     Permanent canon and writing behavior live in SYSTEM_PROMPT. This request
-    contains only the scene the user wants written, with the required beat
-    stated in a form that is easy for a local model to follow.
+    contains the specific scene the user wants, with a compact progression
+    guide that helps a local model finish the scene instead of stopping during
+    the setup.
     """
     def clean(value, default=""):
         value = str(value or "").strip()
@@ -1197,7 +1198,7 @@ def build_scene_prompt(data):
         f"Begin Chapter {chapter}, Scene {scene}.",
         "",
         f"Write approximately {length} words.",
-        "Develop the scene fully before ending. Do not stop after only a few exchanges.",
+        "Develop the scene fully before ending. Do not stop during the initial setup.",
         "",
         "SCENE GOAL:",
         goal,
@@ -1214,14 +1215,15 @@ def build_scene_prompt(data):
         lines += [
             "",
             "REQUIRED SCENE BEAT:",
-            "This is a scene event that must actually happen before you end the scene.",
+            "This event is the center of the scene and must occur before the scene can end.",
             required,
             "",
-            "HOW TO EXECUTE THE REQUIRED BEAT:",
-            "Show the event happening through the characters' actual words, actions, and reactions.",
-            "When the requirement involves something a character says, write the actual spoken line that reveals it.",
-            "Do not replace a required spoken event with narration about what the character feels, thinks, means, or almost says.",
-            "Complete the full beat, including the immediate reaction or consequence described in the requirement.",
+            "HOW TO EXECUTE IT:",
+            "Guide the conversation naturally toward the required event instead of wandering into unrelated topics.",
+            "Show the event through actual dialogue, action, and reaction.",
+            "If the requirement says a character says something, the reader must hear the character actually say it.",
+            "If the requirement concerns romantic attraction, make the spoken meaning unmistakably about attraction or romantic feelings. Do not substitute friendship, concern, curiosity, admiration, or worry.",
+            "After the required event happens, continue long enough to show the immediate reaction and let the scene settle naturally.",
         ]
 
     if avoid:
@@ -1248,13 +1250,21 @@ def build_scene_prompt(data):
 
     lines += [
         "",
+        "SCENE PROGRESSION:",
+        "Shape the scene as a complete sequence rather than a fragment:",
+        "1. Establish the characters in the immediate situation.",
+        "2. Let their conversation and interaction develop naturally.",
+        "3. Reach and complete the REQUIRED SCENE BEAT.",
+        "4. Let the characters react to what just happened and continue briefly toward the requested ending point.",
+        "5. End only when the requested moment is complete and the protected boundary still holds.",
+        "",
         "FINAL WRITING INSTRUCTION:",
         "Write the scene now.",
         "Keep the requested characters at the center of the scene.",
         "Use natural conversation, action, reactions, pacing, and ordinary details.",
         "Routine chit-chat is temporary scene material and does not need to become permanent canon.",
         "Do not invent major plot facts or advance a protected scene boundary.",
-        "Do not end the scene until the requested scene goal and required beat have been completed.",
+        "Do not end the scene before the REQUIRED SCENE BEAT has happened and its immediate reaction has been shown.",
         "Output only the story prose.",
     ]
 
@@ -2072,7 +2082,7 @@ class LlamaSession:
                 "--reasoning", "off",
                 "--repeat-last-n", "256",
                 "--repeat-penalty", "1.08",
-                "--n-predict", "1200",
+                "--n-predict", "1800",
                 "--system-prompt", full_prompt,
                 "--color", "off",
                 "--no-display-prompt",
