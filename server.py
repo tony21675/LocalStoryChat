@@ -223,6 +223,617 @@ SCENE:
 Output only the story prose.'''
 
 
+STATE_REQUIRED_KEYS = {
+    "status",
+    "chapter",
+    "scene",
+    "scene_completed",
+    "location",
+    "time",
+    "current_situation",
+    "character_knowledge",
+    "completed_events",
+    "active_clues",
+    "new_clues",
+    "unresolved_questions",
+    "active_objectives",
+    "continuity_requirements",
+}
+
+STATE_SYSTEM_PROMPT = r"""You are the continuity manager for an ongoing fictional story.
+
+Your job is to identify ONLY the changes caused by a completed story section.
+
+Return ONLY one valid JSON object using exactly this structure:
+
+{
+  "patch": {},
+  "evidence": []
+}
+
+The "patch" must contain ONLY fields whose values are actually different from CURRENT STATE BEFORE THIS SECTION.
+The "evidence" array must prove every substantive new or changed claim in the patch.
+
+ALLOWED TOP-LEVEL PATCH FIELDS:
+- status
+- chapter
+- scene
+- scene_completed
+- location
+- time
+- current_situation
+- character_knowledge
+- completed_events
+- active_clues
+- new_clues
+- unresolved_questions
+- active_objectives
+- continuity_requirements
+
+Never create any other top-level field. In particular, do NOT use fields such as "conversation_topics", "current_activity", "summary", "notes", "recent_events", or any other field not listed above.
+
+CRITICAL COMPACTNESS RULES:
+- Do NOT copy unchanged fields from current_state.json into patch.
+- Do NOT repeat existing array items.
+- Do NOT rewrite existing arrays merely because they already exist.
+- If a field has no new information, leave it out of patch.
+- If nothing changed, the patch MUST be {}.
+- The normal response should be a small JSON object, not a copy of current_state.json.
+- Never infer chapter or scene numbers from prose. When a manuscript section filename is supplied, the application provides the authoritative chapter and scene bookkeeping numbers separately.
+
+IMPORTANT:
+- Include only top-level fields that changed in "patch".
+- Do not repeat unchanged fields.
+- For changed nested objects, include only changed nested keys.
+- For arrays, return ONLY NEW items introduced by the completed story section. Do not copy existing array items. The application will append new items to the existing array.
+- Record only events that actually happened in the supplied story section.
+- Never invent future events.
+- Never turn an unknown fact into a known fact.
+- Keep character knowledge limited to what the character could actually know.
+- Do not reveal hidden canon.
+- Do not invent clues, locations, motives, identities, evidence, relationships, or backstory.
+- If nothing changed, return {"patch": {}, "evidence": []}.
+
+Evidence rules:
+- Every substantive new or changed claim in "patch" must have a matching entry in "evidence".
+- Every evidence "quote" must be one contiguous excerpt copied verbatim from the completed story section. Never stitch together separate parts of the section.
+- Never use ellipses ("..."), brackets, summaries, paraphrases, or text from CURRENT STATE BEFORE THIS SECTION as part of a quote.
+- The quote must directly support the claim and should be short enough to copy exactly.
+- If there is no direct contiguous quote supporting a claim, do not put the claim in the patch.
+- Existing state facts are not changes just because the completed section mentions or implies them again.
+- Each evidence entry must use this structure:
+  {
+    "field": "field.path",
+    "claim": "the exact value or array item being added or changed",
+    "quote": "an EXACT QUOTE copied from the completed story section"
+  }
+- "quote" must be copied exactly from the completed story section. Do not paraphrase it.
+- The application will check that every quote actually appears in the completed story section.
+- For array fields, provide evidence for every newly added item.
+- For changed string or nested values, provide evidence for the changed value.
+- Controlled bookkeeping fields such as chapter, scene, scene_completed, and status do not require quotation evidence.
+- Do not use evidence to justify information that is merely inferred or possible.
+- Do not use evidence to turn temporary scene behavior into permanent character knowledge or continuity rules.
+- Ordinary conversation is normally SCENE-ONLY and disposable. Characters may casually invent or mention everyday plans, family chatter, school chatter, opinions, jokes, errands, weekend plans, meals, chores, minor anecdotes, and similar human conversation without those details becoming story canon.
+- Do NOT add a casual conversational detail to current_state.json merely because it sounds concrete or plausible.
+- A conversational detail becomes state-worthy only when it has a meaningful continuity consequence, such as creating a lasting objective, changing a relationship, revealing a consequential fact, establishing an important plan, creating a clue, changing a character's knowledge, or materially affecting a later scene.
+- Do not turn a one-off mention of a parent, sibling, friend, teacher, assignment, dinner, chore, hobby, route, possession, or weekend plan into permanent canon unless the story clearly makes that detail important enough to remember later.
+- current_situation should describe the meaningful ending state of the section, not every topic discussed during the section.
+- character_knowledge should contain meaningful new knowledge that can matter after the immediate scene, not moment-to-moment observations or casual remarks that have no continuity consequence.
+- completed_events should contain meaningful completed story events, not ordinary dialogue topics or incidental actions.
+- active_clues and unresolved_questions should contain only story-relevant clues and questions that matter to the unfolding plot, never ordinary curiosity or casual conversation.
+- continuity_requirements should contain only persistent facts or constraints that later scenes must preserve, never one-time gestures, remarks, feelings, or disposable conversation.
+- If the story section does not explicitly support a proposed change, do not include that change.
+- Do not output markdown, explanations, notes, analysis, or code fences.
+"""
+
+pending_state = None
+STORY_SAVE_LOCK = threading.Lock()
+
+
+def next_story_section_path(chapter, scene):
+    chapter_dir = MANUSCRIPT_DIR / "Chapters" / f"Chapter_{chapter:02d}"
+    candidate_scene = scene
+    while True:
+        filename = f"Chapter_{chapter:02d}_Section_{candidate_scene:02d}.txt"
+        path_out = chapter_dir / filename
+        if not path_out.exists():
+            return candidate_scene, filename, path_out
+        candidate_scene += 1
+
+
+def read_current_state():
+    if not STATE_PATH.exists():
+        raise FileNotFoundError(
+            f"current_state.json not found: {STATE_PATH}"
+        )
+
+    return json.loads(
+        STATE_PATH.read_text(encoding="utf-8")
+    )
+
+
+def validate_state(data):
+    if not isinstance(data, dict):
+        raise ValueError(
+            "State must be a JSON object."
+        )
+
+    missing = sorted(
+        STATE_REQUIRED_KEYS - set(data.keys())
+    )
+
+    if missing:
+        raise ValueError(
+            "State is missing required keys: "
+            + ", ".join(missing)
+        )
+
+    if not isinstance(data.get("chapter"), int):
+        raise ValueError(
+            "State field 'chapter' must be an integer."
+        )
+
+    if not isinstance(data.get("scene"), int):
+        raise ValueError(
+            "State field 'scene' must be an integer."
+        )
+
+    if not isinstance(data.get("scene_completed"), bool):
+        raise ValueError(
+            "State field 'scene_completed' must be true or false."
+        )
+
+    if not isinstance(
+        data.get("character_knowledge"),
+        dict
+    ):
+        raise ValueError(
+            "State field 'character_knowledge' must be an object."
+        )
+
+    if not isinstance(
+        data.get("current_situation"),
+        str
+    ):
+        raise ValueError(
+            "State field 'current_situation' must be a string."
+        )
+
+    return data
+
+
+def merge_state(base, patch):
+    if not isinstance(base, dict):
+        raise ValueError(
+            "Base state must be a JSON object."
+        )
+
+    if not isinstance(patch, dict):
+        raise ValueError(
+            "State update must be a JSON object."
+        )
+
+    result = dict(base)
+
+    for key, value in patch.items():
+        existing = result.get(key)
+
+        if (
+            isinstance(value, dict)
+            and isinstance(existing, dict)
+        ):
+            result[key] = merge_state(
+                existing,
+                value
+            )
+
+        elif (
+            isinstance(value, list)
+            and isinstance(existing, list)
+        ):
+            merged = list(existing)
+
+            for item in value:
+                if item not in merged:
+                    merged.append(item)
+
+            result[key] = merged
+
+        else:
+            result[key] = value
+
+    return result
+
+
+_STATE_METADATA_FIELDS = {
+    "chapter",
+    "scene",
+    "scene_completed",
+    "status",
+}
+
+
+def _normalize_evidence_text(value):
+    return re.sub(
+        r"\s+",
+        " ",
+        str(value or "")
+    ).strip()
+
+
+def _claim_key(value):
+    if isinstance(value, str):
+        return value
+
+    return json.dumps(
+        value,
+        sort_keys=True,
+        ensure_ascii=False
+    )
+
+
+def _iter_changed_claims(base, patch, path=""):
+    if isinstance(patch, dict):
+        base_dict = base if isinstance(base, dict) else {}
+
+        for key, value in patch.items():
+            child_path = (
+                f"{path}.{key}"
+                if path
+                else key
+            )
+
+            yield from _iter_changed_claims(
+                base_dict.get(key),
+                value,
+                child_path
+            )
+
+        return
+
+    if isinstance(patch, list):
+        base_list = base if isinstance(base, list) else []
+
+        for item in patch:
+            if item not in base_list:
+                yield path, item
+
+        return
+
+    if patch != base:
+        yield path, patch
+
+
+def _filter_patch_to_supported_evidence(base, patch, story_text, evidence):
+    """Keep only substantive patch claims supported by exact story quotes.
+
+    The state manager is a local language model and may occasionally emit an
+    imprecise or stitched evidence quote. A single bad quote should not discard
+    an otherwise useful state update. Unsupported claims are removed from the
+    proposed patch; authoritative bookkeeping fields remain eligible.
+    """
+    normalized_story = _normalize_evidence_text(story_text)
+
+    valid_evidence = set()
+
+    if isinstance(evidence, list):
+        for entry in evidence:
+            if not isinstance(entry, dict):
+                continue
+
+            field = entry.get("field")
+            claim = entry.get("claim")
+            quote = entry.get("quote")
+
+            if not isinstance(field, str) or not field.strip():
+                continue
+
+            if "claim" not in entry:
+                continue
+
+            if not isinstance(quote, str) or not quote.strip():
+                continue
+
+            normalized_quote = _normalize_evidence_text(quote)
+
+            if normalized_quote not in normalized_story:
+                continue
+
+            valid_evidence.add(
+                (
+                    field.strip(),
+                    _claim_key(claim)
+                )
+            )
+
+    def keep_value(base_value, value, path):
+        top_level = path.split(".", 1)[0]
+
+        if top_level in _STATE_METADATA_FIELDS:
+            return True, value
+
+        if isinstance(value, dict):
+            kept = {}
+
+            for key, child in value.items():
+                child_path = (
+                    f"{path}.{key}"
+                    if path
+                    else key
+                )
+
+                child_base = (
+                    base_value.get(key)
+                    if isinstance(base_value, dict)
+                    else None
+                )
+
+                keep, child_value = keep_value(
+                    child_base,
+                    child,
+                    child_path
+                )
+
+                if keep:
+                    kept[key] = child_value
+
+            return bool(kept), kept
+
+        if isinstance(value, list):
+            base_list = (
+                base_value
+                if isinstance(base_value, list)
+                else []
+            )
+
+            kept = []
+
+            for item in value:
+                item_key = (
+                    path,
+                    _claim_key(item)
+                )
+
+                if item in base_list or item_key in valid_evidence:
+                    kept.append(item)
+
+            return bool(kept), kept
+
+        if value == base_value:
+            return False, None
+
+        return (
+            (path, _claim_key(value)) in valid_evidence,
+            value
+        )
+
+    filtered = {}
+
+    for key, value in patch.items():
+        base_value = base.get(key)
+
+        if key in _STATE_METADATA_FIELDS:
+            filtered[key] = value
+            continue
+
+        keep, filtered_value = keep_value(
+            base_value,
+            value,
+            key
+        )
+
+        if keep:
+            filtered[key] = filtered_value
+
+    return filtered
+
+
+def validate_state_patch(base, patch, story_text, evidence):
+    if not isinstance(base, dict):
+        raise ValueError(
+            "State patch validation requires an object as the base state."
+        )
+
+    if not isinstance(patch, dict):
+        raise ValueError(
+            "State patch must be a JSON object."
+        )
+
+    if not isinstance(evidence, list):
+        raise ValueError(
+            "State proposal rejected. 'evidence' must be an array."
+        )
+
+    unknown_top_level = sorted(
+        set(patch.keys()) - STATE_REQUIRED_KEYS
+    )
+
+    if unknown_top_level:
+        raise ValueError(
+            "State proposal rejected. Unknown top-level fields: "
+            + ", ".join(unknown_top_level)
+        )
+
+    for key, value in patch.items():
+        if (
+            isinstance(value, dict)
+            and isinstance(base.get(key), dict)
+        ):
+            new_nested_keys = sorted(
+                set(value.keys()) - set(base[key].keys())
+            )
+
+            if new_nested_keys:
+                raise ValueError(
+                    f"State proposal rejected. Field '{key}' "
+                    "contains new nested keys: "
+                    + ", ".join(new_nested_keys)
+                )
+
+    normalized_story = _normalize_evidence_text(
+        story_text
+    )
+
+    changed_claims = {
+        (field, _claim_key(claim))
+        for field, claim in _iter_changed_claims(base, patch)
+        if field.split(".", 1)[0] not in _STATE_METADATA_FIELDS
+    }
+
+    evidence_keys = set()
+
+    for entry in evidence:
+        # The model may occasionally emit malformed or incomplete evidence
+        # records for unchanged facts. Ignore those records; substantive
+        # changed claims still require at least one valid evidence match.
+        if not isinstance(entry, dict):
+            continue
+
+        field = entry.get("field")
+        claim = entry.get("claim")
+        quote = entry.get("quote")
+
+        if not isinstance(field, str) or not field.strip():
+            continue
+
+        if "claim" not in entry:
+            continue
+
+        if not isinstance(quote, str) or not quote.strip():
+            continue
+
+        key = (
+            field.strip(),
+            _claim_key(claim)
+        )
+
+        # The state model may echo evidence for unchanged facts from the
+        # baseline. Those are not state changes and should not block an
+        # otherwise valid proposal. Only evidence attached to a genuinely
+        # changed claim is validated.
+        if key not in changed_claims:
+            continue
+
+        normalized_quote = _normalize_evidence_text(
+            quote
+        )
+
+        if normalized_quote not in normalized_story:
+            raise ValueError(
+                "State proposal rejected. Evidence quote was not found "
+                "in the completed story section: "
+                f"{quote!r}"
+            )
+
+        evidence_keys.add(key)
+
+    for key in changed_claims:
+        field = key[0]
+        claim = next(
+            claim
+            for changed_field, changed_claim in _iter_changed_claims(base, patch)
+            if changed_field == field
+            and _claim_key(changed_claim) == key[1]
+        )
+
+        if key not in evidence_keys:
+            raise ValueError(
+                "State proposal rejected. Missing exact evidence for "
+                f"changed field '{field}': {claim!r}"
+            )
+
+
+def extract_json_object(text):
+    decoder = json.JSONDecoder()
+    text = text or ""
+
+    # llama-cli can echo part of the prompt before the actual response.
+    # Search every JSON object and keep the last object with the exact state
+    # proposal keys. Do not require the whole stdout stream to be JSON.
+    candidates = []
+
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
+
+        try:
+            obj, _ = decoder.raw_decode(
+                text[index:]
+            )
+        except json.JSONDecodeError:
+            continue
+
+        if isinstance(obj, dict):
+            candidates.append(obj)
+
+    for obj in reversed(candidates):
+        if (
+            "patch" in obj
+            and "evidence" in obj
+            and isinstance(obj.get("patch"), dict)
+            and isinstance(obj.get("evidence"), list)
+        ):
+            return obj
+
+    # Fallback for model output that contains valid JSON after echoed prompt
+    # text but has characters before/after it that prevent normal candidate
+    # discovery. Start at the final state-object marker and decode from there.
+    marker = text.rfind('{"patch"')
+    if marker >= 0:
+        try:
+            obj, _ = decoder.raw_decode(
+                text[marker:]
+            )
+
+            if (
+                isinstance(obj, dict)
+                and "patch" in obj
+                and "evidence" in obj
+                and isinstance(obj.get("patch"), dict)
+                and isinstance(obj.get("evidence"), list)
+            ):
+                return obj
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(
+        "The state manager did not return a valid proposal with "
+        "'patch' and 'evidence'."
+    )
+
+
+def extract_json_with_keys(text, required_keys):
+    decoder = json.JSONDecoder()
+    text = text or ""
+
+    candidates = []
+
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
+
+        try:
+            obj, _ = decoder.raw_decode(
+                text[index:]
+            )
+        except json.JSONDecodeError:
+            continue
+
+        if isinstance(obj, dict):
+            candidates.append(obj)
+
+    required_keys = set(required_keys)
+
+    for obj in reversed(candidates):
+        if required_keys.issubset(obj.keys()):
+            return obj
+
+    raise ValueError(
+        "The model did not return the required JSON structure."
+    )
+
+
 def generate_state_proposal(story_text, section_filename=None):
     global pending_state
 
