@@ -915,7 +915,7 @@ def _required_spoken_reveal_failure(user_request, draft):
         return False
 
     speaker_match = re.search(
-        r"\\b([A-Z][A-Za-z]+)\\b[^.]{0,180}?"
+        r"\b([A-Z][A-Za-z]+)\b[^.]{0,180}?"
         r"(?:accidentally reveals|reveal(?:s|ed)?)[^.]{0,180}?"
         r"(?:say|says|said|speaks|spoken dialogue)",
         request,
@@ -925,15 +925,12 @@ def _required_spoken_reveal_failure(user_request, draft):
     if speaker_match:
         speaker = speaker_match.group(1)
     else:
-        # Common scene-request phrasing puts the character at the start of the
-        # requirement. Fall back to the first capitalized name before the
-        # accidental-reveal wording.
         prefix = request[:lowered.find("accidentally reveals")]
-        names = re.findall(r"\\b[A-Z][A-Za-z]+\\b", prefix)
+        names = re.findall(r"\b[A-Z][A-Za-z]+\b", prefix)
         speaker = names[-1] if names else None
 
     target_match = re.search(
-        r"feelings\\s+(?:for|toward)\\s+([A-Z][A-Za-z]+)",
+        r"feelings\s+(?:for|toward)\s+([A-Z][A-Za-z]+)",
         request,
         re.IGNORECASE,
     )
@@ -943,14 +940,26 @@ def _required_spoken_reveal_failure(user_request, draft):
     if not speaker or not target:
         return False
 
-    # Find quoted dialogue that is explicitly attributed to the required
-    # speaker. This avoids pretending that narrator description is dialogue.
-    quoted_by_speaker = re.findall(
-        rf"\\b{re.escape(speaker)}\\s+"
+    draft_text = str(draft or "")
+
+    # Support the two common dialogue-tag forms:
+    #   Maya said, "..."
+    #   "..." Maya said.
+    speaker_pattern = re.escape(speaker)
+    tag_words = (
         r"(?:said|asked|replied|answered|admitted|murmured|whispered|"
         r"continued|remarked|added|explained|blurted|exclaimed)"
-        r"[^“”\\"]{0,40}[“\\"]([^”\\"]+)[”\\"]",
-        str(draft or ""),
+    )
+
+    quoted_by_speaker = re.findall(
+        rf'\b{speaker_pattern}\s+{tag_words}\s*,?\s*["“]([^"”]+)["”]',
+        draft_text,
+        re.IGNORECASE,
+    )
+
+    quoted_by_speaker += re.findall(
+        rf'["“]([^"”]+)["”]\s*,?\s*{speaker_pattern}\s+{tag_words}',
+        draft_text,
         re.IGNORECASE,
     )
 
@@ -963,7 +972,7 @@ def _required_spoken_reveal_failure(user_request, draft):
         )
 
     target_lower = target.lower()
-    relationship_refs = ("your dad", "your father", "your parents' dad")
+    relationship_refs = ("your dad", "your father")
     attraction_terms = (
         "like", "liked", "likes", "love", "loved", "loves",
         "crush", "attracted", "handsome", "cute", "pretty",
@@ -982,7 +991,6 @@ def _required_spoken_reveal_failure(user_request, draft):
         f"dialogue must itself reveal feelings for {target} (or an unmistakable "
         f"relationship reference), rather than relying on narration or body language."
     )
-
 
 def scene_requires_revision(user_request, draft, review):
     """Apply only a few deterministic safety rails.
