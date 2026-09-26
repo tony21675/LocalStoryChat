@@ -6,8 +6,8 @@
   "location": {
     "primary": "Tony and Tiffany's home",
     "Tony": "At home, asleep and taking a nap.",
-    "Tiffany": "Walking home from school with Maya and has not reached home yet.",
-    "Maya": "Walking home from school with Tiffany and has not reached Tony and Tiffany's house yet."
+    "Tiffany": "Walking home from school with Maya and has passed the corner where the sidewalk curved sharply before straightening again toward the main street.",
+    "Maya": "Walking home from school with Tiffany and has passed the corner where the sidewalk curved sharply before straightening again toward the main street."
   },
   "time": {
     "period": "late afternoon",
@@ -31,7 +31,9 @@
       "Knows Tiffany is safe at the start of the story."
     ]
   },
-  "completed_events": [],
+  "completed_events": [
+    "Tiffany and Maya walked side-by-side while discussing school topics and personal observations."
+  ],
   "active_clues": [],
   "new_clues": [],
   "unresolved_questions": [],
