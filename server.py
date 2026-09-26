@@ -2245,18 +2245,9 @@ class LlamaSession:
             self.started_at = time.time()
             self.buffer = ""
 
-    def ask(self, text):
-        with self.lock:
-            if self.model_path is None:
-                raise RuntimeError(
-                    "No model is loaded. Use Load Model first."
-                )
-
-            started = time.time()
-
             full_prompt = self._build_prompt(
-                self.system_prompt or SYSTEM_PROMPT,
-                self.files
+                system_prompt,
+                files
             )
 
             env = os.environ.copy()
@@ -2281,100 +2272,96 @@ class LlamaSession:
                 "--reasoning", "off",
                 "--repeat-last-n", "256",
                 "--repeat-penalty", "1.08",
-                "--n-predict", "1000",
+                "--n-predict", "1200",
                 "--system-prompt", full_prompt,
-                "--prompt", "USER REQUEST:\n" + text,
                 "--color", "off",
                 "--no-display-prompt",
                 "--simple-io",
-                "--single-turn",
             ]
 
             proc = subprocess.Popen(
                 args,
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 env=env,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
+                bufsize=0,
             )
 
             self.child = proc
-            self.started_at = started
 
             try:
-                output, _ = proc.communicate(
-                    timeout=900
+                self._wait_for_prompt(
+                    180,
+                    initial=True
                 )
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                output, _ = proc.communicate()
 
-                raise TimeoutError(
-                    "Story generation timed out. "
-                    "The model did not finish within 15 minutes."
-                )
-            finally:
-                self.child = None
                 self.buffer = ""
+                self._drain_pending_output()
 
-            raw_output = output
+            except Exception:
+                tail = self.buffer[-1600:]
+                self._stop_unlocked()
 
-            # llama-cli may echo the supplied prompt even when
-            # --no-display-prompt is used. The echo is not manuscript content.
-            # Strip it using the structural markers that bound our scene
-            # packet/continuity context, then fall back to the request text.
-            marker_candidates = [
-                "[END PREVIOUS SAVED STORY SECTION]",
-                "[END SCENE PACKET]",
-            ]
-
-            for marker in marker_candidates:
-                if marker in raw_output:
-                    raw_output = raw_output.rsplit(marker, 1)[1]
-                    break
-            else:
-                prompt_prefixes = [
-                    full_prompt + "\nUSER REQUEST:\n" + text,
-                    "USER REQUEST:\n" + text,
-                    full_prompt,
-                ]
-
-                for prefix in prompt_prefixes:
-                    if prefix in raw_output:
-                        raw_output = raw_output.rsplit(prefix, 1)[1]
-                        break
-
-            answer = self.clean_output(raw_output)
-
-            # Final transport-output backstop. A writer response beginning
-            # with the scene-builder instructions is contaminated even if the
-            # structural marker cleanup above was bypassed.
-            prompt_start_markers = (
-                "Begin Chapter ",
-                "SCENE GOAL:",
-                "CHARACTERS:",
-                "REQUIRED:",
-                "DO NOT ADVANCE YET:",
-            )
-
-            for marker in prompt_start_markers:
-                if answer.startswith(marker):
-                    request_pos = answer.find("DO NOT ADVANCE YET:")
-                    end_pos = answer.find("\n", request_pos)
-                    if request_pos >= 0 and end_pos >= 0:
-                        answer = answer[end_pos + 1:].lstrip()
-                    else:
-                        answer = ""
-                    break
-
-            if not answer:
                 raise RuntimeError(
-                    "llama-cli returned an empty or prompt-contaminated response."
+                    "llama-cli did not become ready. "
+                    f"Backend output:\n{tail}"
                 )
 
-            return answer, time.time() - started
+    def ask(self, text, clear_history=True):
+        with self.lock:
+            proc = self.child
+
+            if proc is None or proc.poll() is not None:
+                raise RuntimeError(
+                    "Session is not running. Click New Chat to start it."
+                )
+
+            started = time.time()
+
+            try:
+                if clear_history:
+                    proc.stdin.write(
+                        b"/clear\n"
+                    )
+                    proc.stdin.flush()
+
+                    self._wait_for_prompt(
+                        30,
+                        initial=False
+                    )
+
+                    self.buffer = ""
+                    self._drain_pending_output(
+                        quiet_window=0.5
+                    )
+
+                proc.stdin.write(
+                    ("USER REQUEST:\n" + text + "\n").encode("utf-8")
+                )
+                proc.stdin.flush()
+
+                raw = self._wait_for_prompt(
+                    300,
+                    initial=False
+                )
+
+                answer = self.clean_output(raw)
+
+                if not answer:
+                    raise RuntimeError(
+                        "llama-cli returned an empty response"
+                    )
+
+                return answer, time.time() - started
+
+            except BrokenPipeError as exc:
+                raise RuntimeError(
+                    "The llama-cli session closed its input pipe."
+                ) from exc
+
+            except OSError as exc:
+                raise RuntimeError(str(exc)) from exc
 
     def estimate_context(self, extra=""):
         rendered_prompt = self._build_prompt(
