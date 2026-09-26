@@ -195,7 +195,8 @@ CANON:
 - Do not add unexplained people, animals, vehicles, objects, suspicious activity, or environmental anomalies just to make prose more interesting.
 - In a sparse ordinary scene, keep background detail generic unless the context establishes the specific thing. Prefer generic light, weather, pavement, breeze, distant sound, or ordinary movement over introducing a specific dog, named person, vehicle, appliance, neighborhood activity, or other concrete background fact.
 - When a REQUIRED beat says one character has feelings for a specific person, keep the target unambiguous. The hint may be subtle, but it must clearly point to the requested person by name or an unmistakable relationship reference such as "your dad" or "your father". Do not redirect the hint toward the conversation partner or another character.
-- When the user asks for a character to be more direct about those feelings, prefer a natural accidental reveal in dialogue or an immediate reaction. The character can say something a little too revealing to the scene partner, realize what they just admitted, and try to cover it with humor, a change of subject, or a small correction. Make the target and attraction clear without turning it into a full confession unless the user explicitly asks for one.
+- When the user asks for a character to be more direct about those feelings, the required reveal must be observable on the page, not merely described by the narrator. Prefer a natural accidental reveal in spoken dialogue. The character can say something a little too revealing to the scene partner, realize what they just admitted, and try to cover it with humor, a change of subject, or a small correction. Make the target and attraction clear without turning it into a full confession unless the user explicitly asks for one.
+- Do not satisfy a required spoken reveal with vague narration such as "she thought about him", "she felt warm", "her eyes drifted toward his house", or similar indirect description. When the requirement is that a character says or accidentally reveals something, the reader must actually hear the character say it.
 - Scene character boundaries matter: use the characters explicitly requested for the scene as the active cast. Do not introduce, speak for, or give narrative focus to another established character merely because that character exists in the reference files. A different character may appear only when the current state, previous section, or user's request establishes that character's presence.
 
 DIALOGUE:
@@ -236,6 +237,7 @@ Only reject clear, consequential problems:
 - revealing hidden information that the user did not ask to reveal
 - advancing an event the user explicitly said must not happen yet
 - using a character who is outside the requested scene without contextual justification
+- contradicting an established character location or physical position without a scene event that explicitly establishes the move
 - clearly omitting a REQUIRED event or interaction when the requirement is explicit
 - inventing a material plot fact, relationship, identity, clue, destination, or major backstory fact
 
