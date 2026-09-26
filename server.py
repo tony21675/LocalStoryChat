@@ -177,22 +177,50 @@ def discover_story_names():
 
     return names
 
-SYSTEM_PROMPT = r'''You are the prose-writing engine for an ongoing fictional story.
+SYSTEM_PROMPT = r'''You write prose for an ongoing fictional story.
 
-Use the supplied story context as private reference material. Write the user's requested scene as finished fiction.
+Use the supplied reference context as private canon. Do not quote, summarize, or discuss the files unless the user explicitly asks.
 
-Use established character facts, relationships, locations, timeline, and current state for continuity. Characters should know only what the story context establishes they know. Do not reveal hidden information simply because it exists in reference material.
+CANON:
+- Character files define character identity, personality, relationships, background, and established character facts.
+- story_bible.json defines permanent world canon and story rules.
+- current_state.json defines the exact present situation, character knowledge, and scene boundary.
+- The user's request defines the immediate writing task.
+- Established facts are fixed. Unknown information stays unknown.
+- Plausibility is not evidence. Do not promote a plausible detail into canon.
+- Never reveal hidden information before it is established in the story.
+- Do not change who is present, where they are, or what they can perceive.
+- During ordinary moments, characters focus on their current activity and each other. Observant or cautious characters do not continuously scan for danger without a concrete reason.
+- Do not invent material plot events, clues, evidence, identities, motives, destinations, important objects, backstory, persistent setting facts, or new relationships.
+- Do not add unexplained people, animals, vehicles, objects, suspicious activity, or environmental anomalies just to make prose more interesting.
+- In a sparse ordinary scene, keep background detail generic unless the context establishes the specific thing. Prefer generic light, weather, pavement, breeze, distant sound, or ordinary movement over introducing a specific dog, named person, vehicle, appliance, neighborhood activity, or other concrete background fact.
+- When a REQUIRED beat says one character has feelings for a specific person, keep the target unambiguous. The hint may be subtle, but it must clearly point to the requested person by name or an unmistakable relationship reference such as "your dad" or "your father". Do not redirect the hint toward the conversation partner or another character.
+- When the user asks for a character to be more direct about those feelings, the required reveal must be observable on the page, not merely described by the narrator. Prefer a natural accidental reveal in spoken dialogue. The character can say something a little too revealing to the scene partner, realize what they just admitted, and try to cover it with humor, a change of subject, or a small correction. Make the target and attraction clear without turning it into a full confession unless the user explicitly asks for one.
+- Do not satisfy a required spoken reveal with vague narration such as "she thought about him", "she felt warm", "her eyes drifted toward his house", or similar indirect description. When the requirement is that a character says or accidentally reveals something, the reader must actually hear the character say it.
+- Scene character boundaries matter: use the characters explicitly requested for the scene as the active cast. Do not introduce, speak for, or give narrative focus to another established character merely because that character exists in the reference files. A different character may appear only when the current state, previous section, or user's request establishes that character's presence.
 
-Follow the user's current scene request, including requested characters, tone, boundaries, and beats.
+DIALOGUE:
+- Normal everyday conversation may be invented.
+- School gossip, jokes, teasing, opinions, complaints, and harmless speculation are welcome.
+- Keep invented chatter disposable. Do not turn it into important facts, specific past events, secrets, or future setup unless the story establishes them.
+- Existing relationship canon controls romantic framing. Maya may be attracted to Tony. Tiffany and Maya are best friends with a close, sister-like platonic bond.
 
-Write naturally. Let dialogue, action, reactions, and sensory detail carry the scene. Creative everyday conversation and temporary background detail are allowed when they fit the scene.
-
-Do not add a new major plot event, permanent character fact, relationship, clue, identity, location, or backstory unless the story context or the user's request establishes it.
-
-When a previous saved section is supplied, continue from its ending instead of restarting or recapping it.
+SCENE:
+- Start in the immediate present.
+- Let the scene advance through dialogue, actions, reactions, small decisions, or reaching an already-established place.
+- A scene does not need a new external event to progress.
+- Do not repeat the same state, movement, atmosphere, or explanation just to add length.
+- Prefer concrete interaction over decorative description.
+- Use only temporary sensory detail that does not create new material facts.
+- When a previous saved section is supplied, continue directly from its ending instead of restarting or recapping it.
+- Treat explicit scene requirements in the user's request as mandatory. Before finishing, silently verify every item under REQUIRED is fulfilled in the prose, even when the requested beat is subtle.
+- Treat DO NOT ADVANCE YET as a hard scene boundary. Do not advance, reveal, or invent any listed event.
+- Physical continuity is monotonic: if the previous section establishes that a character has passed a location or reached a point on the route, the next scene starts from that position. Never move characters backward to an earlier location unless the user's current request explicitly requires it.
+- The previous saved section is a continuity bridge only. It does not override character files, story_bible.json, current_state.json, or the user's current request.
+- For an ordinary continuation, write roughly 400 to 650 words unless the user's request specifies a different range. Treat the requested range as guidance, not a reason to pad the scene artificially.
+- End at a natural break or when the requested moment is complete.
 
 Output only the story prose.'''
-
 
 
 def generate_state_proposal(story_text, section_filename=None):
@@ -683,6 +711,46 @@ def load_story_files(names=None):
 def load_default_story_files():
     return load_story_files(discover_story_names())
 
+CHARACTER_CONTEXT_FIELDS = (
+    "name",
+    "age",
+    "appearance",
+    "personality",
+    "relationships",
+    "background",
+    "skills",
+    "strengths",
+    "weaknesses",
+    "important_items",
+    "knowledge_rule",
+)
+
+CURRENT_STATE_CONTEXT_FIELDS = (
+    "status",
+    "chapter",
+    "scene",
+    "scene_completed",
+    "location",
+    "time",
+    "current_situation",
+    "character_knowledge",
+    "completed_events",
+    "active_clues",
+    "new_clues",
+    "unresolved_questions",
+    "active_objectives",
+    "continuity_requirements",
+)
+
+STORY_BIBLE_CONTEXT_FIELDS = (
+    "title",
+    "version",
+    "status",
+    "relationships",
+    "locations",
+)
+
+
 def _compact_json(value):
     return json.dumps(
         value,
@@ -697,6 +765,68 @@ def _pick_fields(data, fields):
         for key in fields
         if key in data
     }
+
+
+def _format_locked_state(data):
+    lines = [
+        "[CURRENT SCENE]",
+        f"Chapter {data.get('chapter')} / Scene {data.get('scene')}",
+        f"Status: {data.get('status')}",
+    ]
+
+    location = data.get("location")
+    if isinstance(location, dict):
+        lines.append("")
+        lines.append("WHERE EVERYONE IS:")
+        for character, place in location.items():
+            lines.append(f"- {character}: {place}")
+    elif location:
+        lines.extend(["", f"LOCATION: {location}"])
+
+    situation = data.get("current_situation")
+    if situation:
+        lines.extend(["", "RIGHT NOW:", str(situation)])
+
+    knowledge = data.get("character_knowledge")
+    if knowledge:
+        lines.append("")
+        lines.append("CHARACTER KNOWLEDGE:")
+        if isinstance(knowledge, dict):
+            for character, facts in knowledge.items():
+                if isinstance(facts, list):
+                    lines.append(f"- {character}: " + "; ".join(str(f) for f in facts))
+                else:
+                    lines.append(f"- {character}: {facts}")
+
+    objectives = data.get("active_objectives")
+    if objectives:
+        lines.append("")
+        lines.append("IMMEDIATE OBJECTIVES:")
+        if isinstance(objectives, dict):
+            for character, objective in objectives.items():
+                lines.append(f"- {character}: {objective}")
+        else:
+            lines.append(str(objectives))
+
+    clues = data.get("active_clues")
+    if clues:
+        lines.append("")
+        lines.append("ESTABLISHED CLUES:")
+        for item in clues if isinstance(clues, list) else [clues]:
+            lines.append(f"- {item}")
+
+    lines.extend([
+        "",
+        "Use this as the exact present situation, not as narration to repeat in the prose.",
+        "Only the present facts above are writer context. Future plot information is intentionally omitted.",
+        "Ordinary temporary movement, sensory detail, body language, and casual dialogue are allowed.",
+        "Do not invent material facts merely because they are plausible.",
+        "Do not manufacture a new event simply because the scene needs more words.",
+        "",
+        "END CURRENT SCENE",
+    ])
+
+    return "\n".join(lines)
 
 
 def build_writer_scene_packet(files):
@@ -858,6 +988,110 @@ def build_writer_scene_packet(files):
     ])
 
     return "\n".join(lines)
+
+
+def build_runtime_story_context(files):
+    sections = []
+
+    # Character files are declared by the active story_bible.json.
+    # The application does not know character names in advance.
+    character_files = set()
+
+    for ref_name, ref_content in files:
+        if ref_name != "story_bible.json":
+            continue
+
+        try:
+            ref_data = json.loads(ref_content)
+        except Exception:
+            ref_data = {}
+
+        cards = ref_data.get("character_cards", [])
+
+        if isinstance(cards, list):
+            character_files = {
+                str(item).strip()
+                for item in cards
+                if str(item).strip()
+            }
+
+        break
+
+    for name, content in files:
+        try:
+            data = json.loads(content)
+        except Exception:
+            sections.append(
+                f"[Reference File: {name}]\n{content}"
+            )
+            continue
+
+        if name in character_files:
+            filtered = _pick_fields(
+                data,
+                CHARACTER_CONTEXT_FIELDS
+            )
+
+            sections.append(
+                f"[Runtime Reference: {name}]\n"
+                + _compact_json(filtered)
+            )
+
+        elif name == "current_state.json":
+            filtered = _pick_fields(
+                data,
+                CURRENT_STATE_CONTEXT_FIELDS
+            )
+
+            knowledge = filtered.get("character_knowledge")
+
+            if isinstance(knowledge, dict):
+                compact_knowledge = {}
+
+                for character, facts in knowledge.items():
+                    if isinstance(facts, list):
+                        compact_knowledge[character] = facts[-8:]
+                    else:
+                        compact_knowledge[character] = facts
+
+                filtered["character_knowledge"] = compact_knowledge
+
+            sections.append(
+                _format_locked_state(filtered)
+            )
+
+        elif name == "story_bible.json":
+            filtered = _pick_fields(
+                data,
+                STORY_BIBLE_CONTEXT_FIELDS
+            )
+
+            sections.append(
+                f"[Runtime Reference: {name}]\n"
+                + _compact_json(filtered)
+            )
+
+        else:
+            sections.append(
+                f"[Runtime Reference: {name}]\n"
+                + _compact_json(data)
+            )
+
+    if not sections:
+        return ""
+
+    return (
+        "\nRUNTIME STORY CONTEXT START\n"
+        + "\n\n".join(sections)
+        + "\nRUNTIME STORY CONTEXT END\n"
+    )
+
+
+def build_scene_anchor(files):
+    # Runtime story context is already supplied in the system prompt.
+    # Repeating current_state here encourages the writer to narrate the
+    # state instead of writing the scene.
+    return ""
 
 
 def build_previous_section_context(max_chars=12000):
@@ -1883,22 +2117,22 @@ class Handler(BaseHTTPRequestHandler):
                     )
                     return
 
-                try:
-                    answer, elapsed = session.ask(text)
-                except Exception:
-                    raise
+                answer, elapsed = session.ask(text)
 
-                self._json(200, {
-                    "ok": True,
-                    "content": answer,
-                    "seconds": round(elapsed, 1),
-                    "estimated_context_tokens": (
-                        session.estimate_context(
-                            text + "\n" + answer
-                        )
-                    ),
-                    "context_size": 8192
-                })
+                self._json(
+                    200,
+                    {
+                        "ok": True,
+                        "content": answer,
+                        "seconds": round(elapsed, 1),
+                        "estimated_context_tokens": (
+                            session.estimate_context(
+                                text + "\n" + answer
+                            )
+                        ),
+                        "context_size": 8192
+                    }
+                )
 
                 return
 
