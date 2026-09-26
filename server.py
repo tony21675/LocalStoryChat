@@ -1170,13 +1170,15 @@ Do not return current_state.json.
         )
 
 def build_scene_prompt(data):
-    """Build a compact, human-editable scene prompt from the UI fields.
+    """Build the user-facing scene request.
 
-    This deliberately does NOT paste the JSON reference files or current_state
-    into the prompt. The model already receives those as authoritative context.
+    Permanent writing/canon behavior lives in SYSTEM_PROMPT. This function
+    should contain the specific scene the user wants written, not repeat the
+    permanent rules over and over.
     """
     def clean(value, default=""):
-        return str(value or "").strip()
+        value = str(value or "").strip()
+        return value if value else default
 
     chapter = clean(data.get("chapter"), "1")
     scene = clean(data.get("scene"), "1")
@@ -1200,100 +1202,49 @@ def build_scene_prompt(data):
         goal,
     ]
 
-    narrative_focus_lines = []
-
     if characters:
-        lines += ["", "CHARACTERS:", characters]
-
-        # Character order is intentional. The first two listed characters
-        # are treated as the primary narrative focus; remaining characters
-        # are supporting/background unless the scene goal clearly requires
-        # otherwise.
-        character_list = [
-            item.strip()
-            for item in characters.replace("\n", ",").split(",")
-            if item.strip()
+        lines += [
+            "",
+            "CHARACTERS IN THIS SCENE:",
+            characters,
         ]
-
-        if character_list:
-            primary = character_list[:2]
-            secondary = character_list[2:]
-
-            narrative_focus_lines = [
-                "SCENE FOCUS - READ THIS BEFORE WRITING:",
-                "The primary narrative focus is: " + ", ".join(primary) + ".",
-                "Begin the scene with the primary characters, not a secondary character.",
-                "Spend the clear majority of the scene on the primary characters' "
-                "actions, dialogue, interaction, and immediate experience.",
-                "Do not divide narrative attention evenly among all listed characters.",
-            ]
-
-            if secondary:
-                narrative_focus_lines.append(
-                    "Secondary/background characters: "
-                    + ", ".join(secondary) + "."
-                )
-                narrative_focus_lines.append(
-                    "Keep secondary/background characters brief and incidental. "
-                    "Do not give them detailed work, extended internal focus, "
-                    "or long descriptive passages unless the scene goal explicitly requires it."
-                )
-
-    if required:
-        lines += ["", "REQUIRED:", required]
-
-    if avoid:
-        lines += ["", "DO NOT ADVANCE YET:", avoid]
-
-    if tone:
-        lines += ["", "TONE / STYLE:", tone]
-
-    if guidance:
-        lines += ["", "CREATIVE GUIDANCE:", guidance]
-
-    lines += [
-        "",
-        "CONTINUITY:",
-        "Start from the exact current situation in current_state.json and respect the authoritative character cards and story_bible.json.",
-        "Preserve established relationships, knowledge, locations, timeline, and canon.",
-        "Do not reveal hidden information merely because it exists in the reference files.",
-        "Do not invent major plot facts or advance events that are explicitly being held back.",
-        "Let the scene breathe. Use natural action, dialogue, sensory detail, personality, and small ordinary details where appropriate.",
-    ]
-
-    # Put the final scene instructions immediately before generation.
-    # Smaller local models are more reliable when the actual required beat is
-    # repeated at the end of the request instead of being buried earlier.
-    if narrative_focus_lines:
-        lines += [""] + narrative_focus_lines
 
     if required:
         lines += [
             "",
-            "FINAL REQUIREMENTS CHECK - DO THIS ON THE PAGE:",
-            "Before ending the scene, silently verify that every REQUIRED item below "
-            "actually occurs in the prose.",
-            "Do not satisfy a required interaction, reveal, action, or emotional beat "
-            "with narration that merely says it happened or implies it. Show it through "
-            "observable action, dialogue, or character reaction.",
-            "When a REQUIRED beat is an accidental spoken reveal, the character must "
-            "actually say the revealing thing in dialogue. The other character must "
-            "have an opportunity to hear or react to it.",
-            "REQUIRED ITEMS TO FULFILL:",
+            "REQUIRED:",
             required,
         ]
 
     if avoid:
         lines += [
             "",
-            "FINAL BOUNDARY CHECK:",
-            "Do not cross or advance any event listed under DO NOT ADVANCE YET.",
             "DO NOT ADVANCE YET:",
             avoid,
         ]
 
+    if tone:
+        lines += [
+            "",
+            "TONE / STYLE:",
+            tone,
+        ]
+
+    if guidance:
+        lines += [
+            "",
+            "CREATIVE GUIDANCE:",
+            guidance,
+        ]
+
     lines += [
         "",
+        "WRITE THIS SCENE NOW.",
+        "Use the current story context and previous saved section for continuity.",
+        "Fulfill every REQUIRED item through actual prose, dialogue, action, and character reaction.",
+        "Respect every DO NOT ADVANCE YET boundary.",
+        "Keep ordinary conversation natural. Do not turn routine chit-chat into permanent story facts.",
+        "Stay with the requested characters and scene until the requested moment is complete.",
         "Output only the story prose.",
     ]
 
