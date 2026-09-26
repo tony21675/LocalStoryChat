@@ -292,14 +292,30 @@ These details do not automatically become story facts.
 
 Creative freedom should make the scene feel alive without silently rewriting the permanent story.
 
+SCENE EXECUTION
+
+Before writing, silently determine the scene's beginning, middle, required beat, and ending. Do not reveal this plan.
+
+The opening must continue from the actual provided continuity:
+- If a previous saved section is provided, begin from its final moment, action, location, or conversational state.
+- Do not invent an unseen conversation immediately before the scene.
+- Do not begin with "You're right," "Exactly," "Of course," or similar response language unless the preceding context actually contains something being answered.
+- Establish the current situation first, then let the requested scene develop.
+
+For a scene with an explicit required beat:
+- Give the characters enough ordinary interaction for the beat to arise naturally.
+- Complete the required beat on the page.
+- Show the immediate reaction.
+- Continue the scene to a natural stopping point instead of ending immediately after setup or after the first exchange.
+- The requested beat is part of the scene itself, not a note to be acknowledged or summarized.
+
+For a requested word range, treat the range as the intended scene length. Develop the scene fully rather than treating the first few exchanges as a complete answer.
+
 OUTPUT
 
 When writing fiction, output only the story prose unless the user explicitly requests another format.
 
 Do not output analysis, planning, summaries, canon explanations, JSON, reviewer comments, or discussion of these instructions.'''
-
-
-
 
 
 STATE_REQUIRED_KEYS = {
@@ -1170,13 +1186,7 @@ Do not return current_state.json.
         )
 
 def build_scene_prompt(data):
-    """Build the specific scene request for the writer.
-
-    Permanent canon and writing behavior live in SYSTEM_PROMPT. This request
-    contains the specific scene the user wants, with a compact progression
-    guide that helps a local model finish the scene instead of stopping during
-    the setup.
-    """
+    """Build the specific scene request for the writer."""
     def clean(value, default=""):
         value = str(value or "").strip()
         return value if value else default
@@ -1198,73 +1208,46 @@ def build_scene_prompt(data):
         f"Begin Chapter {chapter}, Scene {scene}.",
         "",
         f"Write approximately {length} words.",
-        "Develop the scene fully before ending. Do not stop during the initial setup.",
+        "Write a complete scene, not a fragment.",
         "",
         "SCENE GOAL:",
         goal,
     ]
 
     if characters:
-        lines += [
-            "",
-            "CHARACTERS IN THIS SCENE:",
-            characters,
-        ]
+        lines += ["", "CHARACTERS IN THIS SCENE:", characters]
 
     if required:
         lines += [
             "",
-            "REQUIRED SCENE BEAT:",
-            "This event is the center of the scene and must occur before the scene can end.",
+            "REQUIRED SCENE EVENT:",
             required,
             "",
-            "HOW TO EXECUTE IT:",
-            "Guide the conversation naturally toward the required event instead of wandering into unrelated topics.",
-            "Show the event through actual dialogue, action, and reaction.",
-            "If the requirement says a character says something, the reader must hear the character actually say it.",
-            "If the requirement concerns romantic attraction, make the spoken meaning unmistakably about attraction or romantic feelings. Do not substitute friendship, concern, curiosity, admiration, or worry.",
-            "After the required event happens, continue long enough to show the immediate reaction and let the scene settle naturally.",
+            "EXECUTION:",
+            "Work toward this event through natural conversation and interaction.",
+            "The event must actually occur in the prose before the scene ends.",
+            "Show it through actual dialogue, action, and reaction.",
+            "If the event requires a character to say something, write the actual spoken words.",
+            "Then show the immediate reaction and continue the scene briefly.",
         ]
 
     if avoid:
-        lines += [
-            "",
-            "SCENE BOUNDARY:",
-            "Do not cross, reveal, or trigger anything listed below.",
-            avoid,
-        ]
+        lines += ["", "SCENE BOUNDARY:", "Do not cross or trigger:", avoid]
 
     if tone:
-        lines += [
-            "",
-            "TONE / STYLE:",
-            tone,
-        ]
+        lines += ["", "TONE / STYLE:", tone]
 
     if guidance:
-        lines += [
-            "",
-            "CREATIVE GUIDANCE:",
-            guidance,
-        ]
+        lines += ["", "CREATIVE GUIDANCE:", guidance]
 
     lines += [
         "",
-        "SCENE PROGRESSION:",
-        "Shape the scene as a complete sequence rather than a fragment:",
-        "1. Establish the characters in the immediate situation.",
-        "2. Let their conversation and interaction develop naturally.",
-        "3. Reach and complete the REQUIRED SCENE BEAT.",
-        "4. Let the characters react to what just happened and continue briefly toward the requested ending point.",
-        "5. End only when the requested moment is complete and the protected boundary still holds.",
-        "",
-        "FINAL WRITING INSTRUCTION:",
-        "Write the scene now.",
-        "Keep the requested characters at the center of the scene.",
-        "Use natural conversation, action, reactions, pacing, and ordinary details.",
-        "Routine chit-chat is temporary scene material and does not need to become permanent canon.",
-        "Do not invent major plot facts or advance a protected scene boundary.",
-        "Do not end the scene before the REQUIRED SCENE BEAT has happened and its immediate reaction has been shown.",
+        "WRITE THE COMPLETE SCENE NOW.",
+        "Begin from the actual provided continuity, not from an invented off-page conversation.",
+        "Keep the requested characters at the center.",
+        "Let ordinary chit-chat and small human details occur naturally without treating them as permanent canon.",
+        "Do not invent major plot facts.",
+        "Do not end after the setup. Reach the required event, show its immediate aftermath, then finish at a natural stopping point within the scene boundary.",
         "Output only the story prose.",
     ]
 
