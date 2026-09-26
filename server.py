@@ -1170,11 +1170,11 @@ Do not return current_state.json.
         )
 
 def build_scene_prompt(data):
-    """Build the user-facing scene request.
+    """Build the specific scene request for the writer.
 
-    Permanent writing/canon behavior lives in SYSTEM_PROMPT. This function
-    should contain the specific scene the user wants written, not repeat the
-    permanent rules over and over.
+    Permanent canon and writing behavior live in SYSTEM_PROMPT. This request
+    contains only the scene the user wants written, with the required beat
+    stated in a form that is easy for a local model to follow.
     """
     def clean(value, default=""):
         value = str(value or "").strip()
@@ -1197,6 +1197,7 @@ def build_scene_prompt(data):
         f"Begin Chapter {chapter}, Scene {scene}.",
         "",
         f"Write approximately {length} words.",
+        "Develop the scene fully before ending. Do not stop after only a few exchanges.",
         "",
         "SCENE GOAL:",
         goal,
@@ -1212,14 +1213,22 @@ def build_scene_prompt(data):
     if required:
         lines += [
             "",
-            "REQUIRED:",
+            "REQUIRED SCENE BEAT:",
+            "This is a scene event that must actually happen before you end the scene.",
             required,
+            "",
+            "HOW TO EXECUTE THE REQUIRED BEAT:",
+            "Show the event happening through the characters' actual words, actions, and reactions.",
+            "When the requirement involves something a character says, write the actual spoken line that reveals it.",
+            "Do not replace a required spoken event with narration about what the character feels, thinks, means, or almost says.",
+            "Complete the full beat, including the immediate reaction or consequence described in the requirement.",
         ]
 
     if avoid:
         lines += [
             "",
-            "DO NOT ADVANCE YET:",
+            "SCENE BOUNDARY:",
+            "Do not cross, reveal, or trigger anything listed below.",
             avoid,
         ]
 
@@ -1239,12 +1248,13 @@ def build_scene_prompt(data):
 
     lines += [
         "",
-        "WRITE THIS SCENE NOW.",
-        "Use the current story context and previous saved section for continuity.",
-        "Fulfill every REQUIRED item through actual prose, dialogue, action, and character reaction.",
-        "Respect every DO NOT ADVANCE YET boundary.",
-        "Keep ordinary conversation natural. Do not turn routine chit-chat into permanent story facts.",
-        "Stay with the requested characters and scene until the requested moment is complete.",
+        "FINAL WRITING INSTRUCTION:",
+        "Write the scene now.",
+        "Keep the requested characters at the center of the scene.",
+        "Use natural conversation, action, reactions, pacing, and ordinary details.",
+        "Routine chit-chat is temporary scene material and does not need to become permanent canon.",
+        "Do not invent major plot facts or advance a protected scene boundary.",
+        "Do not end the scene until the requested scene goal and required beat have been completed.",
         "Output only the story prose.",
     ]
 
