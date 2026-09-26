@@ -2281,7 +2281,7 @@ class LlamaSession:
                 "--reasoning", "off",
                 "--repeat-last-n", "256",
                 "--repeat-penalty", "1.08",
-                "--n-predict", "1200",
+                "--n-predict", "1000",
                 "--system-prompt", full_prompt,
                 "--prompt", "USER REQUEST:\n" + text,
                 "--color", "off",
@@ -2305,7 +2305,7 @@ class LlamaSession:
 
             try:
                 output, _ = proc.communicate(
-                    timeout=300
+                    timeout=900
                 )
             except subprocess.TimeoutExpired:
                 proc.kill()
@@ -2313,7 +2313,7 @@ class LlamaSession:
 
                 raise TimeoutError(
                     "Story generation timed out. "
-                    "The model did not finish within 5 minutes."
+                    "The model did not finish within 15 minutes."
                 )
             finally:
                 self.child = None
