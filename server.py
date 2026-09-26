@@ -342,6 +342,15 @@ Evidence rules:
 - Controlled bookkeeping fields such as chapter, scene, scene_completed, and status do not require quotation evidence.
 - Do not use evidence to justify information that is merely inferred or possible.
 - Do not use evidence to turn temporary scene behavior into permanent character knowledge or continuity rules.
+- Ordinary conversation is normally SCENE-ONLY and disposable. Characters may casually invent or mention everyday plans, family chatter, school chatter, opinions, jokes, errands, weekend plans, meals, chores, minor anecdotes, and similar human conversation without those details becoming story canon.
+- Do NOT add a casual conversational detail to current_state.json merely because it sounds concrete or plausible.
+- A conversational detail becomes state-worthy only when it has a meaningful continuity consequence, such as creating a lasting objective, changing a relationship, revealing a consequential fact, establishing an important plan, creating a clue, changing a character's knowledge, or materially affecting a later scene.
+- Do not turn a one-off mention of a parent, sibling, friend, teacher, assignment, dinner, chore, hobby, route, possession, or weekend plan into permanent canon unless the story clearly makes that detail important enough to remember later.
+- current_situation should describe the meaningful ending state of the section, not every topic discussed during the section.
+- character_knowledge should contain meaningful new knowledge that can matter after the immediate scene, not moment-to-moment observations or casual remarks that have no continuity consequence.
+- completed_events should contain meaningful completed story events, not ordinary dialogue topics or incidental actions.
+- active_clues and unresolved_questions should contain only story-relevant clues and questions that matter to the unfolding plot, never ordinary curiosity or casual conversation.
+- continuity_requirements should contain only persistent facts or constraints that later scenes must preserve, never one-time gestures, remarks, feelings, or disposable conversation.
 - If the story section does not explicitly support a proposed change, do not include that change.
 - Do not output markdown, explanations, notes, analysis, or code fences.
 """
