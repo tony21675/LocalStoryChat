@@ -894,15 +894,10 @@ def scene_requires_revision(user_request, draft, review):
     function should not try to infer prose quality or emotional beats with
     brittle keyword lists.
     """
-    requested_min, requested_max = requested_word_range(user_request)
-
-    if requested_min is not None and story_word_count(draft) < requested_min:
-        actual = story_word_count(draft)
-        return (
-            f"Draft is too short: {actual} words; "
-            f"minimum requested is {requested_min}."
-        )
-
+    # Requested word counts guide generation, but they are not a hard
+    # rejection criterion. A model can produce a complete scene a little
+    # shorter or longer than the requested range, and the prose should not
+    # be discarded solely because of word count.
     if not isinstance(review, dict) or review.get("approved") is not True:
         violations = (
             review.get("violations", [])
