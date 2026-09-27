@@ -81,3 +81,24 @@ A successful first pass should make the model sound more like a consistent conte
 It should still be able to write quiet scenes, dialogue-heavy scenes, action, emotional moments, and grounded adult romance.
 
 If it becomes repetitive, overly short, overly sentimental, or starts copying the Gold examples, we adjust the dataset/training settings rather than piling on more system-prompt rules.
+
+
+## Colab: current start-here path
+
+Use only:
+
+training/START_HERE_colab_writer.ipynb
+
+This replaces the older Axolotl/Kaggle notebook experiments.
+
+The clean Colab flow is:
+
+1. Select a free T4 GPU in Runtime -> Change runtime type.
+2. Run the GPU check.
+3. Run the single Unsloth installation cell.
+4. Run the single training cell.
+5. Download /content/qwen3_5_9b_writer_colab.zip when training finishes.
+
+The training cell downloads the current training script directly from this branch and the script resets its temporary Colab workspace before cloning, so stale Colab folders cannot break the run.
+
+The training implementation uses Unsloth + Hugging Face Trainer rather than Axolotl. The 48 Gold examples are converted to prompt/completion pairs, with loss applied to the completion only. Vision layers stay frozen and only language-side LoRA adapters are trained.
