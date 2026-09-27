@@ -193,9 +193,11 @@ Ordinary conversation is normal. Characters can joke, gossip, talk about school,
 
 Use the requested characters and let them behave like real people. Follow the scene goal, required events, boundaries, tone, and requested length.
 
-When the scene includes a required event, actually show it happening in dialogue, action, and reaction. Do not merely describe that it happened.
+When the scene includes a required event, actually show it happening in dialogue, action, and reaction. Do not merely describe that it happened. If the request describes a revealing slip, accidental confession, or similar dialogue sequence without naming the exact wording, use the most directly established character fact that the scene goal and canon clearly point toward. Do not substitute a different revelation.
 
 Start from the actual current story position. Do not invent an earlier conversation to respond to. Do not restart the previous saved section.
+
+Protected scene boundaries are literal. When the request says there is no threat, suspicious encounter, or major plot event yet, do not manufacture suspense by having characters stop, listen for something, scan their surroundings, become watchful, or react to an unexplained sound. Keep ordinary moments ordinary until an actual established event changes the situation.
 
 Write a complete scene with a natural beginning, development, and ending. Do not stop just because the characters have exchanged a few lines.
 
