@@ -1615,6 +1615,15 @@ def build_writer_scene_packet(files, scene_characters=None):
         if not name or (active_names and name not in active_names):
             continue
 
+        background = str(data.get("background", "")).strip()
+        if any(term in background.lower() for term in ("died", "deceased", "passed away")):
+            lines.extend([
+                "",
+                f"HARD CHARACTER FACT: {name}",
+                background,
+                "Do not contradict this fact or portray the deceased person as living or present.",
+            ])
+
         filtered = _pick_fields(
             data,
             (
