@@ -314,15 +314,42 @@ pending_state = None
 STORY_SAVE_LOCK = threading.Lock()
 
 
-def next_story_section_path(chapter, scene):
+def next_story_section_path(chapter):
     chapter_dir = MANUSCRIPT_DIR / "Chapters" / f"Chapter_{chapter:02d}"
-    candidate_scene = scene
-    while True:
-        filename = f"Chapter_{chapter:02d}_Section_{candidate_scene:02d}.txt"
+    highest_section = 0
+
+    if chapter_dir.is_dir():
+        for path in chapter_dir.glob(
+            f"Chapter_{chapter:02d}_Section_*.txt"
+        ):
+            match = re.search(
+                r"_Section_(\d+)\.txt$",
+                path.name
+            )
+            if not match:
+                continue
+
+            try:
+                number = int(match.group(1))
+            except ValueError:
+                continue
+
+            highest_section = max(highest_section, number)
+
+    candidate_section = highest_section + 1
+    filename = (
+        f"Chapter_{chapter:02d}_Section_{candidate_section:02d}.txt"
+    )
+    path_out = chapter_dir / filename
+
+    while path_out.exists():
+        candidate_section += 1
+        filename = (
+            f"Chapter_{chapter:02d}_Section_{candidate_section:02d}.txt"
+        )
         path_out = chapter_dir / filename
-        if not path_out.exists():
-            return candidate_scene, filename, path_out
-        candidate_scene += 1
+
+    return candidate_section, filename, path_out
 
 
 def read_current_state():
@@ -880,7 +907,12 @@ def _filter_unestablished_location_changes(base, patch, story_text):
     return patch
 
 
-def generate_state_proposal(story_text, section_filename=None):
+def generate_state_proposal(
+    story_text,
+    section_filename=None,
+    requested_chapter=None,
+    requested_scene=None,
+):
     global pending_state
 
     if session.model_path is None:
@@ -891,7 +923,7 @@ def generate_state_proposal(story_text, section_filename=None):
     current_state = read_current_state()
 
     section_chapter = None
-    section_scene = None
+    section_number = None
 
     if section_filename:
         match = re.search(
@@ -902,7 +934,7 @@ def generate_state_proposal(story_text, section_filename=None):
 
         if match:
             section_chapter = int(match.group(1))
-            section_scene = int(match.group(2))
+            section_number = int(match.group(2))
 
     prompt = f"""Identify ONLY the changes caused by this completed story section.
 
@@ -918,6 +950,11 @@ CURRENT STATE BEFORE THIS SECTION:
 
 COMPLETED STORY SECTION:
 {story_text}
+
+REQUESTED NARRATIVE POSITION FOR THIS UPDATE:
+Chapter {requested_chapter if isinstance(requested_chapter, int) else current_state.get("chapter")} / Scene {requested_scene if isinstance(requested_scene, int) else current_state.get("scene")}
+
+The requested narrative position above is bookkeeping supplied by the application. Use it for chapter/scene state rather than treating the manuscript section number as the scene number.
 
 Use CURRENT STATE BEFORE THIS SECTION as the baseline for comparison.
 Only propose information that is genuinely new or changed because of the completed story section.
@@ -1106,14 +1143,25 @@ Do not return current_state.json.
             for misplaced in current_characters:
                 patch.pop(misplaced, None)
 
-        if section_chapter is not None and section_scene is not None:
+        if section_chapter is not None:
             if section_chapter < current_state.get("chapter", section_chapter):
                 raise ValueError(
                     "Selected manuscript section is older than the current story state."
                 )
 
-            patch["chapter"] = section_chapter
-            patch["scene"] = section_scene
+        if isinstance(requested_chapter, int):
+            if requested_chapter < current_state.get("chapter", requested_chapter):
+                raise ValueError(
+                    "Requested narrative chapter is earlier than the current story state."
+                )
+            patch["chapter"] = requested_chapter
+
+        if isinstance(requested_scene, int):
+            if requested_scene < 1:
+                raise ValueError(
+                    "Requested narrative scene must be at least 1."
+                )
+            patch["scene"] = requested_scene
 
         patch = _filter_patch_to_supported_evidence(
             current_state,
@@ -1781,7 +1829,7 @@ def build_scene_anchor(files):
     return ""
 
 
-def build_previous_section_context(max_chars=12000, target_scene=None):
+def build_previous_section_context(max_chars=12000):
     """Load the latest saved manuscript section as a continuity bridge.
 
     The writer process intentionally clears llama.cpp's conversation before
@@ -1833,13 +1881,6 @@ def build_previous_section_context(max_chars=12000, target_scene=None):
 
     if not candidates:
         return ""
-
-    if isinstance(target_scene, int):
-        candidates = [
-            item
-            for item in candidates
-            if item[0] < target_scene
-        ]
 
     if not candidates:
         return ""
@@ -1932,16 +1973,6 @@ class LlamaSession:
                 if item.strip()
             ]
 
-        scene_match = re.search(
-            r"Begin Chapter\s+(\d+),\s+Scene\s+(\d+)",
-            base_prompt,
-            re.IGNORECASE,
-        )
-
-        target_scene = None
-        if scene_match:
-            target_scene = int(scene_match.group(2))
-
         scene_packet = build_writer_scene_packet(
             files,
             scene_characters=scene_characters,
@@ -1950,9 +1981,7 @@ class LlamaSession:
         if scene_packet:
             parts.append(scene_packet)
 
-        previous_section = build_previous_section_context(
-            target_scene=target_scene
-        )
+        previous_section = build_previous_section_context()
 
         if previous_section:
             parts.append(previous_section)
@@ -2354,10 +2383,9 @@ class Handler(BaseHTTPRequestHandler):
                         read_current_state().get("status")
                         if STATE_PATH.exists() else None
                     ),
-                    "next_save_scene": (
+                    "next_save_section": (
                         next_story_section_path(
-                            read_current_state().get("chapter"),
-                            read_current_state().get("scene")
+                            read_current_state().get("chapter")
                         )[0]
                         if STATE_PATH.exists()
                         and isinstance(read_current_state().get("chapter"), int)
@@ -2774,9 +2802,32 @@ class Handler(BaseHTTPRequestHandler):
                         "The story section is too short to create a useful state update."
                     )
 
+                requested_chapter = body.get("chapter")
+                requested_scene = body.get("scene")
+
+                try:
+                    requested_chapter = (
+                        int(requested_chapter)
+                        if requested_chapter is not None
+                        else None
+                    )
+                except (TypeError, ValueError):
+                    requested_chapter = None
+
+                try:
+                    requested_scene = (
+                        int(requested_scene)
+                        if requested_scene is not None
+                        else None
+                    )
+                except (TypeError, ValueError):
+                    requested_scene = None
+
                 proposed = generate_state_proposal(
                     story,
-                    body.get("sectionFilename")
+                    body.get("sectionFilename"),
+                    requested_chapter,
+                    requested_scene,
                 )
 
                 self._json(200, {
@@ -2946,7 +2997,7 @@ class Handler(BaseHTTPRequestHandler):
                         )
                 else:
                     _, filename, path_out = next_story_section_path(
-                        chapter, scene
+                        chapter
                     )
 
                 with STORY_SAVE_LOCK:
