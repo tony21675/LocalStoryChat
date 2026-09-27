@@ -1,0 +1,12 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a polished short scene in modern American English between two adult friends during an ordinary errand. One notices that the other has changed a small habit, but does not immediately ask about it. Let the observation create subtle subtext. Keep the prose grounded and contemporary. Avoid overexplaining the meaning of the change."
+    },
+    {
+      "role": "assistant",
+      "content": "“You bought the expensive coffee.”\n\nCasey looked down at the bag in her hand. “Apparently.”\n\n“You always buy the cheap stuff.”\n\n“I know.”\n\nMorgan picked up another bag from the cart. “You okay?”\n\n“Yeah.”\n\n“Okay.”\n\nThey moved to the next aisle.\n\nA minute later, Morgan glanced over again. Casey was reading the label on a box of tea she had never bought before.\n\n“You’re making a lot of unusual choices today.”\n\nCasey smiled without looking up. “Maybe I’m branching out.”\n\n“Dangerous.”\n\n“I’ll survive.”\n\nMorgan nodded. She didn’t ask again.\n\nAt the checkout, Casey put the coffee on the belt. Morgan reached over and added a second bag beside it.\n\n“What are you doing?” Casey asked.\n\n“Insurance.”\n\n“For what?”\n\n“In case you decide you’re not actually a coffee person anymore.”\n\nCasey looked at the extra bag, then at Morgan.\n\n“You’re weird.”\n\n“I’ve been told.”\n\nCasey smiled and left the second bag where it was."
+    }
+  ]
+}
