@@ -225,114 +225,40 @@ STATE_REQUIRED_KEYS = {
 
 STATE_SYSTEM_PROMPT = r"""You are a minimal continuity updater for an ongoing fictional story.
 
-Your ONLY job is to record persistent story changes that will matter in later sections.
+Your only job is to record persistent story changes that will matter in later sections.
 
 Return ONLY this JSON object:
-
 {
   "patch": {},
   "evidence": []
 }
 
-DEFAULT TO NO UPDATE. For ordinary dialogue, jokes, school talk, small observations, temporary emotions, gestures, routine movement, and disposable scene details, return:
+DEFAULT TO NO UPDATE.
+For ordinary dialogue, jokes, school talk, small observations, temporary emotions, gestures, routine movement, and disposable scene details, return:
 {"patch": {}, "evidence": []}
 
-NEVER copy the current state into the patch.
-NEVER summarize the current state.
-NEVER repeat existing array items.
-NEVER include an unchanged field.
-NEVER include continuity_requirements unless the section establishes a genuinely new persistent rule or fact.
-NEVER include active_objectives unless a meaningful lasting objective actually changed.
-NEVER include character_knowledge unless a character clearly learned a new consequential fact.
-NEVER include completed_events for ordinary conversation topics or incidental actions.
-NEVER include active_clues or unresolved_questions unless a real plot clue or unresolved plot question was established.
+Never copy or summarize current_state.json.
+Never repeat unchanged information.
+Never repeat existing array items.
+Never add continuity_requirements unless a genuinely new persistent fact or rule was established.
+Never add active_objectives unless a meaningful lasting objective changed.
+Never add character_knowledge unless a character clearly learned a new consequential fact.
+Never add completed_events for ordinary conversation topics or incidental actions.
+Never add active_clues or unresolved_questions unless a real plot clue or unresolved plot question was established.
 
-Only these top-level patch fields are allowed:
+Allowed top-level patch fields:
 status, chapter, scene, scene_completed, location, time, current_situation,
 character_knowledge, completed_events, active_clues, new_clues,
 unresolved_questions, active_objectives, continuity_requirements.
 
-For arrays, include ONLY NEW items introduced by this section. Do not copy or rewrite the old array.
+For arrays, include ONLY new items introduced by this section.
 
-Every substantive patch item needs one short, exact, contiguous evidence quote from the completed story section.
-If you cannot quote the change directly, do not include the change.
+Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit the change.
 
-Keep the entire response tiny. A small patch with one or two items is normal. An empty patch is often the correct answer.
+Chapter and scene numbers are application bookkeeping. Do not infer scene number from the manuscript section number.
 
-The "patch" must contain ONLY fields whose values are actually different from CURRENT STATE BEFORE THIS SECTION.
-The "evidence" array must prove every substantive new or changed claim in the patch.
-
-ALLOWED TOP-LEVEL PATCH FIELDS:
-- status
-- chapter
-- scene
-- scene_completed
-- location
-- time
-- current_situation
-- character_knowledge
-- completed_events
-- active_clues
-- new_clues
-- unresolved_questions
-- active_objectives
-- continuity_requirements
-
-Never create any other top-level field. In particular, do NOT use fields such as "conversation_topics", "current_activity", "summary", "notes", "recent_events", or any other field not listed above.
-
-CRITICAL COMPACTNESS RULES:
-- Do NOT copy unchanged fields from current_state.json into patch.
-- Do NOT repeat existing array items.
-- Do NOT rewrite existing arrays merely because they already exist.
-- If a field has no new information, leave it out of patch.
-- If nothing changed, the patch MUST be {}.
-- The normal response should be a small JSON object, not a copy of current_state.json.
-- Never infer chapter or scene numbers from prose. When a manuscript section filename is supplied, the application provides the authoritative chapter and scene bookkeeping numbers separately.
-
-IMPORTANT:
-- Include only top-level fields that changed in "patch".
-- Do not repeat unchanged fields.
-- For changed nested objects, include only changed nested keys.
-- For arrays, return ONLY NEW items introduced by the completed story section. Do not copy existing array items. The application will append new items to the existing array.
-- Record only events that actually happened in the supplied story section.
-- Never invent future events.
-- Never turn an unknown fact into a known fact.
-- Keep character knowledge limited to what the character could actually know.
-- Do not reveal hidden canon.
-- Do not invent clues, locations, motives, identities, evidence, relationships, or backstory.
-- If nothing changed, return {"patch": {}, "evidence": []}.
-
-Evidence rules:
-- Every substantive new or changed claim in "patch" must have a matching entry in "evidence".
-- Every evidence "quote" must be one contiguous excerpt copied verbatim from the completed story section. Never stitch together separate parts of the section.
-- Never use ellipses ("..."), brackets, summaries, paraphrases, or text from CURRENT STATE BEFORE THIS SECTION as part of a quote.
-- The quote must directly support the claim and should be short enough to copy exactly.
-- If there is no direct contiguous quote supporting a claim, do not put the claim in the patch.
-- Existing state facts are not changes just because the completed section mentions or implies them again.
-- Each evidence entry must use this structure:
-  {
-    "field": "field.path",
-    "claim": "the exact value or array item being added or changed",
-    "quote": "an EXACT QUOTE copied from the completed story section"
-  }
-- "quote" must be copied exactly from the completed story section. Do not paraphrase it.
-- The application will check that every quote actually appears in the completed story section.
-- For array fields, provide evidence for every newly added item.
-- For changed string or nested values, provide evidence for the changed value.
-- Controlled bookkeeping fields such as chapter, scene, scene_completed, and status do not require quotation evidence.
-- Do not use evidence to justify information that is merely inferred or possible.
-- Do not use evidence to turn temporary scene behavior into permanent character knowledge or continuity rules.
-- Ordinary conversation is normally SCENE-ONLY and disposable. Characters may casually invent or mention everyday plans, family chatter, school chatter, opinions, jokes, errands, weekend plans, meals, chores, minor anecdotes, and similar human conversation without those details becoming story canon.
-- Do NOT add a casual conversational detail to current_state.json merely because it sounds concrete or plausible.
-- A conversational detail becomes state-worthy only when it has a meaningful continuity consequence, such as creating a lasting objective, changing a relationship, revealing a consequential fact, establishing an important plan, creating a clue, changing a character's knowledge, or materially affecting a later scene.
-- Do not turn a one-off mention of a parent, sibling, friend, teacher, assignment, dinner, chore, hobby, route, possession, or weekend plan into permanent canon unless the story clearly makes that detail important enough to remember later.
-- current_situation should describe the meaningful ending state of the section, not every topic discussed during the section.
-- character_knowledge should contain meaningful new knowledge that can matter after the immediate scene, not moment-to-moment observations or casual remarks that have no continuity consequence.
-- completed_events should contain meaningful completed story events, not ordinary dialogue topics or incidental actions.
-- active_clues and unresolved_questions should contain only story-relevant clues and questions that matter to the unfolding plot, never ordinary curiosity or casual conversation.
-- continuity_requirements should contain only persistent facts or constraints that later scenes must preserve, never one-time gestures, remarks, feelings, or disposable conversation.
-- If the story section does not explicitly support a proposed change, do not include that change.
-- Do not output markdown, explanations, notes, analysis, or code fences.
+Keep the response extremely small. An empty patch is often the correct answer.
+Do not output markdown, explanations, notes, analysis, or code fences.
 """
 
 pending_state = None
