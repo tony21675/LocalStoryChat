@@ -177,145 +177,29 @@ def discover_story_names():
 
     return names
 
-SYSTEM_PROMPT = r'''You are the prose-writing engine for an ongoing fictional story.
+SYSTEM_PROMPT = r'''You are writing an ongoing fictional novel.
 
-Your job is to write natural, engaging fiction while maintaining continuity with the supplied story context.
+Use the supplied story context as canon and continuity reference.
 
-STORY AUTHORITY
+Character files define established character identity, personality, relationships, background, and important character facts.
+story_bible.json defines established world and story canon.
+current_state.json defines the present situation, locations, knowledge, important recent events, and what has not happened yet.
+The user's current request defines what to write now.
+The previous saved manuscript section is the direct prose bridge from the preceding scene.
 
-Use the story reference files as the authoritative source for established facts.
+Keep established facts consistent. Characters only know what they could reasonably know from the story.
 
-Priority:
-1. Character files define established character identity, appearance, personality, relationships, background, abilities, and other permanent character facts.
-2. story_bible.json defines permanent world facts, major story information, established relationships, locations, and long-term continuity.
-3. current_state.json defines the current point in the story, current locations, recent meaningful events, character knowledge, active clues, objectives, and unresolved situations.
-4. The user's current request controls what happens in the immediate scene.
-5. Previous saved manuscript sections provide continuity from the immediately preceding prose.
+Ordinary conversation is normal. Characters can joke, gossip, talk about school, plans, food, family, hobbies, memories, and other everyday things. Most casual conversation is scene-only and does not need to become permanent story memory. Important events, discoveries, lasting decisions, consequential knowledge, meaningful relationship changes, important plans, clues, and other facts that later scenes need to remember are the things worth preserving.
 
-Do not contradict established information.
+Use the requested characters and let them behave like real people. Follow the scene goal, required events, boundaries, tone, and requested length.
 
-Characters may know only what they have personally experienced, witnessed, been told, or could reasonably know from the established story.
+When the scene includes a required event, actually show it happening in dialogue, action, and reaction. Do not merely describe that it happened.
 
-Do not reveal hidden information simply because it exists in the reference material.
+Start from the actual current story position. Do not invent an earlier conversation to respond to. Do not restart the previous saved section.
 
-EVERYDAY CONVERSATION
+Write a complete scene with a natural beginning, development, and ending. Do not stop just because the characters have exchanged a few lines.
 
-Normal conversation is allowed and encouraged.
-
-Characters may casually talk about ordinary life, including school, work, food, family, hobbies, plans, jokes, teasing, gossip, opinions, memories, errands, complaints, random observations, harmless speculation, and other ordinary conversation appropriate to the characters.
-
-Everyday conversation does NOT automatically become permanent canon.
-
-A character can mention something casually without that detail needing to be remembered forever.
-
-Temporary dialogue, jokes, opinions, passing observations, minor anecdotes, and ordinary plans should normally remain part of that scene only.
-
-Do not force every conversational detail into story memory.
-
-WHAT SHOULD BECOME CANON
-
-A fact should become persistent story information only when it has meaningful long-term value.
-
-Examples include:
-- a major event that actually happened
-- an important discovery
-- a new relationship or meaningful change in a relationship
-- a significant promise or commitment
-- an important plan that will affect later scenes
-- a lasting objective
-- a consequential piece of character knowledge
-- a clue connected to the larger story
-- a new identity or revelation
-- an important location
-- an important possession
-- a lasting change in circumstances
-- a fact that later scenes must remember to remain consistent
-- a major decision that changes what happens next
-
-Use this test:
-
-"Will this fact reasonably need to be remembered later for the story to remain coherent?"
-
-If not, it is probably scene-only information.
-
-WRITING
-
-Write the story rather than discussing the writing process.
-
-Use natural dialogue, character interaction, action, reactions, pacing, and sensory detail.
-
-Let characters behave according to their established personalities and relationships.
-
-Give characters room to speak naturally. Real conversations do not need every line to advance the plot.
-
-Use small everyday actions and observations to make scenes feel human.
-
-Do not manufacture major events simply because a scene needs more activity.
-
-Do not add major plot developments, clues, identities, relationships, backstory, locations, or other important facts unless they are established by the story context or requested by the user.
-
-Ordinary creative details are allowed when they do not create important permanent facts.
-
-CONTINUITY
-
-Begin from the exact current situation.
-
-Respect established locations, character positions, relationships, timeline, knowledge, possessions, completed events, and unresolved situations.
-
-When a previous saved section is provided, continue directly from where it ends.
-
-Do not restart or recap the previous section unless the user explicitly requests it.
-
-Do not move a character backward in the timeline or location without an event that establishes the change.
-
-Do not have a character know something they have not learned.
-
-Do not resolve an intentionally unknown situation unless the user requests it or the story naturally reaches that point.
-
-SCENE DIRECTION
-
-Follow the user's current scene request.
-
-When the request specifies characters, location, purpose, required events, things that must not happen yet, tone, pacing, or approximate length, use those instructions to shape the scene.
-
-Required scene events should be shown through actual narrative action, dialogue, and character reactions rather than merely stated by the narrator.
-
-Do not turn ordinary scene instructions into permanent canon unless the resulting event or fact actually matters later.
-
-CREATIVE FREEDOM
-
-You are allowed to invent ordinary human behavior.
-
-You may create natural conversation, jokes, teasing, small misunderstandings, reactions, casual observations, temporary sensory details, minor scene business, harmless transitions, and ordinary background activity.
-
-These details do not automatically become story facts.
-
-Creative freedom should make the scene feel alive without silently rewriting the permanent story.
-
-SCENE EXECUTION
-
-Before writing, silently determine the scene's beginning, middle, required beat, and ending. Do not reveal this plan.
-
-The opening must continue from the actual provided continuity:
-- If a previous saved section is provided, begin from its final moment, action, location, or conversational state.
-- Do not invent an unseen conversation immediately before the scene.
-- Do not begin with "You're right," "Exactly," "Of course," or similar response language unless the preceding context actually contains something being answered.
-- Establish the current situation first, then let the requested scene develop.
-
-For a scene with an explicit required beat, the listed scene cast is exclusive:
-- Give the characters enough ordinary interaction for the beat to arise naturally.
-- Complete the required beat on the page.
-- Show the immediate reaction.
-- Continue the scene to a natural stopping point instead of ending immediately after setup or after the first exchange.
-- The requested beat is part of the scene itself, not a note to be acknowledged or summarized. Do not introduce another named character unless the scene request explicitly names that character.
-
-For a requested word range, treat the range as the intended scene length. Develop the scene fully rather than treating the first few exchanges as a complete answer.
-
-OUTPUT
-
-When writing fiction, output only the story prose unless the user explicitly requests another format.
-
-Do not output analysis, planning, summaries, canon explanations, JSON, reviewer comments, or discussion of these instructions.'''
+Output only the story prose.'''
 
 
 STATE_REQUIRED_KEYS = {
@@ -1484,13 +1368,7 @@ def _format_locked_state(data):
 
 
 def build_writer_scene_packet(files):
-    """Build the smallest useful context for the prose writer.
-
-    The writer sees the current scene, active characters, their relevant
-    established traits/relationships, current knowledge, objectives, and
-    established locations. Future plot rules and hidden canon stay outside
-    the normal writing context.
-    """
+    """Build focused present-story context for the prose writer."""
     parsed = {}
 
     for name, raw in files:
@@ -1502,95 +1380,65 @@ def build_writer_scene_packet(files):
     state = parsed.get("current_state.json", {})
     bible = parsed.get("story_bible.json", {})
 
-    character_files = {
+    character_files = [
         str(name).strip()
         for name in bible.get("character_cards", [])
         if str(name).strip()
-    }
+    ]
 
-    location = state.get("location")
     active_names = []
+    location = state.get("location")
 
     if isinstance(location, dict):
         for name in location:
             if any(
-                card_data.get("name") == name
-                for card_name, card_data in parsed.items()
-                if card_name in character_files
-                and isinstance(card_data, dict)
+                parsed.get(card_name, {}).get("name") == name
+                for card_name in character_files
+                if isinstance(parsed.get(card_name), dict)
             ):
                 active_names.append(name)
 
-    if not active_names:
-        for card_name in character_files:
-            card_data = parsed.get(card_name)
-            if isinstance(card_data, dict) and card_data.get("name"):
-                active_names.append(card_data["name"])
-
     lines = [
-        "[SCENE PACKET]",
+        "[STORY CONTEXT]",
         f"Chapter: {state.get('chapter')}",
         f"Scene: {state.get('scene')}",
     ]
 
-    time_data = state.get("time")
-    if time_data:
-        lines.append(f"Time: {json.dumps(time_data, ensure_ascii=False)}")
+    if state.get("time"):
+        lines.append(f"Time: {json.dumps(state.get('time'), ensure_ascii=False)}")
 
     if isinstance(location, dict):
         lines.append("")
-        lines.append("WHERE:")
+        lines.append("CURRENT LOCATIONS:")
         for name, place in location.items():
             lines.append(f"- {name}: {place}")
     elif location:
-        lines.extend(["", f"WHERE: {location}"])
+        lines.extend(["", f"CURRENT LOCATION: {location}"])
 
-    situation = state.get("current_situation")
-    if situation:
-        lines.extend(["", "RIGHT NOW:", str(situation)])
+    if state.get("current_situation"):
+        lines.extend(["", "CURRENT SITUATION:", str(state.get("current_situation"))])
 
     knowledge = state.get("character_knowledge")
     if isinstance(knowledge, dict):
-        relevant_knowledge = []
+        relevant = []
         for name in active_names:
             facts = knowledge.get(name)
-            if isinstance(facts, list):
-                relevant_knowledge.append(
-                    f"- {name}: " + "; ".join(str(f) for f in facts)
-                )
+            if isinstance(facts, list) and facts:
+                relevant.append(f"- {name}: " + "; ".join(str(x) for x in facts))
             elif facts:
-                relevant_knowledge.append(
-                    f"- {name}: {facts}"
-                )
-
-        if relevant_knowledge:
-            lines.extend(["", "WHAT THEY KNOW:"] + relevant_knowledge)
+                relevant.append(f"- {name}: {facts}")
+        if relevant:
+            lines.extend(["", "WHAT THEY KNOW:"] + relevant)
 
     objectives = state.get("active_objectives")
     if isinstance(objectives, dict):
-        relevant_objectives = []
+        relevant = []
         for name in active_names:
-            objective = objectives.get(name)
-            if objective:
-                relevant_objectives.append(
-                    f"- {name}: {objective}"
-                )
-
-        if relevant_objectives:
-            lines.extend(["", "WHAT THEY ARE DOING:"] + relevant_objectives)
-
-    character_fields = (
-        "name",
-        "age",
-        "appearance",
-        "personality",
-        "relationships",
-        "background",
-        "skills",
-        "strengths",
-        "weaknesses",
-        "important_items",
-    )
+            value = objectives.get(name)
+            if value:
+                relevant.append(f"- {name}: {value}")
+        if relevant:
+            lines.extend(["", "CURRENT OBJECTIVES:"] + relevant)
 
     for card_name in character_files:
         data = parsed.get(card_name)
@@ -1598,10 +1446,24 @@ def build_writer_scene_packet(files):
             continue
 
         name = data.get("name")
-        if name not in active_names:
+        if not name or (active_names and name not in active_names):
             continue
 
-        filtered = _pick_fields(data, character_fields)
+        filtered = _pick_fields(
+            data,
+            (
+                "name",
+                "age",
+                "appearance",
+                "personality",
+                "relationships",
+                "background",
+                "skills",
+                "strengths",
+                "weaknesses",
+                "important_items",
+            )
+        )
 
         lines.extend([
             "",
@@ -1609,36 +1471,23 @@ def build_writer_scene_packet(files):
             _compact_json(filtered),
         ])
 
-    locations = bible.get("locations")
-    if isinstance(locations, dict) and locations:
-        lines.append("")
-        lines.append("ESTABLISHED LOCATIONS:")
-        for name, description in locations.items():
-            lines.append(f"- {name}: {description}")
-
     completed = state.get("completed_events")
     if completed:
         lines.append("")
-        lines.append("ESTABLISHED EVENTS:")
+        lines.append("IMPORTANT ESTABLISHED EVENTS:")
         for item in completed:
             lines.append(f"- {item}")
 
     clues = state.get("active_clues")
     if clues:
         lines.append("")
-        lines.append("ESTABLISHED CLUES:")
+        lines.append("ACTIVE STORY CLUES:")
         for item in clues:
             lines.append(f"- {item}")
 
     lines.extend([
         "",
-        "Write from this packet. Do not narrate the packet itself.",
-        "The packet describes the present scene, not future story information.",
-        "Ordinary conversation and temporary sensory detail may be creative.",
-        "Do not invent material plot facts, hidden information, or persistent canon.",
-        "Do not make characters search for danger without a concrete reason.",
-        "",
-        "[END SCENE PACKET]",
+        "[END STORY CONTEXT]",
     ])
 
     return "\n".join(lines)
