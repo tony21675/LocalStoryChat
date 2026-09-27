@@ -199,6 +199,8 @@ Start from the actual current story position. Do not invent an earlier conversat
 
 Write a complete scene with a natural beginning, development, and ending. Do not stop just because the characters have exchanged a few lines.
 
+Scene cast and physical presence are a hard boundary. Only characters explicitly listed by the current scene request are physically present and participating in the scene. Other established characters may be mentioned or discussed naturally when appropriate, but their presence elsewhere in current_state.json does not place them in the scene. Never move an excluded character into the scene unless the user explicitly adds that character to the scene request.
+
 Output only the story prose.'''
 
 
@@ -1367,7 +1369,7 @@ def _format_locked_state(data):
     return "\n".join(lines)
 
 
-def build_writer_scene_packet(files):
+def build_writer_scene_packet(files, scene_characters=None):
     """Build focused present-story context for the prose writer."""
     parsed = {}
 
@@ -1386,20 +1388,36 @@ def build_writer_scene_packet(files):
         if str(name).strip()
     ]
 
-    active_names = []
-    location = state.get("location")
+    available_names = []
 
-    if isinstance(location, dict):
-        for name in location:
-            if any(
-                parsed.get(card_name, {}).get("name") == name
-                for card_name in character_files
-                if isinstance(parsed.get(card_name), dict)
-            ):
-                active_names.append(name)
+    for card_name in character_files:
+        data = parsed.get(card_name)
+        if not isinstance(data, dict):
+            continue
+
+        name = str(data.get("name", "")).strip()
+        if name:
+            available_names.append(name)
+
+    if scene_characters:
+        requested = [str(name).strip() for name in scene_characters if str(name).strip()]
+        active_names = [
+            name
+            for name in requested
+            if name in available_names
+        ]
+    else:
+        active_names = list(available_names)
+
+    location = state.get("location")
 
     lines = [
         "[STORY CONTEXT]",
+        "",
+        "[SCENE CAST]",
+        "Only these characters are physically present in this scene:",
+        "- " + (", ".join(active_names) if active_names else "Use the characters explicitly listed by the scene request."),
+        "Other characters may exist elsewhere in the story and may be mentioned, but they are not physically present unless listed above.",
         f"Chapter: {state.get('chapter')}",
         f"Scene: {state.get('scene')}",
     ]
@@ -1409,9 +1427,10 @@ def build_writer_scene_packet(files):
 
     if isinstance(location, dict):
         lines.append("")
-        lines.append("CURRENT LOCATIONS:")
+        lines.append("CURRENT LOCATIONS FOR SCENE CAST:")
         for name, place in location.items():
-            lines.append(f"- {name}: {place}")
+            if name in active_names:
+                lines.append(f"- {name}: {place}")
     elif location:
         lines.extend(["", f"CURRENT LOCATION: {location}"])
 
@@ -1597,7 +1616,7 @@ def build_scene_anchor(files):
     return ""
 
 
-def build_previous_section_context(max_chars=12000):
+def build_previous_section_context(max_chars=12000, target_scene=None):
     """Load the latest saved manuscript section as a continuity bridge.
 
     The writer process intentionally clears llama.cpp's conversation before
@@ -1646,6 +1665,16 @@ def build_previous_section_context(max_chars=12000):
             continue
 
         candidates.append((number, path))
+
+    if not candidates:
+        return ""
+
+    if isinstance(target_scene, int):
+        candidates = [
+            item
+            for item in candidates
+            if item[0] < target_scene
+        ]
 
     if not candidates:
         return ""
@@ -1724,12 +1753,41 @@ class LlamaSession:
     def _build_prompt(self, base_prompt, files):
         parts = [base_prompt.strip()]
 
-        scene_packet = build_writer_scene_packet(files)
+        cast_match = re.search(
+            r"ONLY THESE CHARACTERS ARE IN THIS SCENE:\s*([^\n]+)",
+            base_prompt,
+            re.IGNORECASE,
+        )
+
+        scene_characters = []
+        if cast_match:
+            scene_characters = [
+                item.strip()
+                for item in cast_match.group(1).split(",")
+                if item.strip()
+            ]
+
+        scene_match = re.search(
+            r"Begin Chapter\s+(\d+),\s+Scene\s+(\d+)",
+            base_prompt,
+            re.IGNORECASE,
+        )
+
+        target_scene = None
+        if scene_match:
+            target_scene = int(scene_match.group(2))
+
+        scene_packet = build_writer_scene_packet(
+            files,
+            scene_characters=scene_characters,
+        )
 
         if scene_packet:
             parts.append(scene_packet)
 
-        previous_section = build_previous_section_context()
+        previous_section = build_previous_section_context(
+            target_scene=target_scene
+        )
 
         if previous_section:
             parts.append(previous_section)
