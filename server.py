@@ -2088,7 +2088,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/status":
             self._json(200, {
-                "running": True,
+                "running": bool(session.child and session.child.poll() is None),
                 "model": (
                     str(session.model_path)
                     if session.model_path
