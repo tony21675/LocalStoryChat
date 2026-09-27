@@ -1,0 +1,12 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a short scene in modern American English between two longtime adult friends. Keep the narrative voice consistent from beginning to end. Use clear, natural prose with realistic dialogue and small physical actions. Avoid sudden changes into overly dramatic, poetic, sentimental, or formal language. Do not summarize the meaning of the scene for the reader. Let the characters and their interaction carry the scene."
+    },
+    {
+      "role": "assistant",
+      "content": "“You're seriously going to eat that?”\n\nAlex pointed at the last cookie on the plate.\n\nJordan looked at it, then at her. “I was thinking about it.”\n\n“You've been thinking about it for ten minutes.”\n\n“I'm a careful person.”\n\n“You're deciding whether to eat a cookie.”\n\n“It's an important decision.”\n\nAlex shook her head and reached for the plate.\n\nJordan pulled it away.\n\n“Hey.”\n\n“You said you didn't want it.”\n\n“I said I was thinking about it.”\n\n“That means you don't get to complain when someone else takes it.”\n\nJordan gave her a flat look. “You make up a lot of rules.”\n\n“They're good rules.”\n\n“Convenient rules.”\n\nAlex smiled and broke the cookie in half.\n\n“There. Problem solved.”\n\nJordan looked at the two pieces. “That's not how sharing works.”\n\n“Sure it is.”\n\n“You kept the bigger half.”\n\nAlex looked down. “Did I?”\n\n“Yes.”\n\n“Huh.”\n\n“You did that on purpose.”\n\n“Prove it.”\n\nJordan laughed and took the smaller piece anyway.\n\n“You're impossible.”\n\n“And yet you keep coming back.”\n\n“Mostly for the cookies.”\n\n“Whatever helps you sleep at night.”\n\nJordan took a bite and pointed the cookie at her. “Next time, I'm picking the snack.”\n\n“Deal.”\n\n“And I'm buying something you're not allowed to steal.”\n\nAlex nodded seriously. “Good luck with that.”\n\nJordan smiled and finished her cookie. “Yeah. I figured you'd say that.””"
+    }
+  ]
+}
