@@ -1155,6 +1155,55 @@ Do not return current_state.json.
             saved_model_path
         )
 
+def _derive_revelation_guidance(characters):
+    """Extract established private relationship facts that may satisfy a reveal."""
+    requested = {
+        str(item).strip().lower()
+        for item in str(characters or "").split(",")
+        if str(item).strip()
+    }
+
+    if not requested:
+        return []
+
+    guidance = []
+
+    for card_name in discover_story_names():
+        if not card_name.endswith(".json") or card_name == "current_state.json" or card_name == "story_bible.json":
+            continue
+
+        try:
+            data = json.loads((STORY_DIR / card_name).read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        name = str(data.get("name", "")).strip()
+        if not name or name.lower() not in requested:
+            continue
+
+        relationships = data.get("relationships")
+        if not isinstance(relationships, dict):
+            continue
+
+        for person, value in relationships.items():
+            text_value = str(value or "").strip()
+            lower_value = text_value.lower()
+
+            if any(term in lower_value for term in (
+                "secret crush",
+                "crush on",
+                "attracted to",
+                "has feelings for",
+                "in love with",
+                "romantic feelings",
+            )):
+                guidance.append(
+                    f"{name}: established private relationship fact involving {person} -> {text_value}"
+                )
+
+    return guidance
+
+
 def build_scene_prompt(data):
     """Build a compact, high-salience scene request for the writer."""
     def clean(value, default=""):
@@ -1173,6 +1222,8 @@ def build_scene_prompt(data):
 
     if not goal:
         raise ValueError("Scene goal is required.")
+
+    revelation_guidance = _derive_revelation_guidance(characters)
 
     lines = [
         f"Begin Chapter {chapter}, Scene {scene}.",
@@ -1203,6 +1254,18 @@ def build_scene_prompt(data):
             "6. Show the other character noticing and reacting.",
             "7. Continue the scene briefly after the reaction.",
             "Do not replace any of these steps with narration, thoughts, glances, or implied meaning.",
+            "Do not end the scene until every required step has actually happened.",
+        ]
+
+    if revelation_guidance:
+        lines += [
+            "",
+            "ESTABLISHED PRIVATE FACTS RELEVANT TO THE REQUIRED REVELATION:",
+            *[
+                f"- {item}"
+                for item in revelation_guidance
+            ],
+            "Use a relevant established fact for the required spoken reveal rather than inventing a different secret.",
         ]
 
     if avoid:
