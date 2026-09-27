@@ -157,11 +157,11 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
   <div class="files-head">
     <div>
       <h2>Scene Prompt Builder</h2>
-      <div class="sub">Build the next scene prompt without rewriting your permanent writing rules.</div>
+      <div class="sub">Build the next story section without rewriting your permanent writing rules. The Scene number changes only when the story actually enters a new scene.</div>
     </div>
     <div class="toolbar">
       <button id="resetPrompt" class="btn">Reset</button>
-      <button id="carryPrompt" class="btn">Next Scene</button>
+      <button id="carryPrompt" class="btn">Next Section</button>
       <button id="buildPrompt" class="btn primary">Build Prompt</button>
     </div>
   </div>
@@ -525,9 +525,12 @@ function fillPromptFields(data, nextScene=false){
     ? state.chapter
     : (data?.chapter || '');
 
-  let scene = data?.scene || state.scene || '';
+  let scene = Number.isInteger(state.scene)
+    ? state.scene
+    : (data?.scene || '');
+
   if(nextScene && Number.isInteger(state.scene)){
-    scene = state.scene + 1;
+    scene = state.scene;
   }
 
   $('#promptChapter').value = chapter;
@@ -569,22 +572,7 @@ function carryForwardPrompt(){
     guidance: $('#promptGuidance').value
   };
 
-  fillPromptFields(template, false);
-
-  const currentSceneField = Number($('#promptScene').value);
-  const stateScene = Number(window._storyState?.scene);
-
-  const baseScene = Number.isInteger(currentSceneField)
-    ? currentSceneField
-    : (Number.isInteger(stateScene) ? stateScene : 0);
-
-  $('#promptScene').value = baseScene + 1;
-  $('#promptOutput').value = '';
-  builtScenePrompt = '';
-  $('#copyPrompt').disabled = true;
-  $('#usePrompt').disabled = true;
-  promptBuilderDirty = true;
-  writePromptTemplate();
+  fillPromptFields(template, true);
   $('#promptGoal').focus();
 }
 
@@ -904,7 +892,9 @@ async function updateStateFromFile(){
       method:'POST',
       body:JSON.stringify({
         story,
-        sectionFilename:selectedSectionFile.name
+        sectionFilename:selectedSectionFile.name,
+        chapter:Number($('#promptChapter').value),
+        scene:Number($('#promptScene').value)
       })
     });
 
@@ -933,7 +923,11 @@ async function updateState(){
   try{
     const j=await api('/api/state/propose',{
       method:'POST',
-      body:JSON.stringify({story})
+      body:JSON.stringify({
+        story,
+        chapter:Number($('#promptChapter').value),
+        scene:Number($('#promptScene').value)
+      })
     });
 
     pendingState=j.state;
@@ -1046,31 +1040,18 @@ async function saveStory(story){
     const status = await api('/api/status');
 
     const chapter = status.state?.chapter;
-    const currentScene = status.state?.scene;
-    let scene = status.state?.next_save_scene ?? currentScene;
-    let overwrite = false;
+    const section = status.state?.next_save_section;
 
-    const builderChapter = Number($('#promptChapter').value);
-    const builderScene = Number($('#promptScene').value);
-
-    if(Number.isInteger(chapter) &&
-       Number.isInteger(currentScene) &&
-       Number.isInteger(builderChapter) &&
-       Number.isInteger(builderScene) &&
-       builderChapter === chapter &&
-       builderScene === currentScene + 1){
-      scene = builderScene;
-      overwrite = true;
-    }
-
-    if(!Number.isInteger(chapter) || !Number.isInteger(scene)){
-      throw new Error('Current chapter and section numbers are not available.');
+    if(!Number.isInteger(chapter) || !Number.isInteger(section)){
+      throw new Error('Current chapter and next manuscript section number are not available.');
     }
 
     const filename =
       'Chapter_'+String(chapter).padStart(2,'0')+
-      '_Section_'+String(scene).padStart(2,'0')+
+      '_Section_'+String(section).padStart(2,'0')+
       '.txt';
+
+    const overwrite = false;
 
     pendingStorySave = {
       story: story,
