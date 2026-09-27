@@ -223,16 +223,41 @@ STATE_REQUIRED_KEYS = {
     "continuity_requirements",
 }
 
-STATE_SYSTEM_PROMPT = r"""You are the continuity manager for an ongoing fictional story.
+STATE_SYSTEM_PROMPT = r"""You are a minimal continuity updater for an ongoing fictional story.
 
-Your job is to identify ONLY the changes caused by a completed story section.
+Your ONLY job is to record persistent story changes that will matter in later sections.
 
-Return ONLY one valid JSON object using exactly this structure:
+Return ONLY this JSON object:
 
 {
   "patch": {},
   "evidence": []
 }
+
+DEFAULT TO NO UPDATE. For ordinary dialogue, jokes, school talk, small observations, temporary emotions, gestures, routine movement, and disposable scene details, return:
+{"patch": {}, "evidence": []}
+
+NEVER copy the current state into the patch.
+NEVER summarize the current state.
+NEVER repeat existing array items.
+NEVER include an unchanged field.
+NEVER include continuity_requirements unless the section establishes a genuinely new persistent rule or fact.
+NEVER include active_objectives unless a meaningful lasting objective actually changed.
+NEVER include character_knowledge unless a character clearly learned a new consequential fact.
+NEVER include completed_events for ordinary conversation topics or incidental actions.
+NEVER include active_clues or unresolved_questions unless a real plot clue or unresolved plot question was established.
+
+Only these top-level patch fields are allowed:
+status, chapter, scene, scene_completed, location, time, current_situation,
+character_knowledge, completed_events, active_clues, new_clues,
+unresolved_questions, active_objectives, continuity_requirements.
+
+For arrays, include ONLY NEW items introduced by this section. Do not copy or rewrite the old array.
+
+Every substantive patch item needs one short, exact, contiguous evidence quote from the completed story section.
+If you cannot quote the change directly, do not include the change.
+
+Keep the entire response tiny. A small patch with one or two items is normal. An empty patch is often the correct answer.
 
 The "patch" must contain ONLY fields whose values are actually different from CURRENT STATE BEFORE THIS SECTION.
 The "evidence" array must prove every substantive new or changed claim in the patch.
@@ -936,14 +961,7 @@ def generate_state_proposal(
             section_chapter = int(match.group(1))
             section_number = int(match.group(2))
 
-    prompt = f"""Identify ONLY the changes caused by this completed story section.
-
-The patch may contain ONLY these top-level fields:
-status, chapter, scene, scene_completed, location, time,
-current_situation, character_knowledge, completed_events, active_clues,
-new_clues, unresolved_questions, active_objectives, continuity_requirements.
-
-Never invent or create any other top-level field.
+    prompt = f"""Update story state ONLY when this completed story section establishes a persistent change.
 
 CURRENT STATE BEFORE THIS SECTION:
 {json.dumps(current_state, ensure_ascii=False, indent=2)}
@@ -951,60 +969,24 @@ CURRENT STATE BEFORE THIS SECTION:
 COMPLETED STORY SECTION:
 {story_text}
 
-REQUESTED NARRATIVE POSITION FOR THIS UPDATE:
+REQUESTED NARRATIVE POSITION:
 Chapter {requested_chapter if isinstance(requested_chapter, int) else current_state.get("chapter")} / Scene {requested_scene if isinstance(requested_scene, int) else current_state.get("scene")}
 
-The requested narrative position above is bookkeeping supplied by the application. Use it for chapter/scene state rather than treating the manuscript section number as the scene number.
-
-Use CURRENT STATE BEFORE THIS SECTION as the baseline for comparison.
-Only propose information that is genuinely new or changed because of the completed story section.
-If a fact already exists in current state, do NOT include it again.
-Do not treat ordinary restatement, repeated context, or pre-existing knowledge as a change.
-
-Return ONLY this JSON structure:
-
-{{
-  "patch": {{}},
-  "evidence": []
-}}
+Return ONLY:
+{{"patch": {{}}, "evidence": []}}
 
 Rules:
-- "patch" contains ONLY information newly established or changed by this story section relative to CURRENT STATE BEFORE THIS SECTION.
-- Use the supplied current state as the comparison baseline. Do NOT treat existing facts as new.
-- Do NOT copy unchanged information from current state.
-- Do NOT invent information.
-- Do NOT include unchanged information.
-- For array fields, include ONLY new items introduced by this section.
-- Do NOT include old array items.
-- The ONLY permitted top-level patch fields are:
-  status, chapter, scene, scene_completed, location, time, current_situation,
-  character_knowledge, completed_events, active_clues, new_clues,
-  unresolved_questions, active_objectives, continuity_requirements.
-- Do NOT create or return any other top-level fields. Fields such as
-  conversation_topics, current_activity, notes, summary, history, or metadata are invalid.
-- "evidence" must contain an exact quote from this story section for every substantive patch item.
-- Every evidence "quote" MUST be one contiguous excerpt copied character-for-character from the completed story section after normal whitespace cleanup.
-- Do NOT use ellipses ("..."), brackets, summaries, stitched excerpts, or text from CURRENT STATE BEFORE THIS SECTION.
-- Prefer one short complete sentence or one short contiguous sentence fragment as the quote.
-- The quote must directly support the claim. Do not attach a baseline-only fact to a quote that merely provides nearby context.
-- If a claim cannot be supported by a direct contiguous quote from the completed story section, do NOT include that claim in the patch.
-- Never create an update merely because a fact from current state remains true. Existing facts are not changes.
-- Treat location and physical position as literal continuity data. Do not infer arrival at a place from language such as approaching, nearing, heading toward, or not yet reached.
-- When a character's physical position changes, update current_situation as needed so it remains consistent with the changed location. Do not leave current_situation describing an earlier physical position when location has advanced.
-- Do not make a character appear to be at or passing a location unless the completed story section explicitly establishes that position.
-- Do not create active_clues or unresolved_questions from ordinary objects, dialogue, or curiosity unless the story section explicitly establishes them as plot-relevant clues or unresolved story questions.
-- Do not add temporary observations, gestures, glances, blushes, emotions, or ordinary sensory details to character_knowledge unless the section establishes a meaningful new fact that the character learned and may need to remember later.
-- Do not add already-established character traits, possessions, relationships, or background facts to current state merely because the section mentions or shows them.
-- A temporary observation about an already-established person, possession, relationship, or setting is NOT a new character-knowledge fact. For example, noticing, glancing at, touching, carrying, or mentioning an established object does not create persistent knowledge.
-- Character knowledge should be updated only when the section gives the character a genuinely new fact, discovery, instruction, confession, witness account, or other information that can matter after the immediate scene.
-- Do not use character_knowledge as a log of moment-to-moment perception. Do not record ordinary noticing, looking, remembering an established fact, or wondering about something unless it creates a meaningful new piece of knowledge.
-- Do not add a continuity_requirement for a one-time action, observation, or ordinary piece of scene texture. Continuity requirements are only for facts or constraints that must remain true in later scenes.
-- In particular, a character noticing an established object is not a state change unless the noticing itself creates a meaningful new plot or knowledge consequence.
-- If nothing changed, return exactly:
-  {{"patch": {{}}, "evidence": []}}
-
-Do not return markdown or explanations.
-Do not return current_state.json.
+- Default to an empty patch for ordinary scene material.
+- Return only genuinely new or changed persistent information.
+- Do not copy, summarize, or restate current_state.
+- Do not add ordinary conversation topics, temporary observations, routine actions, or disposable details to state.
+- Do not create new clues or questions unless the section clearly makes them plot-relevant.
+- For array fields, include only new items.
+- Every substantive patch item needs one short exact contiguous quote from the completed story section.
+- If a proposed change cannot be directly quoted, omit it.
+- The application supplies Chapter/Scene bookkeeping separately. Do not infer scene number from the manuscript section number.
+- Keep the response extremely small. Empty patch is preferred when nothing important changed.
+- Output no markdown or explanation.
 """
 
     # Run the state manager only after the writer model has been stopped.
@@ -1039,7 +1021,7 @@ Do not return current_state.json.
             "--top-p", "0.80",
             "--repeat-last-n", "256",
             "--repeat-penalty", "1.08",
-            "--n-predict", "900",
+            "--n-predict", "400",
             "--system-prompt", STATE_SYSTEM_PROMPT,
             "--prompt", prompt,
             "--color", "off",
