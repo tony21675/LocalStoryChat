@@ -18,17 +18,20 @@
     "Tony": [
       "Knows Tiffany is his daughter.",
       "Knows Maya is one of Tiffany's best friends and is also a friend of his.",
-      "Does not know of any kidnapping or threat to Tiffany."
+      "Does not know of any kidnapping or threat to Tiffany.",
+      "Tiffany's mother died while giving birth to Tiffany."
     ],
     "Tiffany": [
       "Is walking home from school with Maya.",
       "Knows Tony is at home.",
-      "Knows Maya is walking home with her."
+      "Knows Maya is walking home with her.",
+      "Her mother died while giving birth to her."
     ],
     "Maya": [
       "Is walking home from school with Tiffany.",
       "Knows Tony is at home.",
-      "Knows Tiffany is safe at the start of the story."
+      "Knows Tiffany is safe at the start of the story.",
+      "Tiffany's mother died while giving birth to Tiffany."
     ]
   },
   "completed_events": [],
@@ -52,6 +55,8 @@
     "Do not reveal the kidnapping before it occurs in the story.",
     "Do not invent threats, clues, kidnappers, motives, destinations, or other investigative information before it is established.",
     "Do not reveal the hidden tracker or its activation method.",
+    "Tiffany's mother died while giving birth to Tiffany.",
+    "Only characters explicitly listed for a scene are physically present and participating in that scene. Other characters may be mentioned naturally, including Tony in conversation, but they must not enter, act in, or become a focus of the scene unless explicitly included.",
     "Protect continuity of all established character facts and relationships.",
     "Chloe is not an active character in this three-character test.",
     "From his current position, Tony cannot see or hear the front road or Tiffany and Maya.",
