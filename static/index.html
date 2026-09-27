@@ -569,7 +569,22 @@ function carryForwardPrompt(){
     guidance: $('#promptGuidance').value
   };
 
-  fillPromptFields(template, true);
+  fillPromptFields(template, false);
+
+  const currentSceneField = Number($('#promptScene').value);
+  const stateScene = Number(window._storyState?.scene);
+
+  const baseScene = Number.isInteger(currentSceneField)
+    ? currentSceneField
+    : (Number.isInteger(stateScene) ? stateScene : 0);
+
+  $('#promptScene').value = baseScene + 1;
+  $('#promptOutput').value = '';
+  builtScenePrompt = '';
+  $('#copyPrompt').disabled = true;
+  $('#usePrompt').disabled = true;
+  promptBuilderDirty = true;
+  writePromptTemplate();
   $('#promptGoal').focus();
 }
 
@@ -633,6 +648,7 @@ async function refresh(){
     $('#fileCount').textContent=s.files.length;
 
     if(s.state){
+      window._storyState = s.state;
       $('#stateStatus').textContent =
         'Ch '+s.state.chapter+' / Sc '+s.state.scene+
         (s.state.pending?' • proposal':'');
