@@ -815,6 +815,73 @@ def extract_json_with_keys(text, required_keys):
     )
 
 
+def _filter_unestablished_location_changes(base, patch, story_text):
+    """Do not let state advance physical location without explicit arrival."""
+    if not isinstance(patch, dict):
+        return patch
+
+    base_location = base.get("location")
+    patch_location = patch.get("location")
+
+    if not isinstance(base_location, dict) or not isinstance(patch_location, dict):
+        return patch
+
+    normalized_story = _normalize_evidence_text(story_text).lower()
+
+    explicit_arrival = bool(
+        re.search(
+            r"\\b(?:arrived|had arrived|reached|had reached|entered|went inside|stepped inside)\\b",
+            normalized_story,
+        )
+        and re.search(
+            r"\\b(?:home|house|inside|front door|their house)\\b",
+            normalized_story,
+        )
+    )
+
+    if explicit_arrival:
+        return patch
+
+    filtered_location = dict(patch_location)
+
+    for character, old_value in base_location.items():
+        if not isinstance(old_value, str):
+            continue
+
+        old_text = old_value.lower()
+
+        if "not reached" not in old_text:
+            continue
+
+        if character not in filtered_location:
+            continue
+
+        new_value = filtered_location.get(character)
+
+        if new_value != old_value:
+            filtered_location.pop(character, None)
+
+    if filtered_location:
+        patch["location"] = filtered_location
+    else:
+        patch.pop("location", None)
+
+    base_situation = str(base.get("current_situation", "")).lower()
+    proposed_situation = patch.get("current_situation")
+
+    if (
+        "not reached" in base_situation
+        and isinstance(proposed_situation, str)
+        and re.search(
+            r"\\b(?:arrived|reached|inside|entered)\\b",
+            proposed_situation.lower(),
+        )
+    ):
+        patch.pop("current_situation", None)
+
+    return patch
+
+
 def generate_state_proposal(story_text, section_filename=None):
     global pending_state
 
@@ -978,12 +1045,25 @@ Do not return current_state.json.
         print(output, flush=True)
         print("--- END RAW STATE MANAGER OUTPUT ---\n", flush=True)
 
-        proposal = extract_json_object(output)
+        try:
+            proposal = extract_json_object(output)
+        except ValueError as exc:
+            print(
+                "State manager returned no usable JSON proposal; "
+                "using an empty patch. "
+                f"Reason: {exc}",
+                flush=True
+            )
+            proposal = {
+                "patch": {},
+                "evidence": [],
+            }
 
         if not isinstance(proposal, dict):
-            raise ValueError(
-                "The state manager did not return a JSON object."
-            )
+            proposal = {
+                "patch": {},
+                "evidence": [],
+            }
 
         patch = proposal.get("patch")
         evidence = proposal.get("evidence")
@@ -1042,6 +1122,12 @@ Do not return current_state.json.
             patch,
             story_text,
             evidence
+        )
+
+        patch = _filter_unestablished_location_changes(
+            current_state,
+            patch,
+            story_text
         )
 
         validate_state_patch(
@@ -1489,6 +1575,15 @@ def build_writer_scene_packet(files, scene_characters=None):
             f"CHARACTER: {name}",
             _compact_json(filtered),
         ])
+
+    continuity = state.get("continuity_requirements")
+    if isinstance(continuity, list) and continuity:
+        lines.extend([
+            "",
+            "PERSISTENT CONTINUITY RULES:",
+        ])
+        for item in continuity:
+            lines.append(f"- {item}")
 
     completed = state.get("completed_events")
     if completed:
