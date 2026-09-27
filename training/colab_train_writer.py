@@ -8,10 +8,10 @@ The script:
 1. Resets the temporary Colab project folder.
 2. Clones the LocalStoryChat training branch.
 3. Rebuilds and validates the 48-example Gold dataset.
-4. Formats each example with Qwen3.5's chat template.
-5. Loads Qwen3.5-9B-Base in 4-bit with Unsloth.
-6. Adds language-side LoRA adapters only.
-7. Fine-tunes with TRL SFTTrainer.
+4. Loads Qwen3.5-9B-Base in 4-bit with Unsloth.
+5. Adds language-side LoRA adapters only.
+6. Fine-tunes conversational examples with TRL SFTTrainer.
+7. Trains on assistant responses only.
 8. Saves the LoRA adapter and tokenizer and creates a ZIP.
 """
 
@@ -26,7 +26,7 @@ BRANCH = "generic-story-engine-rebuild"
 REPO = "https://github.com/tony21675/LocalStoryChat.git"
 MODEL_NAME = "Qwen/Qwen3.5-9B-Base"
 OUTPUT_DIR = PROJECT / "training" / "outputs" / "qwen3_5_9b_writer_colab"
-MAX_SEQ_LENGTH = 2048
+MAX_LENGTH = 2048
 SEED = 42
 
 
@@ -49,10 +49,8 @@ def check_gpu():
     print(f"GPU: {name}")
     print(f"VRAM: {memory:.2f} GiB")
 
-    if memory < 14:
-        raise RuntimeError(
-            f"This training configuration expects roughly a 16 GB GPU. Detected {memory:.2f} GiB."
-        )
+    if "T4" not in name:
+        print("WARNING: this script was tuned for a 16 GB-class T4 runtime.")
 
 
 def prepare_project():
@@ -82,27 +80,13 @@ def load_dataset():
     if len(dataset) != 48:
         raise ValueError(f"Expected 48 examples, found {len(dataset)}")
 
-    print(f"Loaded {len(dataset)} Gold examples")
-    return dataset
-
-
-def format_dataset(dataset, tokenizer):
-    def render(example):
-        messages = example["messages"]
-        text = tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=False,
-            enable_thinking=False,
-        )
-        return {"text": text}
-
+    # Tell the Qwen3.5 chat template to render ordinary prose, not thinking traces.
     dataset = dataset.map(
-        render,
-        remove_columns=dataset.column_names,
+        lambda row: {"chat_template_kwargs": {"enable_thinking": False}},
         num_proc=1,
     )
 
+    print(f"Loaded {len(dataset)} Gold examples")
     return dataset
 
 
@@ -114,16 +98,16 @@ def main():
     check_gpu()
     prepare_project()
 
+    import torch
     from unsloth import FastLanguageModel
-    from transformers import TrainingArguments
-    from trl import SFTTrainer
+    from trl import SFTConfig, SFTTrainer
 
     dataset = load_dataset()
 
     print("\nLoading Qwen3.5-9B-Base in 4-bit...")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=MODEL_NAME,
-        max_seq_length=MAX_SEQ_LENGTH,
+        max_seq_length=MAX_LENGTH,
         load_in_4bit=True,
         load_in_8bit=False,
         full_finetuning=False,
@@ -132,10 +116,7 @@ def main():
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    print("Formatting training examples...")
-    dataset = format_dataset(dataset, tokenizer)
-
-    print("Attaching language-side LoRA...")
+    print("\nAttaching language-side LoRA...")
     model = FastLanguageModel.get_peft_model(
         model,
         r=16,
@@ -159,15 +140,27 @@ def main():
         finetune_vision_layers=False,
     )
 
+    print("\nLoRA attached successfully.")
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated(0) / (1024**3)
+        reserved = torch.cuda.memory_reserved(0) / (1024**3)
+        print(f"GPU memory allocated: {allocated:.2f} GiB")
+        print(f"GPU memory reserved: {reserved:.2f} GiB")
+
     split = dataset.train_test_split(test_size=5, seed=SEED)
     train_dataset = split["train"]
     eval_dataset = split["test"]
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    args = TrainingArguments(
+    training_args = SFTConfig(
         output_dir=str(OUTPUT_DIR),
+        max_length=MAX_LENGTH,
+        dataset_num_proc=1,
+        assistant_only_loss=True,
+        packing=False,
         per_device_train_batch_size=1,
+        per_device_eval_batch_size=1,
         gradient_accumulation_steps=8,
         num_train_epochs=3,
         learning_rate=1e-4,
@@ -192,12 +185,10 @@ def main():
     print("\nStarting SFT training...")
     trainer = SFTTrainer(
         model=model,
+        args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        dataset_text_field="text",
-        max_seq_length=MAX_SEQ_LENGTH,
-        packing=False,
-        args=args,
+        processing_class=tokenizer,
     )
 
     trainer.train()
