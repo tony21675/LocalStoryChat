@@ -830,7 +830,7 @@ def _filter_unestablished_location_changes(base, patch, story_text):
 
     explicit_arrival = bool(
         re.search(
-            r"\\b(?:arrived|had arrived|reached|had reached|entered|went inside|stepped inside)\\b",
+            r"\\b(?:arrived(?: at| home| inside)|reached (?:home|the house|their house|the front door)|entered (?:the house|their house|the home)|went inside|stepped inside)\\b",
             normalized_story,
         )
         and re.search(
