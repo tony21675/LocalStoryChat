@@ -2702,9 +2702,14 @@ class Handler(BaseHTTPRequestHandler):
                             "Manuscript section must belong to the current chapter."
                         )
 
-                    if target_scene <= scene:
+                    if target_scene < scene:
                         raise ValueError(
-                            "Manuscript section must be later than the current state scene."
+                            "Manuscript section cannot be earlier than the current state scene."
+                        )
+
+                    if target_scene == scene and path_out.exists() and not overwrite:
+                        raise ValueError(
+                            f"Manuscript section already exists: {filename}"
                         )
 
                     filename = (
