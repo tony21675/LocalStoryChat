@@ -2707,11 +2707,6 @@ class Handler(BaseHTTPRequestHandler):
                             "Manuscript section cannot be earlier than the current state scene."
                         )
 
-                    if target_scene == scene and path_out.exists() and not overwrite:
-                        raise ValueError(
-                            f"Manuscript section already exists: {filename}"
-                        )
-
                     filename = (
                         f"Chapter_{target_chapter:02d}_Section_{target_scene:02d}.txt"
                     )
@@ -2721,6 +2716,11 @@ class Handler(BaseHTTPRequestHandler):
                         / f"Chapter_{target_chapter:02d}"
                         / filename
                     )
+
+                    if path_out.exists() and not overwrite:
+                        raise ValueError(
+                            f"Manuscript section already exists: {filename}"
+                        )
                 else:
                     _, filename, path_out = next_story_section_path(
                         chapter, scene
