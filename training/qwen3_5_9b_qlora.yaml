@@ -1,0 +1,81 @@
+base_model: Qwen/Qwen3.5-9B-Base
+processor_type: AutoProcessor
+
+# Qwen3.5 is multimodal; this run trains text only.
+freeze_mm_modules: true
+
+# Required for the Qwen3.5 processor/chat-template path.
+skip_prepare_dataset: true
+remove_unused_columns: false
+sample_packing: false
+
+chat_template: qwen3_5
+chat_template_kwargs:
+  enable_thinking: false
+
+datasets:
+  - path: ./training/gold_dataset.jsonl
+    type: chat_template
+    field_messages: messages
+    roles_to_train:
+      - assistant
+    split: train
+
+dataset_prepared_path: ./training/cache/gold_qwen3_5_9b
+val_set_size: 0.1
+
+output_dir: ./training/outputs/qwen3_5_9b_writer
+
+# Conservative first pass for a small, style-focused dataset.
+sequence_len: 2048
+pad_to_sequence_len: false
+
+load_in_4bit: true
+adapter: qlora
+
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+
+# Train language-model attention/MLP plus Qwen3.5 linear-attention projections.
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - down_proj
+  - up_proj
+  - linear_attn.in_proj_qkv
+  - linear_attn.in_proj_z
+  - linear_attn.out_proj
+
+gradient_accumulation_steps: 8
+micro_batch_size: 1
+num_epochs: 3
+
+optimizer: adamw_bnb_8bit
+lr_scheduler: cosine
+learning_rate: 0.0001
+
+bf16: true
+tf32: true
+
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+logging_steps: 1
+attn_implementation: flash_attention_2
+
+warmup_ratio: 0.1
+evals_per_epoch: 2
+saves_per_epoch: 1
+weight_decay: 0.0
+
+wandb_project:
+wandb_entity:
+wandb_watch:
+wandb_name:
+wandb_log_model:
+
+resume_from_checkpoint:
