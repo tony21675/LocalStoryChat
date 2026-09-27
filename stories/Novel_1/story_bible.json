@@ -16,7 +16,8 @@
     "Tony-Chloe": "friends",
     "Tiffany-Maya": "best friends with a close, sister-like platonic relationship; they have known each other since they were babies",
     "Tiffany-Chloe": "close friends",
-    "Maya-Chloe": "close friends"
+    "Maya-Chloe": "close friends",
+    "Tiffany-mother": "Tiffany's mother died while giving birth to Tiffany."
   },
   "hidden_canon": {
     "tracker": {
@@ -66,7 +67,9 @@
     "kidnapping_roles": "There are two male kidnappers: one drives the van and the other grabs and forces Tiffany into the van.",
     "police_involvement": "Tony intends to handle Tiffany's kidnapping himself and does not want police involvement. Maya and Chloe are instructed not to report the kidnapping or disclose what they witnessed to police or other outsiders unless Tony's plans or the established story explicitly change this rule.",
     "tony_response": "Tony takes personal responsibility for finding Tiffany and intends to handle the investigation himself. He tells Maya and Chloe not to involve police or tell anyone outside their trusted group what happened. He does not require them to participate in the search, but makes clear that they may choose to help him look for Tiffany, gather clues, or assist in other ways if they want to.",
-    "maya_chloe_choice": "Maya and Chloe are not required to participate in Tony's search for Tiffany. Tony gives them the choice to help him find Tiffany or look for useful clues if they want to."
+    "maya_chloe_choice": "Maya and Chloe are not required to participate in Tony's search for Tiffany. Tony gives them the choice to help him find Tiffany or look for useful clues if they want to.",
+    "scene_cast": "Only characters explicitly listed for a scene are physically present and participating in that scene. Other established characters may be mentioned or discussed naturally when appropriate, but must not enter, act in, or become a focus of the scene unless explicitly included.",
+    "family_history": "Tiffany's mother died while giving birth to Tiffany. Do not invent a living mother, mother figure, or maternal role in the household unless the story explicitly establishes one later."
   },
   "locations": {
     "tony_tiffany_home": "Tony and Tiffany live together in the same house.",
