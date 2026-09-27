@@ -1098,7 +1098,7 @@ def build_scene_prompt(data):
         "",
         "ONLY THESE CHARACTERS ARE IN THIS SCENE:",
         characters or "Use only the characters established in the current scene context.",
-        "Do not introduce, mention, or focus on another named character just because that character exists in the story files.",
+        "Do not introduce, place, or focus another named character in the scene just because that character exists in the story files. Other established characters may be mentioned or discussed naturally, but they are not physically present unless listed above.",
         "",
         "SCENE GOAL:",
         goal,
