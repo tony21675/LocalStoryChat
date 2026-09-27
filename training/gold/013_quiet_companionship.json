@@ -1,0 +1,12 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a polished short scene in modern American English between two adult friends sharing a quiet moment without needing to talk much. Let their familiarity show through comfortable silence, small practical gestures, and a few simple lines of dialogue. Nothing major happens. Avoid sentimental narration and do not explain their bond directly."
+    },
+    {
+      "role": "assistant",
+      "content": "The rain had settled into a steady tapping against the window by the time Morgan came back with two blankets.\n\n“You took the warm one,” Casey said.\n\n“I did.”\n\n“That was rude.”\n\n“I’ll survive the consequences.”\n\nCasey pulled the blanket over her legs anyway. Morgan sat beside her and handed over a mug.\n\n“Tea?”\n\n“Yeah.”\n\n“Good.”\n\nThey went back to the movie.\n\nTen minutes passed.\n\nCasey reached for the popcorn and found the bowl empty.\n\n“You ate all of it.”\n\nMorgan looked offended. “I did not.”\n\nCasey raised an eyebrow.\n\n“Okay. I ate most of it.”\n\n“That's what I thought.”\n\nMorgan nudged the empty bowl toward her. “You want more?”\n\n“Maybe.”\n\nMorgan got up without another word.\n\nCasey watched the screen until she heard the microwave start in the kitchen.\n\nWhen Morgan came back, she set the bowl between them.\n\n“Better?”\n\n“Much.”\n\nThey settled in again.\n\nOutside, the rain kept going. Inside, neither of them had anywhere else they needed to be."
+    }
+  ]
+}
