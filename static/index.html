@@ -159,6 +159,24 @@ textarea:focus,input:focus,select:focus{
   color:var(--muted);
   font-size:12px
 }
+.module-note{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:8px
+}
+.module-chip{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:999px;
+  padding:8px 11px;
+  cursor:pointer;
+  font-weight:600
+}
+.module-chip.selected{
+  border-color:#5a8ba3;
+  background:#163340
+}
 .chat{
   flex:1;
   display:flex;
@@ -316,6 +334,17 @@ textarea:focus,input:focus,select:focus{
   </div>
 </section>
 
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Story Modules</h2>
+      <div class="sub">Optional plot arcs stay unloaded until you choose to bring them into the story.</div>
+    </div>
+  </div>
+  <div id="moduleList" class="cast-list" aria-label="Optional story modules"></div>
+  <div class="module-note">Load a module when you are ready to use that part of the story. Unload it when you want the writer to forget that optional plot context.</div>
+</section>
+
 <div class="composer">
   <div class="row">
     <textarea id="direction" placeholder="Write what you want to happen in this section. Example: Let Tiffany and Maya walk home and talk naturally about school, random things, the past, and what they might do later. They have not reached home yet."></textarea>
@@ -428,6 +457,58 @@ function setWriterWorking(working){
   );
   $('#write').textContent=working ? 'Writing…' : 'Write';
   $('#write').classList.toggle('working',working);
+}
+
+function renderModules(modules){
+  const list=$('#moduleList');
+  list.innerHTML='';
+
+  if(!modules || !modules.length){
+    const empty=document.createElement('div');
+    empty.className='cast-empty';
+    empty.textContent='No optional story modules are defined.';
+    list.appendChild(empty);
+    return;
+  }
+
+  modules.forEach(module=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='module-chip'+(
+      module.active ? ' selected' : ''
+    );
+    button.textContent=module.active
+      ? module.name+' (Loaded)'
+      : module.name;
+
+    button.addEventListener('click',()=>{
+      toggleModule(module);
+    });
+
+    button.disabled=$('#write').disabled;
+    list.appendChild(button);
+  });
+}
+
+async function toggleModule(module){
+  setBusy(true);
+
+  try{
+    const endpoint=module.active
+      ? '/api/module/unload'
+      : '/api/module/load';
+
+    await api(endpoint,{
+      method:'POST',
+      body:JSON.stringify({id:module.id})
+    });
+
+    await refresh();
+  }catch(e){
+    showError(e.message);
+  }finally{
+    setBusy(false);
+  }
 }
 
 function renderCast(characters){
@@ -545,6 +626,9 @@ function setBusy(value){
   $('#unloadModel').disabled=value;
   $('#write').disabled=value;
   $('#updateState').disabled=value;
+  document.querySelectorAll('#moduleList button').forEach(
+    button=>button.disabled=value
+  );
   $('#applyState').disabled=value || !pendingState;
   $('#discardState').disabled=value || !pendingState;
 }
@@ -651,6 +735,12 @@ async function refresh(){
 
     fillSceneSummary(s.state);
     renderCast(s.available_characters || []);
+    renderModules(
+      (s.available_story_modules || []).map(module=>({
+        ...module,
+        active: (s.active_modules || []).includes(module.id)
+      }))
+    );
 
   }catch(e){
     $('#backend').textContent='error';
