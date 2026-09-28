@@ -6,6 +6,7 @@ import threading
 import time
 import socket
 import subprocess
+import tempfile
 import shutil
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -1942,71 +1943,31 @@ class LlamaSession:
         )
 
     @staticmethod
-    def clean_output(text, user_request=""):
-        """Return only generated prose from llama-cli output.
-        
-        Different llama.cpp builds can echo some or all of the prompt even
-        when --no-display-prompt is supplied. The writer prompt is already
-        known, so remove it deterministically instead of relying on a single
-        output marker.
-        """
+    def clean_output(text):
+        """Return only the assistant prose written by llama-cli."""
         raw = (text or "").replace("\r", "")
 
-        # Best case: our explicit story-output marker survived.
-        output_marker = "[BEGIN STORY OUTPUT]"
-        if output_marker in raw:
-            raw = raw.rsplit(output_marker, 1)[1]
+        # llama-cli's --output-file format prefixes the generated response
+        # with "Assistant:"; remove that wrapper before showing the prose.
+        stripped = raw.lstrip()
+        if stripped.startswith("Assistant:"):
+            raw = stripped[len("Assistant:"):].lstrip("\n ")
 
-        # Next, remove everything through the end of the known user request.
-        # This handles builds that echo the full prompt but omit our marker.
-        if "[END USER REQUEST]" in raw:
-            raw = raw.split("[END USER REQUEST]", 1)[1]
-        elif user_request:
-            request = user_request.strip()
-            if request and request in raw:
-                raw = raw.split(request, 1)[1]
-
-        # Remove any trailing control markers that are not story prose.
+        # Defensive cleanup for any control text that somehow reaches the
+        # output file.
         for marker in (
+            "[Start thinking]",
+            "[End thinking]",
             "[END STORY OUTPUT]",
-            "[END WRITER CONTEXT]",
             "Exiting...",
         ):
             if marker in raw:
-                raw = raw.split(marker, 1)[0]
+                if marker == "[Start thinking]":
+                    raw = raw.split(marker, 1)[0]
+                else:
+                    raw = raw.split(marker, 1)[0]
 
-        lines = []
-
-        for line in raw.splitlines():
-            stripped = line.strip()
-
-            if not stripped:
-                if lines and lines[-1] != "":
-                    lines.append("")
-                continue
-
-            # llama.cpp status/prompt decorations should never reach the story.
-            if stripped.startswith("[ Prompt:") or stripped.startswith("[ Generation:"):
-                continue
-
-            if stripped == ">":
-                continue
-
-            # Defensive cleanup for the initial interactive-style banner.
-            if stripped in {
-                "Loading model...",
-                "available commands:",
-                "build",
-                "model",
-                "ftype",
-                "modalities",
-                "using custom system prompt",
-            }:
-                continue
-
-            lines.append(line)
-
-        return "\n".join(lines).strip()
+        return raw.strip()
 
     def start(self, system_prompt, files, model_path=None):
         with self.lock:
@@ -2172,49 +2133,81 @@ class LlamaSession:
             ]
 
             try:
-                proc = subprocess.Popen(
-                    args,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env=env,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    bufsize=1,
-                )
-
-                self.child = proc
-                self.buffer = ""
+                output_path = None
 
                 try:
-                    output, error_output = proc.communicate(timeout=900)
-                except subprocess.TimeoutExpired as exc:
-                    proc.kill()
-                    output, error_output = proc.communicate()
-                    tail = ((error_output or "") + "\n" + (output or ""))[-1600:]
-                    raise TimeoutError(
-                        "Story generation timed out after 900 seconds. "
-                        f"Recent backend output:\\n{tail}"
-                    ) from exc
+                    with tempfile.NamedTemporaryFile(
+                        prefix="localstorychat-",
+                        suffix=".txt",
+                        delete=False,
+                    ) as handle:
+                        output_path = Path(handle.name)
 
-                if proc.returncode not in (0, None):
-                    diagnostics = ((error_output or "") + "\n" + (output or "")).strip()
-                    raise RuntimeError(
-                        f"llama-cli exited with code {proc.returncode}.\\n"
-                        f"{diagnostics[-2000:]}"
+                    args += [
+                        "--output-file",
+                        str(output_path),
+                    ]
+
+                    proc = subprocess.Popen(
+                        args,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.PIPE,
+                        env=env,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        bufsize=1,
                     )
 
-                answer = self.clean_output(output, user_request=text)
+                    self.child = proc
+                    self.buffer = ""
 
-                if not answer:
-                    diagnostics = ((error_output or "") + "\n" + (output or "")).strip()
-                    raise RuntimeError(
-                        "llama-cli returned an empty story response. "
-                        f"Backend output:\\n{diagnostics[-1600:]}"
+                    try:
+                        _, error_output = proc.communicate(timeout=900)
+                    except subprocess.TimeoutExpired as exc:
+                        proc.kill()
+                        _, error_output = proc.communicate()
+                        tail = (error_output or "").strip()[-1600:]
+                        raise TimeoutError(
+                            "Story generation timed out after 900 seconds. "
+                            f"Backend diagnostics:\\n{tail}"
+                        ) from exc
+
+                    if proc.returncode not in (0, None):
+                        diagnostics = (error_output or "").strip()
+                        raise RuntimeError(
+                            f"llama-cli exited with code {proc.returncode}.\\n"
+                            f"{diagnostics[-2000:]}"
+                        )
+
+                    if not output_path.exists():
+                        raise RuntimeError(
+                            "llama-cli finished without creating the story output file."
+                        )
+
+                    output_text = output_path.read_text(
+                        encoding="utf-8",
+                        errors="replace",
                     )
 
-                return answer, time.time() - started
+                    answer = self.clean_output(output_text)
+
+                    if not answer:
+                        diagnostics = (error_output or "").strip()
+                        raise RuntimeError(
+                            "llama-cli returned an empty story response. "
+                            f"Backend diagnostics:\\n{diagnostics[-1600:]}"
+                        )
+
+                    return answer, time.time() - started
+
+                finally:
+                    if output_path is not None:
+                        try:
+                            output_path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
 
             finally:
                 self.child = None
