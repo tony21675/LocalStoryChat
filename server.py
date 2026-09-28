@@ -2114,6 +2114,7 @@ class LlamaSession:
             try:
                 proc = subprocess.Popen(
                     args,
+                    stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     env=env,
