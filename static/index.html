@@ -2,63 +2,223 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Local Story Chat</title>
 <style>
-:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e232c;--text:#f3f5f7;--muted:#9aa4b2;--line:#2d3440;--accent:#7dd3fc;--danger:#fb7185;--ok:#86efac}
+:root{
+  --bg:#0f1115;
+  --panel:#171a21;
+  --panel2:#1e232c;
+  --text:#f3f5f7;
+  --muted:#9aa4b2;
+  --line:#2d3440;
+  --accent:#7dd3fc;
+  --danger:#fb7185;
+  --ok:#86efac
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-main{width:min(100%,980px);margin:0 auto;padding:18px;display:flex;flex-direction:column;min-height:100vh}
-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid var(--line)}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif
+}
+main{
+  width:min(100%,980px);
+  margin:0 auto;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  min-height:100vh
+}
+header{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--line)
+}
 h1{font-size:20px;margin:0 0 4px}
+h2{font-size:14px;margin:0}
 .sub{color:var(--muted);font-size:13px}
-.toolbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
-.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:10px;padding:9px 12px;cursor:pointer;font-weight:600}
+.toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-end
+}
+.btn{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:10px;
+  padding:9px 12px;
+  cursor:pointer;
+  font-weight:600
+}
 .btn:hover{border-color:#465264}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.primary{border-color:#3a6577;background:#163340}
 .btn.danger{border-color:#6b2636;background:#341820}
 .btn.ok{border-color:#355f4a;background:#183024}
-.status{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;color:var(--muted);font-size:12px}
-.pill{background:var(--panel);border:1px solid var(--line);padding:7px 9px;border-radius:999px}
+.status{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:12px 0;
+  color:var(--muted);
+  font-size:12px
+}
+.pill{
+  background:var(--panel);
+  border:1px solid var(--line);
+  padding:7px 9px;
+  border-radius:999px
+}
 .pill strong{color:var(--text)}
-.controls{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;margin-bottom:12px}
-select{min-width:0;width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
-.files{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
-.files-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px}
-.files h2{font-size:14px;margin:0}
-.file-list{display:flex;flex-wrap:wrap;gap:7px}
-.file{font-size:12px;color:#d8dee7;background:#12151a;border:1px solid var(--line);padding:6px 8px;border-radius:8px}
-.file.loaded{border-color:#355769}
-.file.none{color:var(--muted);border-style:dashed}
-.chat{flex:1;display:flex;flex-direction:column;gap:12px;padding:8px 0 14px}
-.msg{max-width:86%;padding:12px 14px;border-radius:14px;white-space:pre-wrap;line-height:1.5}
-.user{align-self:flex-end;background:#21313b;border:1px solid #314958}
-.assistant{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
-.empty{color:var(--muted);padding:26px;text-align:center;border:1px dashed var(--line);border-radius:14px}
-.composer{position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 80%,transparent);padding-top:12px}
-.row{display:flex;gap:8px;align-items:flex-end}
-textarea{flex:1;min-height:56px;max-height:180px;resize:vertical;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:16px}
-textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
-.send{min-height:56px;padding:0 18px}
-.note{font-size:11px;color:var(--muted);margin-top:7px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.error{color:#fecdd3;background:#2b151b;border:1px solid #6b2636;padding:10px;border-radius:10px}
-.prompt-grid{display:grid;grid-template-columns:120px 120px minmax(0,1fr);gap:8px;margin-bottom:8px}
-.prompt-grid.two{grid-template-columns:1fr 1fr}
-.prompt-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.prompt-output{min-height:260px;max-height:420px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.45}
-.small-input{min-height:42px;max-height:42px}
-.prompt-field label{display:block;font-weight:600;margin-bottom:6px}.prompt-field{min-width:0}.prompt-field.full{grid-column:1/-1}
-@media(max-width:760px){.prompt-grid,.prompt-grid.two{grid-template-columns:1fr}}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:12px
+}
+.panel-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  margin-bottom:9px
+}
+.controls{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:8px
+}
+select,input,textarea{
+  width:100%;
+  background:var(--panel2);
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+  font:inherit
+}
+input{min-height:42px}
+textarea{
+  resize:vertical;
+  min-height:72px
+}
+textarea:focus,input:focus,select:focus{
+  outline:2px solid #34576a;
+  border-color:#5a8ba3
+}
+.context{
+  margin-top:10px;
+  padding:10px 12px;
+  border:1px dashed var(--line);
+  border-radius:10px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5
+}
+.context strong{color:var(--text)}
+.writer-grid{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  gap:10px;
+  align-items:start
+}
+.field label{
+  display:block;
+  font-size:12px;
+  font-weight:700;
+  margin-bottom:6px
+}
+.chat{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:8px 0 14px
+}
+.msg{
+  max-width:88%;
+  padding:12px 14px;
+  border-radius:14px;
+  white-space:pre-wrap;
+  line-height:1.55
+}
+.user{
+  align-self:flex-end;
+  background:#21313b;
+  border:1px solid #314958
+}
+.assistant{
+  align-self:flex-start;
+  background:var(--panel);
+  border:1px solid var(--line)
+}
+.msg.story{font-size:15px}
+.empty{
+  color:var(--muted);
+  padding:26px;
+  text-align:center;
+  border:1px dashed var(--line);
+  border-radius:14px
+}
+.composer{
+  position:sticky;
+  bottom:0;
+  background:linear-gradient(to top,var(--bg) 80%,transparent);
+  padding-top:12px
+}
+.row{
+  display:flex;
+  gap:8px;
+  align-items:flex-end
+}
+#direction{
+  min-height:110px;
+  max-height:260px;
+  font-size:16px
+}
+.write{min-height:110px;padding:0 20px}
+.note{
+  font-size:11px;
+  color:var(--muted);
+  margin-top:7px;
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  flex-wrap:wrap
+}
+.error{
+  color:#fecdd3;
+  background:#2b151b;
+  border:1px solid #6b2636;
+  padding:10px;
+  border-radius:10px
+}
+.state-preview{
+  min-height:240px;
+  max-height:420px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;
+  line-height:1.45
+}
+.save-box{display:none}
 @media(max-width:760px){
   main{padding:12px}
+  header{flex-direction:column}
   .toolbar{width:100%;justify-content:stretch}
   .toolbar .btn{flex:1}
-  header{flex-direction:column}
   .controls{grid-template-columns:1fr}
+  .writer-grid{grid-template-columns:1fr}
   .msg{max-width:94%}
   .row{flex-direction:column}
-  .send{width:100%}
+  .write{width:100%}
 }
 </style>
 </head>
@@ -67,9 +227,8 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
 <header>
   <div>
     <h1>Local Story Chat</h1>
-    <div class="sub">Local llama-cli story writer. JSON reference files and model are managed separately from the chat.</div>
+    <div class="sub">Local Qwen story writer. Story JSON stays outside the prose prompt and is managed by the story engine.</div>
   </div>
-
   <div class="toolbar">
     <button id="newChat" class="btn primary">New Chat</button>
     <button id="stop" class="btn danger">Stop</button>
@@ -79,197 +238,134 @@ textarea:focus{outline:2px solid #34576a;border-color:#5a8ba3}
 <div class="status">
   <div class="pill">Backend: <strong id="backend">checking…</strong></div>
   <div class="pill">Model: <strong id="modelStatus">none</strong></div>
-  <div class="pill">JSON: <strong id="fileCount">0</strong> loaded</div>
+  <div class="pill">Story: <strong id="storyStatus">none</strong></div>
+  <div class="pill">Position: <strong id="positionStatus">checking…</strong></div>
   <div class="pill">Context: <strong>8192</strong></div>
-  <div class="pill">Thinking: <strong>off</strong></div><div class="pill">State: <strong id="stateStatus">checking…</strong></div>
+  <div class="pill">Thinking: <strong>off</strong></div>
 </div>
 
-<section class="files">
-  <div class="files-head">
-    <h2>Story</h2>
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Story</h2>
+      <div class="sub">The app loads every JSON file declared by story_bible.json automatically. You no longer choose them manually.</div>
+    </div>
   </div>
-
   <div class="controls">
     <select id="storySelect" aria-label="Select story">
       <option value="">Loading stories…</option>
     </select>
-
     <button id="switchStory" class="btn ok">Switch Story</button>
   </div>
-
-  <div class="sub">
-    Each story is isolated in its own folder. Characters, plot, state, and manuscript stay with the selected story.
-  </div>
+  <div id="storyContext" class="context">Loading current story state…</div>
 </section>
 
-<section class="files">
-  <div class="files-head">
-    <h2>Model</h2>
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Model</h2>
+      <div class="sub">The default writer is the unmodified Qwen3.5-9B-Base GGUF.</div>
+    </div>
   </div>
-
   <div class="controls">
     <select id="modelSelect" aria-label="Select model">
       <option value="">Loading models…</option>
     </select>
-
     <button id="loadModel" class="btn ok">Load Model</button>
-    <button id="unloadModel" class="btn danger">Unload Model</button>
+    <button id="unloadModel" class="btn danger">Unload</button>
   </div>
 </section>
 
-<section class="files">
-  <div class="files-head">
-    <h2>Story reference files</h2>
-
-    <div class="toolbar">
-      <button id="loadJson" class="btn ok">Load Selected JSON</button>
-      <button id="unloadJson" class="btn danger">Unload JSON</button>
-    </div>
-  </div>
-
-  <div id="fileList" class="file-list"></div>
-</section>
-
-<section class="files">
-  <div class="files-head">
-    <h2>Story state</h2>
-    <div class="toolbar">
-      <button id="updateState" class="btn ok">Update State</button>
-      <button id="applyState" class="btn primary" disabled>Apply State</button>
-      <button id="discardState" class="btn danger" disabled>Discard</button>
-      <label class="btn" for="sectionFile" style="display:inline-flex;align-items:center;cursor:pointer">
-        Select Section File
-      </label>
-      <input id="sectionFile" type="file" accept=".txt,text/plain" hidden>
-      <button id="updateFromFile" class="btn ok" disabled>Update From File</button>
-    </div>
-  </div>
-
-  <div class="sub" style="margin-bottom:8px">
-    Update State uses the latest assistant story response. It proposes changes for review before anything is written to disk.
-  </div>
-
-  <textarea id="statePreview" rows="14" readonly
-    placeholder="A proposed current_state.json will appear here."></textarea>
-</section>
-
-<section class="files">
-  <div class="files-head">
+<section class="panel">
+  <div class="panel-head">
     <div>
-      <h2>Scene Prompt Builder</h2>
-      <div class="sub">Build the next story section without rewriting your permanent writing rules. The Scene number changes only when the story actually enters a new scene.</div>
-    </div>
-    <div class="toolbar">
-      <button id="resetPrompt" class="btn">Reset</button>
-      <button id="carryPrompt" class="btn">Next Section</button>
-      <button id="buildPrompt" class="btn primary">Build Prompt</button>
+      <h2>Write the next section</h2>
+      <div class="sub">Give the writer the creative direction. The engine supplies the continuity context automatically.</div>
     </div>
   </div>
 
-  <div class="prompt-grid">
-    <div class="prompt-field">
-      <label for="promptChapter">Chapter</label>
-      <input id="promptChapter" class="small-input" type="text" placeholder="Chapter" aria-label="Chapter">
+  <div class="writer-grid">
+    <div class="field">
+      <label for="characters">Characters in this scene</label>
+      <input id="characters" placeholder="Example: Tiffany, Maya" autocomplete="off">
+      <div class="sub" style="margin-top:6px">Comma-separated. Characters not listed are not physically brought into the scene.</div>
     </div>
 
-    <div class="prompt-field">
-      <label for="promptScene">Scene</label>
-      <input id="promptScene" class="small-input" type="text" placeholder="Scene" aria-label="Scene">
-    </div>
-
-    <div class="prompt-field">
-      <label for="promptCharacters">Characters</label>
-      <input id="promptCharacters" class="small-input" type="text" placeholder="Primary characters first, e.g. Tiffany, Maya, Tony" aria-label="Characters">
+    <div class="field">
+      <label for="direction">Scene direction</label>
+      <textarea id="direction" placeholder="Example: Let them walk home and talk naturally about school, random stuff, the past, and what they might do later. They have not reached home yet."></textarea>
     </div>
   </div>
-
-  <div class="prompt-field full">
-    <label for="promptGoal">Scene Goal</label>
-    <textarea id="promptGoal" rows="3" placeholder="What is the main purpose of this scene?"></textarea>
-  </div>
-
-  <div class="prompt-grid two">
-    <div class="prompt-field">
-      <label for="promptRequired">What Must Happen</label>
-      <textarea id="promptRequired" rows="4" placeholder="What must happen in this scene? Use one item per line."></textarea>
-    </div>
-
-    <div class="prompt-field">
-      <label for="promptAvoid">What Must NOT Happen Yet</label>
-      <textarea id="promptAvoid" rows="4" placeholder="What must not happen yet? Use one item per line."></textarea>
-    </div>
-  </div>
-
-  <div class="prompt-grid two">
-    <div class="prompt-field">
-      <label for="promptTone">Tone / Style</label>
-      <input id="promptTone" class="small-input" type="text" placeholder="Relaxed, warm, lightly humorous" aria-label="Tone and style">
-    </div>
-
-    <div class="prompt-field">
-      <label for="promptLength">Word Count</label>
-      <input id="promptLength" class="small-input" type="text" value="500 to 650" placeholder="Word count" aria-label="Word count">
-    </div>
-  </div>
-
-  <div class="prompt-field full">
-    <label for="promptGuidance">Creative Guidance</label>
-    <textarea id="promptGuidance" rows="3" placeholder="Optional details you want the writer to emphasize."></textarea>
-  </div>
-
-  <div class="prompt-actions">
-    <button id="copyPrompt" class="btn" disabled>Copy Prompt</button>
-    <button id="usePrompt" class="btn ok" disabled>Use in Chat</button>
-  </div>
-
-  <textarea id="promptOutput" class="prompt-output" rows="14" readonly placeholder="Your finished scene prompt will appear here."></textarea>
 </section>
 
 <section id="chat" class="chat">
-  <div class="empty" id="empty">
-    Load a model and JSON files, then click New Chat.
-  </div>
+  <div class="empty" id="empty">Load the model, then start a new chat.</div>
 </section>
 
-<div id="savePrompt" class="files" style="display:none">
-  <div class="files-head">
-    <h2 id="savePromptText">Save this story section?</h2>
+<section id="saveBox" class="panel save-box">
+  <div class="panel-head">
+    <div>
+      <h2 id="saveText">Save this story section?</h2>
+      <div class="sub">Saving writes the prose to the next manuscript section. It does not change story state.</div>
+    </div>
     <div class="toolbar">
       <button id="saveYes" class="btn ok">Save</button>
       <button id="saveNo" class="btn">Don't Save</button>
     </div>
   </div>
-</div>
+</section>
 
-<section class="composer">
-  <div class="row">
-    <textarea id="input" placeholder="Write to the story engine…"></textarea>
-    <button id="send" class="btn primary send">Send</button>
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Story Memory</h2>
+      <div class="sub">Optional. Update the durable current_state.json after a section is saved. Nothing is blocked if you skip this.</div>
+    </div>
+    <div class="toolbar">
+      <button id="updateState" class="btn ok">Update Memory</button>
+      <button id="applyState" class="btn primary" disabled>Apply</button>
+      <button id="discardState" class="btn danger" disabled>Discard</button>
+      <label class="btn" for="sectionFile" style="display:inline-flex;align-items:center;cursor:pointer">From .txt</label>
+      <input id="sectionFile" type="file" accept=".txt,text/plain" hidden>
+    </div>
   </div>
+  <textarea id="statePreview" class="state-preview" readonly placeholder="A proposed state update will appear here."></textarea>
+</section>
 
+<div class="composer">
+  <div class="row">
+    <textarea id="quickDirection" placeholder="Or type a quick scene direction here and press Enter…"></textarea>
+    <button id="writeQuick" class="btn primary write">Write</button>
+  </div>
   <div class="note">
-    <span>CPU mode • 8,192 context • repetition penalty 1.08 • reasoning off</span>
+    <span>CPU mode • 8,192 context • temp 0.75 • top-p 0.92 • top-k 100 • repetition penalty 1.08 • reasoning off</span>
     <span id="timing"></span>
   </div>
-</section>
+</div>
 </main>
 
 <script>
 const $=s=>document.querySelector(s);
 const chat=$('#chat');
-const input=$('#input');
+const charactersInput=$('#characters');
+const directionInput=$('#direction');
+const quickDirection=$('#quickDirection');
 
 let pendingState=null;
 let selectedSectionFile=null;
-let builtScenePrompt="";
-let promptBuilderDirty=false;
 let pendingUnsavedChat=null;
-const CHAT_STORAGE_KEY='localStoryChat.history.v1';
-const PROMPT_STORAGE_KEY='localStoryChat.scenePrompt.v1';
+
+const CHAT_STORAGE_KEY='localStoryChat.history.v2';
+const CAST_STORAGE_KEY='localStoryChat.cast.v1';
+
+function currentStoryKey(){
+  const value=window._activeStoryName || 'default';
+  return value.replace(/[^a-zA-Z0-9._-]/g,'_');
+}
 
 function readChatHistory(){
   try{
-    const raw=localStorage.getItem(CHAT_STORAGE_KEY);
+    const raw=localStorage.getItem(CHAT_STORAGE_KEY+'.'+currentStoryKey());
     const items=raw?JSON.parse(raw):[];
     return Array.isArray(items)?items:[];
   }catch(e){
@@ -279,9 +375,25 @@ function readChatHistory(){
 
 function writeChatHistory(items){
   try{
-    localStorage.setItem(CHAT_STORAGE_KEY,JSON.stringify(items));
+    localStorage.setItem(CHAT_STORAGE_KEY+'.'+currentStoryKey(),JSON.stringify(items));
+  }catch(e){}
+}
+
+function saveCast(){
+  try{
+    localStorage.setItem(
+      CAST_STORAGE_KEY+'.'+currentStoryKey(),
+      charactersInput.value
+    );
+  }catch(e){}
+}
+
+function restoreCast(){
+  try{
+    charactersInput.value=
+      localStorage.getItem(CAST_STORAGE_KEY+'.'+currentStoryKey()) || '';
   }catch(e){
-    // Chat still works if browser storage is unavailable.
+    charactersInput.value='';
   }
 }
 
@@ -289,81 +401,48 @@ function addMsg(role,text,isStory=false,persist=true){
   const d=document.createElement('div');
   d.className='msg '+role+(isStory?' story':'');
   d.textContent=text;
-  d.scrollIntoView({block:'end'});
 
-  const e=$('#empty');
-  if(e)e.remove();
+  const empty=$('#empty');
+  if(empty)empty.remove();
 
   chat.appendChild(d);
+  d.scrollIntoView({block:'end'});
 
   if(persist){
     const history=readChatHistory();
-    history.push({role:role,text:text,isStory:!!isStory});
+    history.push({role,text,isStory:!!isStory});
     writeChatHistory(history);
   }
 
   return d;
 }
 
-function normalizeStoredChatHistory(){
-  const history=readChatHistory();
-  let changed=false;
+function clearChat(){
+  chat.innerHTML='<div class="empty" id="empty">New chat. No previous conversation is loaded.</div>';
+  pendingUnsavedChat=null;
+  $('#timing').textContent='';
 
-  const normalized=history.map(item=>{
-    if(
-      item &&
-      item.role === 'user' &&
-      typeof item.text === 'string' &&
-      /^Begin Chapter\s+\d+,\s+Scene\s+\d+\./i.test(item.text.trim())
-    ){
-      changed=true;
-      const match=item.text.trim().match(
-        /^Begin Chapter\s+(\d+),\s+Scene\s+(\d+)\./i
-      );
-      return {
-        ...item,
-        text:'Scene prompt submitted: Chapter '+match[1]+', Scene '+match[2]
-      };
-    }
-    return item;
-  });
-
-  if(changed)writeChatHistory(normalized);
-  return normalized;
+  try{
+    localStorage.removeItem(CHAT_STORAGE_KEY+'.'+currentStoryKey());
+  }catch(e){}
 }
 
 function restoreChatHistory(){
-  const history=normalizeStoredChatHistory();
-
+  const history=readChatHistory();
   if(!history.length)return;
 
   $('#empty')?.remove();
-  chat.innerHTML='';
 
   history.forEach(item=>{
-    addMsg(
-      item.role,
-      item.text,
-      !!item.isStory,
-      false
-    );
+    if(!item || !item.role || typeof item.text!=='string')return;
+    addMsg(item.role,item.text,!!item.isStory,false);
   });
 }
 
-function clearChat(){
-  chat.innerHTML='<div class="empty" id="empty">New chat. No previous conversation is loaded.</div>';
-  $('#timing').textContent='';
-  try{
-    localStorage.removeItem(CHAT_STORAGE_KEY);
-  }catch(e){
-    // Ignore storage cleanup failures.
-  }
-}
-
-function showError(t){
+function showError(message){
   const d=document.createElement('div');
   d.className='error';
-  d.textContent=t;
+  d.textContent=message;
   chat.appendChild(d);
   d.scrollIntoView({block:'end'});
 }
@@ -381,320 +460,117 @@ async function api(path,opts={}){
   return j;
 }
 
-function setWorkingButton(buttonId, workingText){
-  const button=document.getElementById(buttonId);
-  if(!button)return;
-  button.dataset.originalText=button.textContent;
-  button.textContent="⏳ "+workingText;
-  button.disabled=true;
-}
-
-function restoreWorkingButton(buttonId){
-  const button=document.getElementById(buttonId);
-  if(!button)return;
-  if(button.dataset.originalText){
-    button.textContent=button.dataset.originalText;
-    delete button.dataset.originalText;
-  }
-  button.disabled=false;
-}
-
 function setBusy(value){
   $('#newChat').disabled=value;
   $('#switchStory').disabled=value;
-  $('#stop').disabled=value;
   $('#loadModel').disabled=value;
   $('#unloadModel').disabled=value;
-  $('#loadJson').disabled=value;
-  $('#unloadJson').disabled=value;
-  $('#send').disabled=value;
+  $('#writeQuick').disabled=value;
   $('#updateState').disabled=value;
-  $('#updateFromFile').disabled=value || !selectedSectionFile;
   $('#applyState').disabled=value || !pendingState;
   $('#discardState').disabled=value || !pendingState;
 }
 
-function renderFiles(files, loadedFiles){
-  const list=$('#fileList');
-  list.innerHTML='';
+function syncMemoryButtons(){
+  $('#applyState').disabled=!pendingState;
+  $('#discardState').disabled=!pendingState;
+}
 
-  if(!files.length){
-    const d=document.createElement('div');
-    d.className='file none';
-    d.textContent='No JSON files found in StoryJSON';
-    list.appendChild(d);
+function latestAssistantText(){
+  const items=chat.querySelectorAll('.msg.assistant.story');
+  if(!items.length)return '';
+  return items[items.length-1].textContent.trim();
+}
+
+function selectedCharacters(){
+  return charactersInput.value
+    .split(',')
+    .map(x=>x.trim())
+    .filter(Boolean);
+}
+
+function fillSceneSummary(state){
+  if(!state){
+    $('#storyContext').textContent='No current story state is available.';
+    $('#positionStatus').textContent='unknown';
     return;
   }
 
-  const hasLoaded=loadedFiles && loadedFiles.length>0;
-  const loadedSet=new Set((loadedFiles || []).map(f=>f.name));
+  $('#positionStatus').textContent=
+    'Ch '+state.chapter+' / Sc '+state.scene;
 
-  const mandatoryFiles = new Set([
-    'story_bible.json',
-    'current_state.json'
-  ]);
+  $('#storyContext').innerHTML='';
 
-  files.forEach(f=>{
-    const d=document.createElement('label');
-    d.className='file';
+  const parts=[];
+  if(state.current_situation){
+    const line=document.createElement('div');
+    line.innerHTML='<strong>Current situation:</strong> ';
+    line.append(document.createTextNode(state.current_situation));
+    parts.push(line);
+  }
 
-    const required = mandatoryFiles.has(f.name);
+  if(state.next_save_section){
+    const line=document.createElement('div');
+    line.innerHTML='<strong>Next manuscript section:</strong> ';
+    line.append(document.createTextNode(
+      'Chapter_'+String(state.chapter).padStart(2,'0')+
+      '_Section_'+String(state.next_save_section).padStart(2,'0')+'.txt'
+    ));
+    parts.push(line);
+  }
 
-    d.style.cursor = required ? 'default' : 'pointer';
+  if(!parts.length){
+    $('#storyContext').textContent='Current story state loaded.';
+    return;
+  }
 
-    const cb=document.createElement('input');
-    cb.type='checkbox';
-    cb.value=f.name;
-    cb.checked = required
-      ? true
-      : (hasLoaded ? loadedSet.has(f.name) : !!f.default);
-    cb.disabled = required;
-    cb.style.marginRight='8px';
-
-    const span=document.createElement('span');
-    span.textContent=f.name;
-
-    d.appendChild(cb);
-    d.appendChild(span);
-
-    if(required){
-      const badge=document.createElement('span');
-      badge.textContent=' Required';
-      badge.style.opacity='0.65';
-      badge.style.fontSize='0.85em';
-      d.appendChild(badge);
-    }
-
-    list.appendChild(d);
+  parts.forEach((line,index)=>{
+    if(index>0)$('#storyContext').append(document.createElement('br'));
+    $('#storyContext').append(line);
   });
-}
-
-function currentStoryKey(){
-  const value = window._activeStoryName || 'default';
-  return value.replace(/[^a-zA-Z0-9._-]/g,'_');
-}
-
-function promptStorageKey(){
-  return PROMPT_STORAGE_KEY + '.' + currentStoryKey();
-}
-
-function readPromptTemplate(){
-  try{
-    const raw=localStorage.getItem(promptStorageKey());
-    const data=raw?JSON.parse(raw):null;
-    if(data && typeof data==='object'){
-      // Migrate the old default so existing browser storage does not keep
-      // forcing new scenes back to the old 800-1,200 target.
-      if(data.length === '800 to 1,200'){
-        data.length = '500 to 650';
-        try{
-          localStorage.setItem(promptStorageKey(),JSON.stringify(data));
-        }catch(e){
-          // Ignore storage migration failures.
-        }
-      }
-      return data;
-    }
-    return null;
-  }catch(e){
-    return null;
-  }
-}
-
-function writePromptTemplate(){
-  try{
-    localStorage.setItem(promptStorageKey(),JSON.stringify({
-      chapter:$('#promptChapter').value,
-      scene:$('#promptScene').value,
-      characters:$('#promptCharacters').value,
-      goal:$('#promptGoal').value,
-      required:$('#promptRequired').value,
-      avoid:$('#promptAvoid').value,
-      tone:$('#promptTone').value,
-      length:$('#promptLength').value,
-      guidance:$('#promptGuidance').value
-    }));
-  }catch(e){
-    // Prompt memory is optional.
-  }
-}
-
-function fillPromptFields(data, nextScene=false){
-  const state = window._storyState || {};
-  const chapter = Number.isInteger(state.chapter)
-    ? state.chapter
-    : (data?.chapter || '');
-
-  let scene = Number.isInteger(state.scene)
-    ? state.scene
-    : (data?.scene || '');
-
-  if(nextScene && Number.isInteger(state.scene)){
-    scene = state.scene;
-  }
-
-  $('#promptChapter').value = chapter;
-  $('#promptScene').value = scene;
-  $('#promptCharacters').value = data?.characters || '';
-  $('#promptGoal').value = data?.goal || '';
-  $('#promptRequired').value = data?.required || '';
-  $('#promptAvoid').value = data?.avoid || '';
-  $('#promptTone').value = data?.tone || '';
-  $('#promptLength').value = data?.length || '500 to 650';
-  $('#promptGuidance').value = data?.guidance || '';
-  $('#promptOutput').value = '';
-  builtScenePrompt = '';
-  $('#copyPrompt').disabled = true;
-  $('#usePrompt').disabled = true;
-  promptBuilderDirty = false;
-}
-
-function resetPromptBuilder(){
-  const template = readPromptTemplate();
-  if(template){
-    fillPromptFields(template, false);
-    return;
-  }
-
-  fillPromptFields({}, false);
-}
-
-function carryForwardPrompt(){
-  const template = readPromptTemplate() || {
-    chapter: $('#promptChapter').value,
-    scene: $('#promptScene').value,
-    characters: $('#promptCharacters').value,
-    goal: $('#promptGoal').value,
-    required: $('#promptRequired').value,
-    avoid: $('#promptAvoid').value,
-    tone: $('#promptTone').value,
-    length: $('#promptLength').value || '500 to 650',
-    guidance: $('#promptGuidance').value
-  };
-
-  fillPromptFields(template, true);
-  $('#promptGoal').focus();
-}
-
-async function buildScenePrompt(){
-  setWorkingButton('buildPrompt','Building Prompt...');
-
-  try{
-    const j = await api('/api/scene-prompt',{
-      method:'POST',
-      body:JSON.stringify({
-        chapter:$('#promptChapter').value,
-        scene:$('#promptScene').value,
-        characters:$('#promptCharacters').value,
-        goal:$('#promptGoal').value,
-        required:$('#promptRequired').value,
-        avoid:$('#promptAvoid').value,
-        tone:$('#promptTone').value,
-        length:$('#promptLength').value,
-        guidance:$('#promptGuidance').value
-      })
-    });
-
-    builtScenePrompt = j.prompt;
-    $('#promptOutput').value = builtScenePrompt;
-    writePromptTemplate();
-    promptBuilderDirty = false;
-    $('#copyPrompt').disabled = false;
-    $('#usePrompt').disabled = false;
-  }catch(e){
-    showError(e.message);
-  }finally{
-    restoreWorkingButton('buildPrompt');
-  }
-}
-
-async function copyScenePrompt(){
-  if(!builtScenePrompt)return;
-
-  try{
-    await navigator.clipboard.writeText(builtScenePrompt);
-    $('#copyPrompt').textContent='Copied ✓';
-    setTimeout(()=>$('#copyPrompt').textContent='Copy Prompt',1200);
-  }catch(e){
-    showError('Could not copy the prompt: '+e.message);
-  }
-}
-
-function useScenePrompt(){
-  if(!builtScenePrompt)return;
-  input.value = builtScenePrompt;
-  input.focus();
-  input.scrollIntoView({block:'center'});
 }
 
 async function refresh(){
   try{
+    const storyData=await api('/api/stories');
+
+    window._activeStoryName=storyData.active || 'default';
+
+    const storySelect=$('#storySelect');
+    const current=storySelect.value;
+
+    storySelect.innerHTML='';
+
+    if(!storyData.stories.length){
+      const option=document.createElement('option');
+      option.value='';
+      option.textContent='No stories found';
+      storySelect.appendChild(option);
+    }else{
+      storyData.stories.forEach(story=>{
+        const option=document.createElement('option');
+        option.value=story.name;
+        option.textContent=story.name;
+        storySelect.appendChild(option);
+      });
+
+      storySelect.value=
+        storyData.active ||
+        current ||
+        storyData.stories[0].name;
+    }
+
+    restoreCast();
+
     const s=await api('/api/status');
 
     $('#backend').textContent=s.running?'running':'stopped';
-    $('#modelStatus').textContent=s.model?s.model.split('/').pop():'none';
-    $('#fileCount').textContent=s.files.length;
+    $('#modelStatus').textContent=
+      s.model?s.model.split('/').pop():'none';
+    $('#storyStatus').textContent=storyData.active || 'none';
 
-    if(s.state){
-      window._storyState = s.state;
-      $('#stateStatus').textContent =
-        'Ch '+s.state.chapter+' / Sc '+s.state.scene+
-        (s.state.pending?' • proposal':'');
-    }
+    fillSceneSummary(s.state);
 
-    renderFiles(s.available_json || [], s.files);
-
-    const storyData = await api('/api/stories');
-    window._activeStoryName = storyData.active || 'default';
-    const storySelect = $('#storySelect');
-    const currentStory = storySelect.value;
-
-    storySelect.innerHTML = '';
-
-    if(!storyData.stories.length){
-      const o=document.createElement('option');
-      o.value='';
-      o.textContent='No stories found';
-      storySelect.appendChild(o);
-    }else{
-      storyData.stories.forEach(story=>{
-        const o=document.createElement('option');
-        o.value=story.name;
-        o.textContent=story.name;
-        storySelect.appendChild(o);
-      });
-
-      if(storyData.active){
-        storySelect.value=storyData.active;
-      }else if(currentStory){
-        storySelect.value=currentStory;
-      }
-    }
-
-    const select=$('#modelSelect');
-    const current=select.value;
-
-    select.innerHTML='';
-
-    if(!s.available_models.length){
-      const o=document.createElement('option');
-      o.value='';
-      o.textContent='No GGUF models found';
-      select.appendChild(o);
-    }else{
-      s.available_models.forEach(m=>{
-        const o=document.createElement('option');
-        o.value=m.path;
-        o.textContent=m.name;
-        select.appendChild(o);
-      });
-
-      if(s.model){
-        select.value=s.model;
-      }else if(current){
-        select.value=current;
-      }
-    }
   }catch(e){
     $('#backend').textContent='error';
     showError(e.message);
@@ -702,36 +578,33 @@ async function refresh(){
 }
 
 async function switchStory(){
-  const name = $('#storySelect').value;
-
+  const name=$('#storySelect').value;
   if(!name){
     showError('Select a story first.');
     return;
   }
 
   setBusy(true);
-  setWorkingButton('switchStory','Switching Story...');
 
   try{
-    const j = await api('/api/story/select',{
+    const j=await api('/api/story/select',{
       method:'POST',
       body:JSON.stringify({name})
     });
 
     clearChat();
-
+    window._activeStoryName=j.story;
+    restoreCast();
     addMsg(
       'assistant',
       'Story selected: '+j.story+
-      '. Loaded JSON files: '+j.files.join(', ')+
-      '. Click New Chat to start a fresh model session.'
+      '. The story JSON files were loaded automatically.'
     );
 
     await refresh();
   }catch(e){
     showError(e.message);
   }finally{
-    restoreWorkingButton('switchStory');
     setBusy(false);
   }
 }
@@ -745,7 +618,6 @@ async function loadModel(){
   }
 
   setBusy(true);
-  setWorkingButton('loadModel','Loading Model...');
   $('#backend').textContent='loading model…';
 
   try{
@@ -759,7 +631,7 @@ async function loadModel(){
     addMsg(
       'assistant',
       'Model loaded: '+j.model.split('/').pop()+
-      '. Start a New Chat to begin a fresh session.'
+      '. The writer session is ready.'
     );
 
     await refresh();
@@ -767,7 +639,6 @@ async function loadModel(){
     showError(e.message);
     $('#backend').textContent='error';
   }finally{
-    restoreWorkingButton('loadModel');
     setBusy(false);
   }
 }
@@ -782,7 +653,7 @@ async function unloadModel(){
     });
 
     clearChat();
-    addMsg('assistant','Model unloaded. The GGUF file remains on disk.');
+    addMsg('assistant','Model unloaded.');
     await refresh();
   }catch(e){
     showError(e.message);
@@ -791,121 +662,183 @@ async function unloadModel(){
   }
 }
 
-async function loadJson(){
-  const checked = Array.from(
-    document.querySelectorAll('#fileList input[type="checkbox"]:checked')
-  ).map(cb => cb.value);
-
-  if(!checked.length){
-    showError('Select at least one JSON file.');
-    return;
-  }
-
+async function newChat(){
   setBusy(true);
-  setWorkingButton('loadJson','Loading Selected JSON...');
+  $('#backend').textContent='starting…';
 
   try{
-    const j=await api('/api/json/load',{
-      method:'POST',
-      body:JSON.stringify({names:checked})
-    });
-
-    clearChat();
-
-    addMsg(
-      'assistant',
-      'Loaded JSON files: '+j.files.join(', ')+
-      '. Click New Chat to start a fresh model session.'
-    );
-
-    await refresh();
-  }catch(e){
-    showError(e.message);
-  }finally{
-    restoreWorkingButton('loadJson');
-    setBusy(false);
-  }
-}
-
-async function unloadJson(){
-  setBusy(true);
-  setWorkingButton('unloadJson','Unloading JSON...');
-
-  try{
-    await api('/api/json/unload',{
+    const j=await api('/api/new-chat',{
       method:'POST',
       body:JSON.stringify({})
     });
 
     clearChat();
+
     addMsg(
       'assistant',
-      'Optional JSON reference files unloaded. story_bible.json and current_state.json remain loaded.'
+      'New writer session started with '+
+      j.model.split('/').pop()+'.'
     );
+
+    $('#timing').textContent=
+      'Context estimate: '+j.estimated_system_tokens+' tokens';
 
     await refresh();
   }catch(e){
     showError(e.message);
   }finally{
-    restoreWorkingButton('unloadJson');
     setBusy(false);
+    quickDirection.focus();
   }
 }
 
-
-function latestAssistantText(){
-  const items=chat.querySelectorAll('.msg.assistant.story');
-  if(!items.length)return '';
-  return items[items.length-1].textContent.trim();
+function showSavedPrompt(filename){
+  $('#saveText').textContent='Save this story section as '+filename+'?';
+  $('#saveBox').style.display='block';
+  $('#writeQuick').disabled=true;
+  $('#newChat').disabled=true;
 }
 
-function selectSectionFile(){
-  const file=$('#sectionFile').files[0] || null;
-  selectedSectionFile=file;
-  const button=$('#updateFromFile');
-
-  if(file){
-    button.disabled=false;
-    $('#stateStatus').textContent='section selected: '+file.name;
-  }else{
-    button.disabled=true;
-  }
-}
-
-async function updateStateFromFile(){
-  if(!selectedSectionFile){
-    showError('Select a .txt section file first.');
-    return;
-  }
-
-  setBusy(true);
-  setWorkingButton('updateFromFile','Updating State...');
-
+async function saveStory(story){
   try{
-    const story=(await selectedSectionFile.text()).trim();
+    const status=await api('/api/status');
+    const chapter=status.state?.chapter;
+    const section=status.state?.next_save_section;
 
-    if(story.length < 40){
-      throw new Error('The selected section file is too short to create a useful state update.');
+    if(!Number.isInteger(chapter) || !Number.isInteger(section)){
+      throw new Error('Current chapter and next manuscript section are unavailable.');
     }
 
-    const j=await api('/api/state/propose',{
+    const filename=
+      'Chapter_'+String(chapter).padStart(2,'0')+
+      '_Section_'+String(section).padStart(2,'0')+
+      '.txt';
+
+    pendingUnsavedChat.filename=filename;
+    showSavedPrompt(filename);
+  }catch(e){
+    showError(e.message);
+  }
+}
+
+async function confirmSaveStory(){
+  if(!pendingUnsavedChat?.storyText)return;
+
+  try{
+    const j=await api('/api/save-story',{
       method:'POST',
       body:JSON.stringify({
-        story,
-        sectionFilename:selectedSectionFile.name,
-        chapter:Number($('#promptChapter').value),
-        scene:Number($('#promptScene').value)
+        story:pendingUnsavedChat.storyText,
+        filename:pendingUnsavedChat.filename,
+        overwrite:false
       })
     });
 
-    pendingState=j.state;
-    $('#statePreview').value=JSON.stringify(j.state,null,2);
-    $('#stateStatus').textContent='proposal ready from '+selectedSectionFile.name;
+    $('#saveBox').style.display='none';
+    $('#timing').textContent='Saved '+j.filename;
+    pendingUnsavedChat=null;
   }catch(e){
     showError(e.message);
   }finally{
-    restoreWorkingButton('updateFromFile');
+    $('#writeQuick').disabled=false;
+    $('#newChat').disabled=false;
+    quickDirection.focus();
+  }
+}
+
+function discardStorySave(){
+  if(pendingUnsavedChat){
+    const item=pendingUnsavedChat;
+
+    item.userElement?.remove();
+    item.storyElement?.remove();
+
+    const history=readChatHistory();
+    const trimmed=
+      history.length>=2
+        ? history.slice(0,-2)
+        : [];
+
+    writeChatHistory(trimmed);
+
+    if(!trimmed.length){
+      chat.innerHTML='<div class="empty" id="empty">New chat. No previous conversation is loaded.</div>';
+    }
+  }
+
+  pendingUnsavedChat=null;
+  $('#saveBox').style.display='none';
+  $('#writeQuick').disabled=false;
+  $('#newChat').disabled=false;
+  quickDirection.focus();
+}
+
+function submitDirection(){
+  const quick=quickDirection.value.trim();
+
+  if(quick){
+    directionInput.value=quick;
+    quickDirection.value='';
+  }
+
+  directionInput.scrollIntoView({block:'center'});
+  directionInput.focus();
+}
+
+async function writeScene(){
+  const direction=directionInput.value.trim();
+
+  if(!direction){
+    showError('Enter a scene direction first.');
+    directionInput.focus();
+    return;
+  }
+
+  saveCast();
+
+  setBusy(true);
+
+  const display=
+    'Scene direction: '+direction;
+
+  const userElement=addMsg('user',display);
+
+  try{
+    const j=await api('/api/chat',{
+      method:'POST',
+      body:JSON.stringify({
+        message:direction,
+        characters:charactersInput.value
+      })
+    });
+
+    const storyElement=addMsg('assistant',j.content,true);
+
+    pendingUnsavedChat={
+      storyText:j.content,
+      userElement,
+      storyElement,
+      filename:null
+    };
+
+    await saveStory(j.content);
+
+    $('#timing').textContent=
+      j.seconds+' s • context estimate '+
+      j.estimated_context_tokens+'/8192';
+
+  }catch(e){
+    userElement.remove();
+    const history=readChatHistory();
+    if(history.length)history.pop();
+    writeChatHistory(history);
+    showError(e.message);
+  }finally{
     setBusy(false);
+    if(pendingUnsavedChat && pendingUnsavedChat.filename){
+      $('#writeQuick').disabled=true;
+      $('#newChat').disabled=true;
+    }
   }
 }
 
@@ -913,31 +846,78 @@ async function updateState(){
   const story=latestAssistantText();
 
   if(!story){
-    showError('There is no assistant story response to use for a state update.');
+    showError('There is no story section in the chat to use for memory.');
     return;
   }
 
   setBusy(true);
-  setWorkingButton('updateState','Updating State...');
 
   try{
     const j=await api('/api/state/propose',{
       method:'POST',
       body:JSON.stringify({
         story,
-        chapter:Number($('#promptChapter').value),
-        scene:Number($('#promptScene').value)
+        chapter:Number(
+          $('#positionStatus').textContent.match(/Ch\s+(\d+)/)?.[1] || 1
+        ),
+        scene:Number(
+          $('#positionStatus').textContent.match(/Sc\s+(\d+)/)?.[1] || 1
+        )
       })
     });
 
     pendingState=j.state;
-    $('#statePreview').value=JSON.stringify(j.state,null,2);
-    $('#stateStatus').textContent='proposal ready';
+    $('#statePreview').value=
+      JSON.stringify(j.state,null,2);
+    syncMemoryButtons();
+    $('#positionStatus').textContent=
+      'Ch '+j.state.chapter+' / Sc '+j.state.scene+' • memory proposal';
   }catch(e){
     showError(e.message);
   }finally{
-    restoreWorkingButton('updateState');
     setBusy(false);
+    syncMemoryButtons();
+  }
+}
+
+async function updateStateFromFile(){
+  if(!selectedSectionFile){
+    showError('Choose a .txt manuscript section first.');
+    return;
+  }
+
+  setBusy(true);
+
+  try{
+    const story=(await selectedSectionFile.text()).trim();
+
+    if(story.length<40){
+      throw new Error('The selected section is too short to create a useful memory update.');
+    }
+
+    const match=selectedSectionFile.name.match(
+      /^Chapter_(\d+)_Section_(\d+)\.txt$/i
+    );
+
+    const j=await api('/api/state/propose',{
+      method:'POST',
+      body:JSON.stringify({
+        story,
+        sectionFilename:selectedSectionFile.name,
+        chapter:match?Number(match[1]):undefined,
+        scene:Number($('#positionStatus').textContent.match(/Sc\s+(\d+)/)?.[1] || 1)
+      })
+    });
+
+    pendingState=j.state;
+    $('#statePreview').value=
+      JSON.stringify(j.state,null,2);
+    syncMemoryButtons();
+  }catch(e){
+    showError(e.message);
+  }finally{
+    setBusy(false);
+    syncMemoryButtons();
   }
 }
 
@@ -954,13 +934,14 @@ async function applyState(){
 
     pendingState=null;
     $('#statePreview').value='';
-    $('#stateStatus').textContent='applied';
+    syncMemoryButtons();
     addMsg('assistant',j.message);
     await refresh();
   }catch(e){
     showError(e.message);
   }finally{
     setBusy(false);
+    syncMemoryButtons();
   }
 }
 
@@ -973,286 +954,85 @@ async function discardState(){
 
     pendingState=null;
     $('#statePreview').value='';
-    $('#stateStatus').textContent='no proposal';
-    setBusy(false);
-  }catch(e){
-    showError(e.message);
-  }
-}
-
-async function newChat(){
-  setBusy(true);
-  setWorkingButton('newChat','Starting New Chat...');
-  $('#backend').textContent='starting…';
-
-  try{
-    const j=await api('/api/new-chat',{
-      method:'POST',
-      body:JSON.stringify({})
-    });
-
-    clearChat();
-
-    addMsg(
-      'assistant',
-      'New chat started with '+
-      j.model.split('/').pop()+
-      ' and '+
-      j.files.length+
-      ' JSON reference files.'
-    );
-
-    $('#timing').textContent=
-      'System prompt estimate: '+
-      j.estimated_system_tokens+
-      ' tokens';
-
+    syncMemoryButtons();
     await refresh();
   }catch(e){
     showError(e.message);
-    $('#backend').textContent='error';
-  }finally{
-    restoreWorkingButton('newChat');
-    setBusy(false);
-    input.focus();
   }
 }
 
-async function stopSession(){
+$('#newChat').addEventListener('click',newChat);
+$('#stop').addEventListener('click',async()=>{
   try{
     await api('/api/stop',{
       method:'POST',
       body:JSON.stringify({})
     });
-
     $('#backend').textContent='stopped';
-    addMsg('assistant','Model session stopped. Loaded model and JSON selections remain available.');
     await refresh();
   }catch(e){
     showError(e.message);
   }
-}
-
-let pendingStorySave = null;
-
-async function saveStory(story){
-  try{
-    const status = await api('/api/status');
-
-    const chapter = status.state?.chapter;
-    const section = status.state?.next_save_section;
-
-    if(!Number.isInteger(chapter) || !Number.isInteger(section)){
-      throw new Error('Current chapter and next manuscript section number are not available.');
-    }
-
-    const filename =
-      'Chapter_'+String(chapter).padStart(2,'0')+
-      '_Section_'+String(section).padStart(2,'0')+
-      '.txt';
-
-    const overwrite = false;
-
-    pendingStorySave = {
-      story: story,
-      filename: filename,
-      overwrite: overwrite
-    };
-
-    $('#savePromptText').textContent =
-      'Save this story section as ' + filename + '?' +
-      (overwrite ? ' This will replace the existing section.' : '');
-
-    $('#savePrompt').style.display='block';
-
-    $('#send').disabled=true;
-    $('#newChat').disabled=true;
-  }catch(e){
-    showError(e.message);
-  }
-}
-
-async function confirmSaveStory(){
-  if(!pendingStorySave)return;
-
-  try{
-    const j = await api('/api/save-story',{
-      method:'POST',
-      body:JSON.stringify({
-        story: pendingStorySave.story,
-        filename: pendingStorySave.filename,
-        overwrite: !!pendingStorySave.overwrite
-      })
-    });
-
-    $('#stateStatus').textContent='saved: '+j.filename;
-    pendingStorySave=null;
-    pendingUnsavedChat=null;
-    $('#savePrompt').style.display='none';
-  }catch(e){
-    showError(e.message);
-  }finally{
-    $('#send').disabled=false;
-    $('#newChat').disabled=false;
-    input.focus();
-  }
-}
-
-function discardStorySave(){
-  pendingStorySave=null;
-
-  if(pendingUnsavedChat){
-    const {userText, storyText, userElement, storyElement} = pendingUnsavedChat;
-
-    userElement?.remove();
-    storyElement?.remove();
-
-    const history=readChatHistory();
-    const next=[];
-
-    for(let i=0;i<history.length;i++){
-      const item=history[i];
-      const isUserMatch =
-        i === history.length-2 &&
-        item.role === 'user' &&
-        item.text === userText;
-
-      const isStoryMatch =
-        i === history.length-1 &&
-        item.role === 'assistant' &&
-        item.isStory === true &&
-        item.text === storyText;
-
-      if(isUserMatch || isStoryMatch){
-        continue;
-      }
-
-      next.push(item);
-    }
-
-    writeChatHistory(next);
-
-    if(!next.length){
-      chat.innerHTML='<div class="empty" id="empty">New chat. No previous conversation is loaded.</div>';
-    }
-
-    pendingUnsavedChat=null;
-  }
-
-  $('#savePrompt').style.display='none';
-  $('#stateStatus').textContent='story section discarded';
-  $('#send').disabled=false;
-  $('#newChat').disabled=false;
-  input.focus();
-}
-
-$('#saveYes').addEventListener('click',confirmSaveStory);
-$('#saveNo').addEventListener('click',discardStorySave);
-
-async function send(){
-  const text=input.value.trim();
-
-  if(!text)return;
-
-  input.value='';
-
-  // Scene-builder prompts can be very large and are implementation details,
-  // not useful story transcript content. Show a compact marker instead.
-  const sceneMatch = text.match(
-    /^Begin Chapter\s+(\d+),\s+Scene\s+(\d+)\./i
-  );
-
-  const displayText = sceneMatch
-    ? 'Scene prompt submitted: Chapter ' + sceneMatch[1] +
-      ', Scene ' + sceneMatch[2]
-    : text;
-
-  const userMessageElement=addMsg('user',displayText);
-
-  $('#send').disabled=true;
-  $('#newChat').disabled=true;
-
-  try{
-    const j=await api('/api/chat',{
-      method:'POST',
-      body:JSON.stringify({message:text})
-    });
-
-    const storyMessageElement=addMsg('assistant',j.content,true);
-
-    pendingUnsavedChat={
-      userText:text,
-      storyText:j.content,
-      userElement:userMessageElement,
-      storyElement:storyMessageElement
-    };
-
-    await saveStory(j.content);
-
-    $('#timing').textContent=
-      j.seconds+
-      ' s • estimated context '+
-      j.estimated_context_tokens+
-      '/8192';
-  }catch(e){
-    showError(e.message);
-  }finally{
-    $('#send').disabled=false;
-    $('#newChat').disabled=false;
-    input.focus();
-  }
-}
-
-$('#newChat').addEventListener('click',newChat);
+});
 $('#switchStory').addEventListener('click',switchStory);
-$('#stop').addEventListener('click',stopSession);
 $('#loadModel').addEventListener('click',loadModel);
 $('#unloadModel').addEventListener('click',unloadModel);
-$('#loadJson').addEventListener('click',loadJson);
-$('#unloadJson').addEventListener('click',unloadJson);
-$('#send').addEventListener('click',send);
+$('#writeQuick').addEventListener('click',submitDirection);
+$('#saveYes').addEventListener('click',confirmSaveStory);
+$('#saveNo').addEventListener('click',discardStorySave);
 $('#updateState').addEventListener('click',updateState);
-$('#updateFromFile').addEventListener('click',updateStateFromFile);
-$('#sectionFile').addEventListener('change',selectSectionFile);
 $('#applyState').addEventListener('click',applyState);
 $('#discardState').addEventListener('click',discardState);
-$('#buildPrompt').addEventListener('click',buildScenePrompt);
-$('#copyPrompt').addEventListener('click',copyScenePrompt);
-$('#usePrompt').addEventListener('click',useScenePrompt);
-$('#resetPrompt').addEventListener('click',resetPromptBuilder);
-$('#carryPrompt').addEventListener('click',carryForwardPrompt);
-
-[
-  '#promptChapter',
-  '#promptScene',
-  '#promptCharacters',
-  '#promptGoal',
-  '#promptRequired',
-  '#promptAvoid',
-  '#promptTone',
-  '#promptLength',
-  '#promptGuidance'
-].forEach(selector=>{
-  $(selector).addEventListener('input',()=>{
-    promptBuilderDirty=true;
-  });
+$('#sectionFile').addEventListener('change',e=>{
+  selectedSectionFile=e.target.files[0] || null;
+  if(selectedSectionFile){
+    $('#timing').textContent='Selected '+selectedSectionFile.name;
+  }
 });
 
-input.addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&!e.shiftKey){
+charactersInput.addEventListener('input',saveCast);
+quickDirection.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && !e.shiftKey){
     e.preventDefault();
-    send();
+    submitDirection();
+  }
+});
+directionInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    writeScene();
   }
 });
 
-restoreChatHistory();
-refresh().then(()=>{
-  if(!promptBuilderDirty && readPromptTemplate()){
-    fillPromptFields(readPromptTemplate(), false);
-  }else{
-    resetPromptBuilder();
+(async function init(){
+  await refresh();
+  restoreChatHistory();
+
+  try{
+    const models=await api('/api/models');
+    const select=$('#modelSelect');
+
+    select.innerHTML='';
+
+    if(!models.models.length){
+      const option=document.createElement('option');
+      option.value='';
+      option.textContent='No GGUF models found';
+      select.appendChild(option);
+    }else{
+      models.models.forEach(model=>{
+        const option=document.createElement('option');
+        option.value=model.path;
+        option.textContent=model.name;
+        select.appendChild(option);
+      });
+
+      if(models.selected)select.value=models.selected;
+    }
+  }catch(e){
+    showError(e.message);
   }
-});
+})();
 </script>
 </body>
 </html>
