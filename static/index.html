@@ -192,10 +192,11 @@ textarea:focus,input:focus,select:focus{
   border-radius:14px
 }
 .composer{
-  position:sticky;
-  bottom:0;
-  background:linear-gradient(to top,var(--bg) 80%,transparent);
-  padding-top:12px
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:12px
 }
 .row{
   display:flex;
@@ -314,6 +315,13 @@ textarea:focus,input:focus,select:focus{
   </div>
 </section>
 
+<div class="composer">
+  <div class="row">
+    <textarea id="direction" placeholder="Write what you want to happen in this section. Example: Let Tiffany and Maya walk home and talk naturally about school, random things, the past, and what they might do later. They have not reached home yet."></textarea>
+    <button id="write" class="btn primary write">Write</button>
+  </div>
+</div>
+
 <section id="chat" class="chat">
   <div class="empty" id="empty">Load the model, then start a new chat.</div>
 </section>
@@ -330,16 +338,6 @@ textarea:focus,input:focus,select:focus{
     </div>
   </div>
 </section>
-
-
-
-
-
-<div class="composer">
-  <div class="row">
-    <textarea id="direction" placeholder="Write what you want to happen in this section. Example: Let Tiffany and Maya walk home and talk naturally about school, random things, the past, and what they might do later. They have not reached home yet."></textarea>
-    <button id="write" class="btn primary write">Write</button>
-  </div>
 
 <section class="panel" id="memoryPanel">
   <div class="panel-head">
@@ -358,10 +356,9 @@ textarea:focus,input:focus,select:focus{
   <textarea id="statePreview" class="state-preview" readonly placeholder="A proposed state update will appear here."></textarea>
 </section>
 
-  <div class="note">
-    <span>CPU mode • 8,192 context • temp 0.75 • top-p 0.92 • top-k 100 • repetition penalty 1.08 • reasoning off</span>
-    <span id="timing"></span>
-  </div>
+<div class="note">
+  <span>CPU mode • 8,192 context • temp 0.75 • top-p 0.92 • top-k 100 • repetition penalty 1.08 • reasoning off</span>
+  <span id="timing"></span>
 </div>
 </main>
 
