@@ -1944,28 +1944,40 @@ class LlamaSession:
 
     @staticmethod
     def clean_output(text):
-        """Return only the assistant prose written by llama-cli."""
+        """Extract only the final assistant prose from llama-cli output."""
         raw = (text or "").replace("\r", "")
 
-        # llama-cli's --output-file format prefixes the generated response
-        # with "Assistant:"; remove that wrapper before showing the prose.
-        stripped = raw.lstrip()
-        if stripped.startswith("Assistant:"):
-            raw = stripped[len("Assistant:"):].lstrip("\n ")
+        # With --output-file, llama-cli writes a transcript such as:
+        # User:
+        # <prompt>
+        #
+        # Assistant:
+        # <generated story>
+        #
+        # Keep only the final Assistant section.
+        assistant_marker = "Assistant:"
+        marker_positions = [
+            match.start()
+            for match in re.finditer(
+                re.escape(assistant_marker),
+                raw,
+            )
+        ]
 
-        # Defensive cleanup for any control text that somehow reaches the
-        # output file.
+        if marker_positions:
+            raw = raw[marker_positions[-1] + len(assistant_marker):]
+
+        # Remove optional thinking/control wrappers and anything after the
+        # normal end-of-run marker.
+        if "[Start thinking]" in raw:
+            raw = raw.split("[Start thinking]", 1)[0]
+
         for marker in (
-            "[Start thinking]",
-            "[End thinking]",
             "[END STORY OUTPUT]",
             "Exiting...",
         ):
             if marker in raw:
-                if marker == "[Start thinking]":
-                    raw = raw.split(marker, 1)[0]
-                else:
-                    raw = raw.split(marker, 1)[0]
+                raw = raw.split(marker, 1)[0]
 
         return raw.strip()
 
