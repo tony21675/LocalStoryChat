@@ -2141,6 +2141,7 @@ class LlamaSession:
                 "--prompt", turn_prompt,
                 "--color", "off",
                 "--no-display-prompt",
+                "--simple-io",
                 "--single-turn",
                 "--no-show-timings",
             ]
