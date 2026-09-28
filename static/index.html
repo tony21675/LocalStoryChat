@@ -331,7 +331,17 @@ textarea:focus,input:focus,select:focus{
   </div>
 </section>
 
-<section class="panel">
+
+
+
+
+<div class="composer">
+  <div class="row">
+    <textarea id="direction" placeholder="Write what you want to happen in this section. Example: Let Tiffany and Maya walk home and talk naturally about school, random things, the past, and what they might do later. They have not reached home yet."></textarea>
+    <button id="write" class="btn primary write">Write</button>
+  </div>
+
+<section class="panel" id="memoryPanel">
   <div class="panel-head">
     <div>
       <h2>Story Memory</h2>
@@ -348,11 +358,6 @@ textarea:focus,input:focus,select:focus{
   <textarea id="statePreview" class="state-preview" readonly placeholder="A proposed state update will appear here."></textarea>
 </section>
 
-<div class="composer">
-  <div class="row">
-    <textarea id="direction" placeholder="Write what you want to happen in this section. Example: Let Tiffany and Maya walk home and talk naturally about school, random things, the past, and what they might do later. They have not reached home yet."></textarea>
-    <button id="write" class="btn primary write">Write</button>
-  </div>
   <div class="note">
     <span>CPU mode • 8,192 context • temp 0.75 • top-p 0.92 • top-k 100 • repetition penalty 1.08 • reasoning off</span>
     <span id="timing"></span>
@@ -855,6 +860,10 @@ async function writeScene(){
   saveCast();
 
   setBusy(true);
+
+  // The direction has been accepted. Clear the box immediately so it is
+  // ready for the next section while the local model is generating.
+  directionInput.value='';
 
   const display=
     'Scene direction: '+direction;
