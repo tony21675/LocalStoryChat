@@ -2217,21 +2217,20 @@ class Handler(BaseHTTPRequestHandler):
                 "available_models": available_models(),
                 "available_characters": [
                     {
-                        "name": str(name),
+                        "name": str(data.get("name", "")).strip(),
                         "file": str(card_name)
                     }
                     for card_name in discover_story_names()
-                    if card_name not in ("story_bible.json", "current_state.json")
-                    for name in [
-                        (
-                            json.loads(
-                                (STORY_DIR / card_name).read_text(encoding="utf-8")
-                            ).get("name", "")
-                            if (STORY_DIR / card_name).exists()
-                            else ""
-                        )
-                    ]
-                    if str(name).strip()
+                    if card_name in set(
+                        str(item).strip()
+                        for item in json.loads(
+                            (STORY_DIR / "story_bible.json").read_text(encoding="utf-8")
+                        ).get("character_cards", [])
+                    )
+                    and (data := json.loads(
+                        (STORY_DIR / card_name).read_text(encoding="utf-8")
+                    ))
+                    if str(data.get("name", "")).strip()
                 ],
                 "story_dir": str(STORY_DIR),
                 "models_dir": str(MODELS_DIR),
