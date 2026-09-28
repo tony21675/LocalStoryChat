@@ -27,15 +27,11 @@
     "Chloe": "friend"
   },
   "goals": [
-    "Protect Tiffany",
-    "Find Tiffany and bring her home safely if she is in danger"
+    "Protect Tiffany"
   ],
   "does_not_know": [
-    "Tiffany's dog tags contain a hidden tracker.",
-    "The tracker's activation method.",
-    "The kidnapper's identity or motive until discovered.",
-    "Information witnessed only by Maya or Chloe.",
-    "Maya and Chloe have crushes on him.",
-    "Maya and Chloe sometimes dress more provocatively around him."
-  ]
+    "Information other characters have not shared with him.",
+    "Private thoughts or feelings of other characters unless they reveal them."
+  ],
+  "knowledge_rule": "Only knows what he personally experienced, was told, or reasonably knows."
 }
