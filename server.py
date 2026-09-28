@@ -2100,7 +2100,7 @@ class LlamaSession:
                 proc.stdin.flush()
 
                 raw = self._wait_for_prompt(
-                    300,
+                    900,
                     initial=False,
                 )
 
