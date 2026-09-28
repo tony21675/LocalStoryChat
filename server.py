@@ -178,6 +178,84 @@ def discover_story_names():
 
     return names
 
+
+def discover_story_modules():
+    """Return optional plot modules declared by story_bible.json."""
+    story_bible = STORY_DIR / "story_bible.json"
+    data = json.loads(story_bible.read_text(encoding="utf-8"))
+    modules = data.get("optional_story_modules", [])
+
+    if not isinstance(modules, list):
+        raise ValueError(
+            "story_bible.json optional_story_modules must be a list"
+        )
+
+    result = []
+
+    for item in modules:
+        if not isinstance(item, dict):
+            continue
+
+        module_id = str(item.get("id", "")).strip()
+        name = str(item.get("name", module_id)).strip()
+        filename = str(item.get("file", "")).strip()
+
+        if not module_id or not filename:
+            continue
+
+        character_files = item.get("character_files", [])
+        if not isinstance(character_files, list):
+            character_files = []
+
+        result.append({
+            "id": module_id,
+            "name": name or module_id,
+            "file": filename,
+            "character_files": [
+                str(value).strip()
+                for value in character_files
+                if str(value).strip()
+            ],
+        })
+
+    return result
+
+
+def get_story_module(module_id):
+    requested = str(module_id or "").strip().lower()
+
+    for module in discover_story_modules():
+        if module["id"].lower() == requested:
+            return module
+
+    raise ValueError(
+        f"Unknown story module: {module_id}"
+    )
+
+
+def load_story_module_files(module_id):
+    module = get_story_module(module_id)
+
+    return load_story_files([
+        module["file"],
+        *module["character_files"],
+    ])
+
+
+def merge_active_module_files(active_modules):
+    files = load_default_story_files()
+
+    for module_id in active_modules:
+        existing = {name for name, _ in files}
+
+        for name, content in load_story_module_files(module_id):
+            if name not in existing:
+                files.append((name, content))
+                existing.add(name)
+
+    return files
+
+
 SYSTEM_PROMPT = r'''You are the prose writer for an ongoing contemporary American novel.
 
 Write only the story itself.
@@ -1426,6 +1504,26 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
             available_names.append(name)
             cards.append((name, data))
 
+    for ref_name, ref_content in files:
+        try:
+            module_data = json.loads(ref_content)
+        except Exception:
+            continue
+
+        if module_data.get("type") != "module_character_file":
+            continue
+
+        for character in module_data.get("characters", []):
+            if not isinstance(character, dict):
+                continue
+
+            name = str(character.get("name", "")).strip()
+            if not name or name in available_names:
+                continue
+
+            available_names.append(name)
+            cards.append((name, character))
+
     active_names = _resolve_scene_character_names(
         scene_characters,
         user_text,
@@ -1565,6 +1663,22 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
             "- " + ", ".join(offstage_names),
             "These characters are not physically present in this scene. They may be mentioned briefly only when natural, but they must not enter, interact, be observed directly, or become a focus of the scene unless the user explicitly requests it.",
         ]
+
+    active_module_data = []
+
+    for ref_name, ref_content in files:
+        try:
+            module_data = json.loads(ref_content)
+        except Exception:
+            continue
+
+        if module_data.get("type") == "story_module":
+            active_module_data.append(module_data)
+
+    if active_module_data:
+        lines += ["", "[ACTIVE STORY MODULES]"]
+        for module_data in active_module_data:
+            lines.append(_compact_json(module_data))
 
     completed = state.get("completed_events")
     if isinstance(completed, list) and completed:
@@ -1801,6 +1915,7 @@ class LlamaSession:
             if DEFAULT_MODEL.exists()
             else None
         )
+        self.active_modules = []
 
     def _stop_unlocked(self):
         proc = self.child
@@ -2320,17 +2435,26 @@ class Handler(BaseHTTPRequestHandler):
                     for name in available_story_names()
                 ],
                 "available_models": available_models(),
+                "active_modules": list(session.active_modules),
+                "available_story_modules": discover_story_modules(),
                 "available_characters": [
                     {
                         "name": str(data.get("name", "")).strip(),
                         "file": str(card_name)
                     }
                     for card_name in discover_story_names()
-                    if card_name in set(
-                        str(item).strip()
-                        for item in json.loads(
-                            (STORY_DIR / "story_bible.json").read_text(encoding="utf-8")
-                        ).get("character_cards", [])
+                    if (
+                        card_name in set(
+                            str(item).strip()
+                            for item in json.loads(
+                                (STORY_DIR / "story_bible.json").read_text(encoding="utf-8")
+                            ).get("character_cards", [])
+                        )
+                        or any(
+                            card_name in module.get("character_files", [])
+                            for module in discover_story_modules()
+                            if module.get("id") in session.active_modules
+                        )
                     )
                     and (data := json.loads(
                         (STORY_DIR / card_name).read_text(encoding="utf-8")
@@ -2406,6 +2530,22 @@ class Handler(BaseHTTPRequestHandler):
                 }
             )
 
+            return
+
+        if path == "/api/modules":
+            self._json(
+                200,
+                {
+                    "modules": [
+                        {
+                            **module,
+                            "active": module["id"] in session.active_modules,
+                        }
+                        for module in discover_story_modules()
+                    ],
+                    "active": list(session.active_modules),
+                }
+            )
             return
 
         if path == "/api/default-files":
@@ -2515,6 +2655,7 @@ class Handler(BaseHTTPRequestHandler):
 
                 session.stop()
                 session.files = load_default_story_files()
+                session.active_modules = []
                 session.story_dir = STORY_DIR
                 pending_state = None
 
@@ -2528,6 +2669,53 @@ class Handler(BaseHTTPRequestHandler):
                     }
                 )
 
+                return
+
+            if path == "/api/module/load":
+                module_id = str(body.get("id", "")).strip()
+                if not module_id:
+                    raise ValueError("No story module was selected.")
+
+                module = get_story_module(module_id)
+
+                if module["id"] not in session.active_modules:
+                    session.active_modules.append(module["id"])
+
+                session.files = merge_active_module_files(
+                    session.active_modules
+                )
+                session.story_dir = STORY_DIR
+
+                self._json(200, {
+                    "ok": True,
+                    "active": list(session.active_modules),
+                    "module": module,
+                })
+                return
+
+            if path == "/api/module/unload":
+                module_id = str(body.get("id", "")).strip()
+                if not module_id:
+                    raise ValueError("No story module was selected.")
+
+                module = get_story_module(module_id)
+
+                session.active_modules = [
+                    item
+                    for item in session.active_modules
+                    if item != module["id"]
+                ]
+
+                session.files = merge_active_module_files(
+                    session.active_modules
+                )
+                session.story_dir = STORY_DIR
+
+                self._json(200, {
+                    "ok": True,
+                    "active": list(session.active_modules),
+                    "module": module,
+                })
                 return
 
             if path == "/api/scene-prompt":
@@ -2563,6 +2751,7 @@ class Handler(BaseHTTPRequestHandler):
                 session.stop()
                 session.model_path = model_path
                 session.files = load_default_story_files()
+                session.active_modules = []
                 session.story_dir = STORY_DIR
 
                 self._json(
@@ -2840,7 +3029,9 @@ class Handler(BaseHTTPRequestHandler):
 
                 if session.model_path is not None:
                     session.stop()
-                    session.files = load_default_story_files()
+                    session.files = merge_active_module_files(
+                        session.active_modules
+                    )
                     session.story_dir = STORY_DIR
 
                 self._json(200, {
