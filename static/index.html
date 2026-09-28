@@ -631,7 +631,9 @@ async function refresh(){
 
     const s=await api('/api/status');
 
-    $('#backend').textContent=s.running?'running':'stopped';
+    $('#backend').textContent=
+      s.ready ? 'ready' :
+      (s.running ? 'running' : 'stopped');
     $('#modelStatus').textContent=
       s.model?s.model.split('/').pop():'none';
     $('#storyStatus').textContent=storyData.active || 'none';
