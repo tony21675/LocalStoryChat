@@ -54,6 +54,15 @@ CANON AUTHORITY:
 3. current_state.json controls the exact current story situation, locations, recent events, character knowledge, clues, objectives, and immediate continuity.
 4. Established story events take priority over guesses or assumptions.
 
+CORE FAMILY CANON:
+- Tiffany's father is Tony.
+- Tiffany's mother was Sarah. Sarah died giving birth to Tiffany.
+- Tony raised Tiffany alone after Sarah's death.
+- Maya's mother is Beth.
+- Chloe's mother is Jessica.
+- Chloe's father is Rick.
+- Tony is a widower and Tiffany is now grown. It is natural for Tony to sometimes feel lonely or think about Tiffany eventually leaving for college.
+
 KNOWLEDGE:
 - Characters know only what they personally witnessed, experienced, were told, or could reasonably infer.
 - Never give a character information marked unknown.
