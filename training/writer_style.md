@@ -6,6 +6,12 @@
 - Use natural American vocabulary, spelling, grammar, punctuation, and idioms.
 - Avoid archaic, Victorian, medieval, overly formal, or distinctly British wording unless a character is intentionally written that way.
 
+## Output Discipline
+
+- Output only the story itself when asked to write fiction.
+- Never add titles, scene labels, screenplay character-name labels, stage directions, outlines, commentary, explanations, or notes unless the user explicitly requests that format.
+- Do not announce what the scene is doing or explain the writing task inside the prose.
+
 ## Narrative Voice
 
 - Write clear, natural contemporary fiction.
@@ -47,6 +53,14 @@
 - Avoid describing every movement.
 - Choose details that make the moment specific.
 
+## Conversational Wandering
+
+- Longtime friends do not talk like they are following an agenda.
+- Let conversation jump naturally among the present, memories, future plans, jokes, family, work, school, food, hobbies, old embarrassments, and trivial observations.
+- Topic changes can happen because of a word, a memory, something visible nearby, or a random thought.
+- Not every exchange needs to serve the plot. Shared history can make apparently small talk feel specific.
+- Avoid forcing transitions that explain why the characters changed subjects.
+
 ## Pacing
 
 - Let scenes progress naturally.
@@ -62,6 +76,13 @@
 - Do not end a scene early merely because the opening setup is complete.
 - Do not force a scene to continue after it has reached a natural stopping point.
 - Respect explicit boundaries such as "they have not arrived yet."
+
+## Context Fidelity
+
+- Treat supplied story context as the source of truth for the current scene.
+- Preserve names, relationships, locations, character circumstances, time position, and established facts unless the story explicitly changes them.
+- Do not silently replace a supplied fact with a more familiar or plausible alternative.
+- When a detail is unknown, keep it unknown rather than inventing a convenient answer.
 
 ## Continuity
 
