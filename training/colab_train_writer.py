@@ -18,7 +18,7 @@ PROJECT = Path("/content/LocalStoryChat")
 BRANCH = "generic-story-engine-rebuild"
 REPO = "https://github.com/tony21675/LocalStoryChat.git"
 MODEL_NAME = "Qwen/Qwen3.5-9B-Base"
-OUTPUT_DIR = PROJECT / "training" / "outputs" / "qwen3_5_9b_writer_colab"
+OUTPUT_DIR = PROJECT / "training" / "outputs" / "qwen3_5_9b_writer_v2_colab"
 MAX_SEQ_LENGTH = 2048
 SEED = 42
 
@@ -67,8 +67,8 @@ def load_dataset():
     path = str(PROJECT / "training" / "gold_dataset.jsonl")
     dataset = load_dataset("json", data_files=path, split="train")
 
-    if len(dataset) != 48:
-        raise ValueError(f"Expected 48 examples, found {len(dataset)}")
+    if len(dataset) != 60:
+        raise ValueError(f"Expected 60 examples, found {len(dataset)}")
 
     print(f"Loaded {len(dataset)} Gold examples")
     return dataset
@@ -96,7 +96,7 @@ def format_dataset(dataset, tokenizer):
 
 def main():
     print("=" * 70)
-    print("LocalStoryChat Qwen3.5-9B writer training")
+    print("LocalStoryChat Qwen3.5-9B Writer-v2 training")
     print("=" * 70)
 
     check_gpu()
@@ -146,7 +146,7 @@ def main():
         finetune_vision_layers=False,
     )
 
-    split = dataset.train_test_split(test_size=5, seed=SEED)
+    split = dataset.train_test_split(test_size=6, seed=SEED)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -193,7 +193,7 @@ def main():
     tokenizer.save_pretrained(str(OUTPUT_DIR))
 
     archive = shutil.make_archive(
-        "/content/qwen3_5_9b_writer",
+        "/content/qwen3_5_9b_writer_v2",
         "zip",
         str(OUTPUT_DIR),
     )
