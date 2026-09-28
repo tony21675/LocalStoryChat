@@ -279,22 +279,14 @@ textarea:focus,input:focus,select:focus{
 <section class="panel">
   <div class="panel-head">
     <div>
-      <h2>Write the next section</h2>
-      <div class="sub">Give the writer the creative direction. The engine supplies the continuity context automatically.</div>
+      <h2>Scene Cast</h2>
+      <div class="sub">Choose who is physically present. Leave this blank when the characters are obvious from your direction.</div>
     </div>
   </div>
-
-  <div class="writer-grid">
-    <div class="field">
-      <label for="characters">Characters in this scene</label>
-      <input id="characters" placeholder="Example: Tiffany, Maya" autocomplete="off">
-      <div class="sub" style="margin-top:6px">Comma-separated. Characters not listed are not physically brought into the scene.</div>
-    </div>
-
-    <div class="field">
-      <label for="direction">Scene direction</label>
-      <textarea id="direction" placeholder="Example: Let them walk home and talk naturally about school, random stuff, the past, and what they might do later. They have not reached home yet."></textarea>
-    </div>
+  <div class="field">
+    <label for="characters">Characters in this scene</label>
+    <input id="characters" placeholder="Example: Tiffany, Maya" autocomplete="off">
+    <div class="sub" style="margin-top:6px">Comma-separated. A character not listed will not be physically brought into the scene.</div>
   </div>
 </section>
 
@@ -334,8 +326,8 @@ textarea:focus,input:focus,select:focus{
 
 <div class="composer">
   <div class="row">
-    <textarea id="quickDirection" placeholder="Or type a quick scene direction here and press Enter…"></textarea>
-    <button id="writeQuick" class="btn primary write">Write</button>
+    <textarea id="direction" placeholder="Write what you want to happen in this section. Example: Let Tiffany and Maya walk home and talk naturally about school, random things, the past, and what they might do later. They have not reached home yet."></textarea>
+    <button id="write" class="btn primary write">Write</button>
   </div>
   <div class="note">
     <span>CPU mode • 8,192 context • temp 0.75 • top-p 0.92 • top-k 100 • repetition penalty 1.08 • reasoning off</span>
@@ -349,7 +341,7 @@ const $=s=>document.querySelector(s);
 const chat=$('#chat');
 const charactersInput=$('#characters');
 const directionInput=$('#direction');
-const quickDirection=$('#quickDirection');
+const directionInput=$('#directionInput');
 
 let pendingState=null;
 let selectedSectionFile=null;
@@ -465,7 +457,7 @@ function setBusy(value){
   $('#switchStory').disabled=value;
   $('#loadModel').disabled=value;
   $('#unloadModel').disabled=value;
-  $('#writeQuick').disabled=value;
+  $('#write').disabled=value;
   $('#updateState').disabled=value;
   $('#applyState').disabled=value || !pendingState;
   $('#discardState').disabled=value || !pendingState;
@@ -688,14 +680,14 @@ async function newChat(){
     showError(e.message);
   }finally{
     setBusy(false);
-    quickDirection.focus();
+    directionInput.focus();
   }
 }
 
 function showSavedPrompt(filename){
   $('#saveText').textContent='Save this story section as '+filename+'?';
   $('#saveBox').style.display='block';
-  $('#writeQuick').disabled=true;
+  $('#write').disabled=true;
   $('#newChat').disabled=true;
 }
 
@@ -740,9 +732,9 @@ async function confirmSaveStory(){
   }catch(e){
     showError(e.message);
   }finally{
-    $('#writeQuick').disabled=false;
+    $('#write').disabled=false;
     $('#newChat').disabled=false;
-    quickDirection.focus();
+    directionInput.focus();
   }
 }
 
@@ -768,20 +760,8 @@ function discardStorySave(){
 
   pendingUnsavedChat=null;
   $('#saveBox').style.display='none';
-  $('#writeQuick').disabled=false;
+  $('#write').disabled=false;
   $('#newChat').disabled=false;
-  quickDirection.focus();
-}
-
-function submitDirection(){
-  const quick=quickDirection.value.trim();
-
-  if(quick){
-    directionInput.value=quick;
-    quickDirection.value='';
-  }
-
-  directionInput.scrollIntoView({block:'center'});
   directionInput.focus();
 }
 
@@ -836,7 +816,7 @@ async function writeScene(){
   }finally{
     setBusy(false);
     if(pendingUnsavedChat && pendingUnsavedChat.filename){
-      $('#writeQuick').disabled=true;
+      $('#write').disabled=true;
       $('#newChat').disabled=true;
     }
   }
@@ -977,7 +957,7 @@ $('#stop').addEventListener('click',async()=>{
 $('#switchStory').addEventListener('click',switchStory);
 $('#loadModel').addEventListener('click',loadModel);
 $('#unloadModel').addEventListener('click',unloadModel);
-$('#writeQuick').addEventListener('click',submitDirection);
+$('#write').addEventListener('click',submitDirection);
 $('#saveYes').addEventListener('click',confirmSaveStory);
 $('#saveNo').addEventListener('click',discardStorySave);
 $('#updateState').addEventListener('click',updateState);
@@ -991,7 +971,7 @@ $('#sectionFile').addEventListener('change',e=>{
 });
 
 charactersInput.addEventListener('input',saveCast);
-quickDirection.addEventListener('keydown',e=>{
+directionInput.addEventListener('keydown',e=>{
   if(e.key==='Enter' && !e.shiftKey){
     e.preventDefault();
     submitDirection();
