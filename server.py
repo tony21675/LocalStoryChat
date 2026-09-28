@@ -945,7 +945,7 @@ Rules:
         proc = subprocess.Popen(
             args,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             env=env,
             text=True,
             encoding="utf-8",
@@ -953,21 +953,22 @@ Rules:
         )
 
         try:
-            output, _ = proc.communicate(
+            output, error_output = proc.communicate(
                 timeout=300
             )
         except subprocess.TimeoutExpired:
             proc.kill()
-            output, _ = proc.communicate()
+            output, error_output = proc.communicate()
 
             raise TimeoutError(
                 "State update generation timed out."
             )
 
         if proc.returncode not in (0, None):
+            diagnostics = ((error_output or "") + "\n" + (output or "")).strip()
             raise RuntimeError(
                 f"State manager exited with code {proc.returncode}.\\n"
-                f"{output[-2000:]}"
+                f"{diagnostics[-2000:]}"
             )
 
         print("\n--- RAW STATE MANAGER OUTPUT ---", flush=True)
@@ -2107,13 +2108,14 @@ class LlamaSession:
                 "--no-display-prompt",
                 "--simple-io",
                 "--single-turn",
+                "--no-show-timings",
             ]
 
             try:
                 proc = subprocess.Popen(
                     args,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
+                    stderr=subprocess.PIPE,
                     env=env,
                     text=True,
                     encoding="utf-8",
@@ -2125,28 +2127,30 @@ class LlamaSession:
                 self.buffer = ""
 
                 try:
-                    output, _ = proc.communicate(timeout=900)
+                    output, error_output = proc.communicate(timeout=900)
                 except subprocess.TimeoutExpired as exc:
                     proc.kill()
-                    output, _ = proc.communicate()
-                    tail = (output or "")[-1600:]
+                    output, error_output = proc.communicate()
+                    tail = ((error_output or "") + "\n" + (output or ""))[-1600:]
                     raise TimeoutError(
                         "Story generation timed out after 900 seconds. "
                         f"Recent backend output:\\n{tail}"
                     ) from exc
 
                 if proc.returncode not in (0, None):
+                    diagnostics = ((error_output or "") + "\n" + (output or "")).strip()
                     raise RuntimeError(
                         f"llama-cli exited with code {proc.returncode}.\\n"
-                        f"{(output or "")[-2000:]}"
+                        f"{diagnostics[-2000:]}"
                     )
 
                 answer = self.clean_output(output)
 
                 if not answer:
+                    diagnostics = ((error_output or "") + "\n" + (output or "")).strip()
                     raise RuntimeError(
                         "llama-cli returned an empty story response. "
-                        f"Backend output:\\n{(output or "")[-1600:]}"
+                        f"Backend output:\\n{diagnostics[-1600:]}"
                     )
 
                 return answer, time.time() - started
