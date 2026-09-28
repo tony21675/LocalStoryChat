@@ -2776,6 +2776,8 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/model/unload":
                 session.stop()
                 session.model_path = None
+                session.active_modules = []
+                session.files = load_default_story_files()
 
                 self._json(
                     200,
