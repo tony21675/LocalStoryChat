@@ -2227,6 +2227,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/status":
             self._json(200, {
                 "running": bool(session.child and session.child.poll() is None),
+                "ready": session.model_path is not None,
                 "model": (
                     str(session.model_path)
                     if session.model_path
@@ -2447,13 +2448,6 @@ class Handler(BaseHTTPRequestHandler):
                 session.story_dir = STORY_DIR
                 pending_state = None
 
-                if session.model_path is not None:
-                    session.start(
-                        session.system_prompt or SYSTEM_PROMPT,
-                        session.files,
-                        session.model_path,
-                    )
-
                 self._json(
                     200,
                     {
@@ -2510,6 +2504,7 @@ class Handler(BaseHTTPRequestHandler):
                             session.child
                             and session.child.poll() is None
                         ),
+                        "ready": session.model_path is not None,
                         "files": [
                             name
                             for name, _ in session.files
@@ -2618,6 +2613,7 @@ class Handler(BaseHTTPRequestHandler):
                             name
                             for name, _ in session.files
                         ],
+                        "ready": session.model_path is not None,
                         "estimated_system_tokens": (
                             session.estimate_context()
                         ),
@@ -2773,12 +2769,9 @@ class Handler(BaseHTTPRequestHandler):
                 pending_state = None
 
                 if session.model_path is not None:
+                    session.stop()
                     session.files = load_default_story_files()
-                    session.start(
-                        session.system_prompt or SYSTEM_PROMPT,
-                        session.files,
-                        session.model_path,
-                    )
+                    session.story_dir = STORY_DIR
 
                 self._json(200, {
                     "ok": True,
