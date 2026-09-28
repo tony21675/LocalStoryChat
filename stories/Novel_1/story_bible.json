@@ -1,6 +1,6 @@
 {
   "title": "Untitled",
-  "version": "1.5",
+  "version": "1.6",
   "status": "active",
   "character_cards": [
     "Tony.json",
@@ -9,6 +9,12 @@
     "Chloe.json"
   ],
   "optional_story_modules": [
+    {
+      "id": "relationship_dynamics",
+      "name": "Relationship Dynamics",
+      "file": "relationship_dynamics.json",
+      "character_files": []
+    },
     {
       "id": "kidnapping",
       "name": "Kidnapping",
