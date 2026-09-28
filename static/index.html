@@ -136,6 +136,29 @@ textarea:focus,input:focus,select:focus{
   font-weight:700;
   margin-bottom:6px
 }
+.cast-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px
+}
+.cast-chip{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:999px;
+  padding:8px 11px;
+  cursor:pointer;
+  font-weight:600
+}
+.cast-chip.selected{
+  border-color:#5a8ba3;
+  background:#163340
+}
+.cast-empty{
+  color:var(--muted);
+  font-size:12px
+}
 .chat{
   flex:1;
   display:flex;
@@ -284,9 +307,10 @@ textarea:focus,input:focus,select:focus{
     </div>
   </div>
   <div class="field">
-    <label for="characters">Characters in this scene</label>
-    <input id="characters" placeholder="Example: Tiffany, Maya" autocomplete="off">
-    <div class="sub" style="margin-top:6px">Comma-separated. A character not listed will not be physically brought into the scene.</div>
+    <label>Characters in this scene</label>
+    <div id="castList" class="cast-list" aria-label="Available characters"></div>
+    <input id="characters" type="hidden">
+    <div class="sub" style="margin-top:8px">Click a character to add or remove them from the scene.</div>
   </div>
 </section>
 
@@ -311,7 +335,7 @@ textarea:focus,input:focus,select:focus{
   <div class="panel-head">
     <div>
       <h2>Story Memory</h2>
-      <div class="sub">Optional. Update the durable current_state.json after a section is saved. Nothing is blocked if you skip this.</div>
+      <div class="sub">You do not type anything here. After saving a section, click Update Memory and the app proposes only durable continuity changes for you to review.</div>
     </div>
     <div class="toolbar">
       <button id="updateState" class="btn ok">Update Memory</button>
@@ -387,6 +411,58 @@ function restoreCast(){
     charactersInput.value='';
   }
 }
+
+function selectedCharacters(){
+  return charactersInput.value
+    .split(',')
+    .map(x=>x.trim())
+    .filter(Boolean);
+}
+
+function renderCast(characters){
+  const list=$('#castList');
+  list.innerHTML='';
+
+  if(!characters || !characters.length){
+    const empty=document.createElement('div');
+    empty.className='cast-empty';
+    empty.textContent='No character cards found in this story.';
+    list.appendChild(empty);
+    return;
+  }
+
+  const selected=new Set(selectedCharacters().map(x=>x.toLowerCase()));
+
+  characters.forEach(character=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='cast-chip';
+    button.textContent=character.name;
+    if(selected.has(character.name.toLowerCase())){
+      button.classList.add('selected');
+    }
+
+    button.addEventListener('click',()=>{
+      const current=selectedCharacters();
+      const index=current.findIndex(
+        x=>x.toLowerCase()===character.name.toLowerCase()
+      );
+
+      if(index>=0){
+        current.splice(index,1);
+      }else{
+        current.push(character.name);
+      }
+
+      charactersInput.value=current.join(', ');
+      saveCast();
+      renderCast(characters);
+    });
+
+    list.appendChild(button);
+  });
+}
+
 
 function addMsg(role,text,isStory=false,persist=true){
   const d=document.createElement('div');
@@ -561,6 +637,7 @@ async function refresh(){
     $('#storyStatus').textContent=storyData.active || 'none';
 
     fillSceneSummary(s.state);
+    renderCast(s.available_characters || []);
 
   }catch(e){
     $('#backend').textContent='error';
@@ -969,7 +1046,6 @@ $('#sectionFile').addEventListener('change',e=>{
   }
 });
 
-charactersInput.addEventListener('input',saveCast);
 directionInput.addEventListener('keydown',e=>{
   if(e.key==='Enter' && !e.shiftKey){
     e.preventDefault();
