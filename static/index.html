@@ -209,6 +209,7 @@ textarea:focus,input:focus,select:focus{
   font-size:16px
 }
 .write{min-height:110px;padding:0 20px}
+.write.working{cursor:wait}
 .note{
   font-size:11px;
   color:var(--muted);
@@ -419,6 +420,14 @@ function selectedCharacters(){
     .split(',')
     .map(x=>x.trim())
     .filter(Boolean);
+}
+
+function setWriterWorking(working){
+  $('#backend').textContent=working ? 'writing…' : (
+    $('#modelStatus').textContent !== 'none' ? 'ready' : 'stopped'
+  );
+  $('#write').textContent=working ? 'Writing…' : 'Write';
+  $('#write').classList.toggle('working',working);
 }
 
 function renderCast(characters){
@@ -857,6 +866,7 @@ async function writeScene(){
   saveCast();
 
   setBusy(true);
+  setWriterWorking(true);
 
   // The direction has been accepted. Clear the box immediately so it is
   // ready for the next section while the local model is generating.
@@ -898,6 +908,7 @@ async function writeScene(){
     writeChatHistory(history);
     showError(e.message);
   }finally{
+    setWriterWorking(false);
     setBusy(false);
     if(pendingUnsavedChat && pendingUnsavedChat.filename){
       $('#write').disabled=true;
