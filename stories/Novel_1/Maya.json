@@ -1,6 +1,6 @@
 {
   "name": "Maya",
-  "role": "Tiffany's best friend; Tony's friend; eyewitness",
+  "role": "Tiffany's best friend; Tony's friend",
   "status": "established",
   "age": 18,
   "appearance": {
@@ -8,7 +8,7 @@
     "build": "slim",
     "hair": "shoulder-length dark brown",
     "eyes": "brown",
-    "style": "casual, practical; subtly dresses more provocatively around Tony without realizing how noticeable it is to him"
+    "style": "casual, practical"
   },
   "personality": [
     "observant",
@@ -22,22 +22,21 @@
     "protective of friends"
   ],
   "weaknesses": [
-    "second-guesses herself after frightening events",
-    "hesitates when uncertain"
+    "second-guesses herself when uncertain",
+    "hesitates when unsure"
   ],
-  "stress_response": "Normally becomes quieter and focuses on details she can remember. After witnessing a traumatic event such as Tiffany being taken, she can become intensely distraught, cry, cling to or hug Tony for comfort, and have difficulty explaining what happened until he helps calm her down.",
+  "family": {
+    "mother": "Maya lives with her mother in Maya's own home next door to Tony and Tiffany.",
+    "father": "not present in Maya's household; no further history established"
+  },
   "relationships": {
     "Tony": "friend; Tony has known her since she was a baby; she has a secret crush on him that he does not know about",
     "Tiffany": "best friend; they have known each other since they were babies; their relationship is platonic and sister-like",
     "Chloe": "close friend"
   },
   "does_not_know": [
-    "The dog tags contain a hidden tracker.",
-    "The tracker's activation method.",
-    "The kidnapper's identity unless she learns it.",
-    "Information Chloe has not shared with her.",
     "Tony knows about her crush.",
-    "Tony notices that she sometimes dresses more provocatively around him."
+    "Tony notices anything beyond her ordinary appearance or behavior."
   ],
-  "knowledge_rule": "Only knows what she personally witnessed, experienced, was told, or reasonably inferred."
+  "knowledge_rule": "Only knows what she personally experienced, was told, or reasonably inferred."
 }
