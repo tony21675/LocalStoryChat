@@ -1942,23 +1942,38 @@ class LlamaSession:
         )
 
     @staticmethod
-    def clean_output(text):
+    def clean_output(text, user_request=""):
+        """Return only generated prose from llama-cli output.
+        
+        Different llama.cpp builds can echo some or all of the prompt even
+        when --no-display-prompt is supplied. The writer prompt is already
+        known, so remove it deterministically instead of relying on a single
+        output marker.
+        """
         raw = (text or "").replace("\r", "")
 
+        # Best case: our explicit story-output marker survived.
         output_marker = "[BEGIN STORY OUTPUT]"
         if output_marker in raw:
             raw = raw.rsplit(output_marker, 1)[1]
 
+        # Next, remove everything through the end of the known user request.
+        # This handles builds that echo the full prompt but omit our marker.
+        if "[END USER REQUEST]" in raw:
+            raw = raw.split("[END USER REQUEST]", 1)[1]
+        elif user_request:
+            request = user_request.strip()
+            if request and request in raw:
+                raw = raw.split(request, 1)[1]
+
+        # Remove any trailing control markers that are not story prose.
         for marker in (
             "[END STORY OUTPUT]",
             "[END WRITER CONTEXT]",
-            "[END USER REQUEST]",
+            "Exiting...",
         ):
             if marker in raw:
                 raw = raw.split(marker, 1)[0]
-
-        if "USER REQUEST:" in raw:
-            raw = raw.rsplit("USER REQUEST:", 1)[1]
 
         lines = []
 
@@ -1970,13 +1985,23 @@ class LlamaSession:
                     lines.append("")
                 continue
 
+            # llama.cpp status/prompt decorations should never reach the story.
             if stripped.startswith("[ Prompt:") or stripped.startswith("[ Generation:"):
                 continue
 
-            if stripped.startswith("Exiting..."):
+            if stripped == ">":
                 continue
 
-            if stripped == ">":
+            # Defensive cleanup for the initial interactive-style banner.
+            if stripped in {
+                "Loading model...",
+                "available commands:",
+                "build",
+                "model",
+                "ftype",
+                "modalities",
+                "using custom system prompt",
+            }:
                 continue
 
             lines.append(line)
@@ -2180,7 +2205,7 @@ class LlamaSession:
                         f"{diagnostics[-2000:]}"
                     )
 
-                answer = self.clean_output(output)
+                answer = self.clean_output(output, user_request=text)
 
                 if not answer:
                     diagnostics = ((error_output or "") + "\n" + (output or "")).strip()
