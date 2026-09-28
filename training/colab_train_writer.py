@@ -2,17 +2,11 @@
 """
 LocalStoryChat Qwen3.5-9B writer training for Google Colab.
 
-Run this from a Colab T4 GPU after installing Unsloth.
-
-The script:
-1. Resets the temporary Colab project folder.
-2. Clones the LocalStoryChat training branch.
-3. Rebuilds and validates the 48-example Gold dataset.
-4. Loads Qwen3.5-9B-Base in 4-bit with Unsloth.
-5. Adds language-side LoRA adapters only.
-6. Fine-tunes conversational examples with TRL SFTTrainer.
-7. Trains on assistant responses only.
-8. Saves the LoRA adapter and tokenizer and creates a ZIP.
+Uses the current Unsloth + TRL SFT pattern for Qwen3.5:
+- format the chat conversations with Qwen3.5's chat template
+- train a text field with SFTTrainer
+- language-side LoRA only
+- 4-bit loading
 """
 
 import os
@@ -20,13 +14,12 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 PROJECT = Path("/content/LocalStoryChat")
 BRANCH = "generic-story-engine-rebuild"
 REPO = "https://github.com/tony21675/LocalStoryChat.git"
 MODEL_NAME = "Qwen/Qwen3.5-9B-Base"
 OUTPUT_DIR = PROJECT / "training" / "outputs" / "qwen3_5_9b_writer_colab"
-MAX_LENGTH = 2048
+MAX_SEQ_LENGTH = 2048
 SEED = 42
 
 
@@ -44,13 +37,10 @@ def check_gpu():
         )
 
     name = torch.cuda.get_device_name(0)
-    memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+    memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
 
     print(f"GPU: {name}")
     print(f"VRAM: {memory:.2f} GiB")
-
-    if "T4" not in name:
-        print("WARNING: this script was tuned for a 16 GB-class T4 runtime.")
 
 
 def prepare_project():
@@ -80,14 +70,28 @@ def load_dataset():
     if len(dataset) != 48:
         raise ValueError(f"Expected 48 examples, found {len(dataset)}")
 
-    # Tell the Qwen3.5 chat template to render ordinary prose, not thinking traces.
-    dataset = dataset.map(
-        lambda row: {"chat_template_kwargs": {"enable_thinking": False}},
-        num_proc=1,
-    )
-
     print(f"Loaded {len(dataset)} Gold examples")
     return dataset
+
+
+def format_dataset(dataset, tokenizer):
+    def formatting_prompts_func(examples):
+        convos = examples["messages"]
+        texts = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=False,
+                add_generation_prompt=False,
+            )
+            for convo in convos
+        ]
+        return {"text": texts}
+
+    return dataset.map(
+        formatting_prompts_func,
+        batched=True,
+        num_proc=1,
+    )
 
 
 def main():
@@ -107,16 +111,18 @@ def main():
     print("\nLoading Qwen3.5-9B-Base in 4-bit...")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=MODEL_NAME,
-        max_seq_length=MAX_LENGTH,
+        max_seq_length=MAX_SEQ_LENGTH,
         load_in_4bit=True,
         load_in_8bit=False,
         full_finetuning=False,
     )
 
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
+    tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    print("\nAttaching language-side LoRA...")
+    print("Formatting Gold conversations...")
+    dataset = format_dataset(dataset, tokenizer)
+
+    print("Attaching language-only LoRA...")
     model = FastLanguageModel.get_peft_model(
         model,
         r=16,
@@ -140,39 +146,28 @@ def main():
         finetune_vision_layers=False,
     )
 
-    print("\nLoRA attached successfully.")
-    if torch.cuda.is_available():
-        allocated = torch.cuda.memory_allocated(0) / (1024**3)
-        reserved = torch.cuda.memory_reserved(0) / (1024**3)
-        print(f"GPU memory allocated: {allocated:.2f} GiB")
-        print(f"GPU memory reserved: {reserved:.2f} GiB")
-
     split = dataset.train_test_split(test_size=5, seed=SEED)
-    train_dataset = split["train"]
-    eval_dataset = split["test"]
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     training_args = SFTConfig(
         output_dir=str(OUTPUT_DIR),
-        max_length=MAX_LENGTH,
-        dataset_num_proc=1,
-        assistant_only_loss=True,
-        packing=False,
+        dataset_text_field="text",
+        max_length=MAX_SEQ_LENGTH,
         per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
         gradient_accumulation_steps=8,
-        num_train_epochs=3,
+        num_train_epochs=2,
         learning_rate=1e-4,
         lr_scheduler_type="cosine",
-        warmup_ratio=0.1,
+        warmup_steps=5,
         logging_steps=1,
         eval_strategy="steps",
         eval_steps=10,
         save_strategy="steps",
         save_steps=20,
         save_total_limit=2,
-        fp16=True,
+        packing=False,
+        fp16=False,
         bf16=False,
         tf32=False,
         optim="adamw_8bit",
@@ -185,10 +180,10 @@ def main():
     print("\nStarting SFT training...")
     trainer = SFTTrainer(
         model=model,
+        tokenizer=tokenizer,
+        train_dataset=split["train"],
+        eval_dataset=split["test"],
         args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        processing_class=tokenizer,
     )
 
     trainer.train()
@@ -198,7 +193,7 @@ def main():
     tokenizer.save_pretrained(str(OUTPUT_DIR))
 
     archive = shutil.make_archive(
-        "/content/qwen3_5_9b_writer_colab",
+        "/content/qwen3_5_9b_writer",
         "zip",
         str(OUTPUT_DIR),
     )
