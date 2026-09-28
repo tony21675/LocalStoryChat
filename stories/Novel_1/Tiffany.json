@@ -1,6 +1,6 @@
 {
   "name": "Tiffany",
-  "role": "central character; kidnapping victim",
+  "role": "central character",
   "status": "established",
   "age": 18,
   "appearance": {
@@ -21,10 +21,6 @@
   "important_items": {
     "dog_tags": "Tony's dog tags, worn by Tiffany"
   },
-  "does_not_know": [
-    "The dog tags contain a hidden tracker.",
-    "Squeezing the dog tags tightly activates the tracker.",
-    "The kidnapper's identity or motive until she learns them."
-  ],
-  "background": "Tiffany's mother died while giving birth to Tiffany. Tony raised Tiffany as her father."
+  "background": "Tiffany's mother died while giving birth to Tiffany. Tiffany never knew her mother personally. Tony raised Tiffany as her father.",
+  "knowledge_rule": "Only knows what she personally experienced, was told, or reasonably knows."
 }
