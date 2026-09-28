@@ -1091,11 +1091,10 @@ Rules:
         return proposed
 
     finally:
-        session.start(
-            saved_system_prompt,
-            saved_files,
-            saved_model_path
-        )
+        session.model_path = saved_model_path
+        session.system_prompt = saved_system_prompt
+        session.files = saved_files
+        session.story_dir = STORY_DIR
 
 def build_scene_prompt(data):
     """Legacy-compatible scene prompt builder with no long rule stack."""
@@ -2061,65 +2060,100 @@ class LlamaSession:
 
     def ask(self, text, scene_characters=None, clear_history=True):
         with self.lock:
-            proc = self.child
-
-            if proc is None or proc.poll() is not None:
+            if self.model_path is None:
                 raise RuntimeError(
-                    "Session is not running. Click New Chat to start it."
+                    "No model is loaded. Use Load Model first."
                 )
 
             started = time.time()
 
+            # Each story write is intentionally a fresh single-turn llama-cli
+            # process. This is more reliable than waiting for the interactive
+            # prompt marker and matches the manual smoke test that works.
+            self._stop_unlocked()
+
+            turn_prompt = self._build_turn_prompt(
+                text,
+                scene_characters=scene_characters,
+            )
+
+            env = os.environ.copy()
+            env["LD_LIBRARY_PATH"] = (
+                str(LLAMA.parent)
+                + (
+                    ":" + env["LD_LIBRARY_PATH"]
+                    if env.get("LD_LIBRARY_PATH")
+                    else ""
+                )
+            )
+
+            args = [
+                str(LLAMA),
+                "-m", str(self.model_path),
+                "-ngl", "0",
+                "--device", "none",
+                "-t", "4",
+                "-c", "8192",
+                "--temp", "0.75",
+                "--top-p", "0.92",
+                "--top-k", "100",
+                "--reasoning", "off",
+                "--repeat-last-n", "256",
+                "--repeat-penalty", "1.08",
+                "--n-predict", "1800",
+                "--system-prompt", SYSTEM_PROMPT,
+                "--prompt", turn_prompt,
+                "--color", "off",
+                "--no-display-prompt",
+                "--simple-io",
+                "--single-turn",
+            ]
+
             try:
-                if clear_history:
-                    proc.stdin.write(b"/clear\\n")
-                    proc.stdin.flush()
+                proc = subprocess.Popen(
+                    args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    env=env,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    bufsize=1,
+                )
 
-                    self._wait_for_prompt(
-                        30,
-                        initial=False,
+                self.child = proc
+                self.buffer = ""
+
+                try:
+                    output, _ = proc.communicate(timeout=900)
+                except subprocess.TimeoutExpired as exc:
+                    proc.kill()
+                    output, _ = proc.communicate()
+                    tail = (output or "")[-1600:]
+                    raise TimeoutError(
+                        "Story generation timed out after 900 seconds. "
+                        f"Recent backend output:\\n{tail}"
+                    ) from exc
+
+                if proc.returncode not in (0, None):
+                    raise RuntimeError(
+                        f"llama-cli exited with code {proc.returncode}.\\n"
+                        f"{(output or "")[-2000:]}"
                     )
 
-                    self.buffer = ""
-                    self._drain_pending_output(
-                        quiet_window=0.5,
-                    )
-
-                turn_prompt = self._build_turn_prompt(
-                    text,
-                    scene_characters=scene_characters,
-                )
-
-                proc.stdin.write(
-                    (
-                        "USER REQUEST:\\n"
-                        + turn_prompt
-                        + "\\n"
-                    ).encode("utf-8")
-                )
-                proc.stdin.flush()
-
-                raw = self._wait_for_prompt(
-                    900,
-                    initial=False,
-                )
-
-                answer = self.clean_output(raw)
+                answer = self.clean_output(output)
 
                 if not answer:
                     raise RuntimeError(
-                        "llama-cli returned an empty response"
+                        "llama-cli returned an empty story response. "
+                        f"Backend output:\\n{(output or "")[-1600:]}"
                     )
 
                 return answer, time.time() - started
 
-            except BrokenPipeError as exc:
-                raise RuntimeError(
-                    "The llama-cli session closed its input pipe."
-                ) from exc
-
-            except OSError as exc:
-                raise RuntimeError(str(exc)) from exc
+            finally:
+                self.child = None
+                self.buffer = ""
 
     def estimate_context(self, extra="", scene_characters=None):
         rendered_prompt = self._build_turn_prompt(
@@ -2462,15 +2496,10 @@ class Handler(BaseHTTPRequestHandler):
 
                 model_path = resolve_model_path(requested)
 
+                session.stop()
                 session.model_path = model_path
                 session.files = load_default_story_files()
                 session.story_dir = STORY_DIR
-
-                session.start(
-                    session.system_prompt or SYSTEM_PROMPT,
-                    session.files,
-                    session.model_path,
-                )
 
                 self._json(
                     200,
@@ -2576,11 +2605,9 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     session.files = load_default_story_files()
 
-                session.start(
-                    session.system_prompt or SYSTEM_PROMPT,
-                    session.files,
-                    session.model_path
-                )
+                session.stop()
+                session.system_prompt = SYSTEM_PROMPT
+                session.story_dir = STORY_DIR
 
                 self._json(
                     200,
@@ -2793,17 +2820,12 @@ class Handler(BaseHTTPRequestHandler):
                     if item.strip()
                 ]
 
-                if session.child is None or session.child.poll() is not None:
-                    if session.model_path is None:
-                        raise RuntimeError("No model is loaded. Use Load Model first.")
+                if session.model_path is None:
+                    raise RuntimeError("No model is loaded. Use Load Model first.")
 
+                if not session.files:
                     session.files = load_default_story_files()
                     session.story_dir = STORY_DIR
-                    session.start(
-                        session.system_prompt or SYSTEM_PROMPT,
-                        session.files,
-                        session.model_path,
-                    )
 
                 answer, elapsed = session.ask(
                     text,
