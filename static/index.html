@@ -341,7 +341,6 @@ const $=s=>document.querySelector(s);
 const chat=$('#chat');
 const charactersInput=$('#characters');
 const directionInput=$('#direction');
-const directionInput=$('#directionInput');
 
 let pendingState=null;
 let selectedSectionFile=null;
@@ -957,7 +956,7 @@ $('#stop').addEventListener('click',async()=>{
 $('#switchStory').addEventListener('click',switchStory);
 $('#loadModel').addEventListener('click',loadModel);
 $('#unloadModel').addEventListener('click',unloadModel);
-$('#write').addEventListener('click',submitDirection);
+$('#write').addEventListener('click',writeScene);
 $('#saveYes').addEventListener('click',confirmSaveStory);
 $('#saveNo').addEventListener('click',discardStorySave);
 $('#updateState').addEventListener('click',updateState);
@@ -971,12 +970,6 @@ $('#sectionFile').addEventListener('change',e=>{
 });
 
 charactersInput.addEventListener('input',saveCast);
-directionInput.addEventListener('keydown',e=>{
-  if(e.key==='Enter' && !e.shiftKey){
-    e.preventDefault();
-    submitDirection();
-  }
-});
 directionInput.addEventListener('keydown',e=>{
   if(e.key==='Enter' && !e.shiftKey){
     e.preventDefault();
