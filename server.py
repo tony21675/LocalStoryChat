@@ -1519,6 +1519,7 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                 "strengths",
                 "weaknesses",
                 "important_items",
+                "knowledge_rule",
             ),
         )
 
@@ -2234,6 +2235,10 @@ class Handler(BaseHTTPRequestHandler):
                         read_current_state().get("status")
                         if STATE_PATH.exists() else None
                     ),
+                    "current_situation": (
+                        read_current_state().get("current_situation")
+                        if STATE_PATH.exists() else None
+                    ),
                     "next_save_section": (
                         next_story_section_path(
                             read_current_state().get("chapter")
@@ -2770,6 +2775,18 @@ class Handler(BaseHTTPRequestHandler):
                     for item in str(raw_characters).split(",")
                     if item.strip()
                 ]
+
+                if session.child is None or session.child.poll() is not None:
+                    if session.model_path is None:
+                        raise RuntimeError("No model is loaded. Use Load Model first.")
+
+                    session.files = load_default_story_files()
+                    session.story_dir = STORY_DIR
+                    session.start(
+                        session.system_prompt or SYSTEM_PROMPT,
+                        session.files,
+                        session.model_path,
+                    )
 
                 answer, elapsed = session.ask(
                     text,
