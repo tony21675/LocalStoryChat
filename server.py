@@ -31,7 +31,7 @@ LLAMA = Path(os.path.expanduser(
 MODELS_DIR = BASE / "Documents" / "Models"
 
 DEFAULT_MODEL = Path(os.path.expanduser(
-    "~/Documents/Models/llmfan46--gemma-4-E4B-it-ultra-uncensored-heretic-GGUF--gemma-4-E4B-it-ultra-uncensored-heretic-Q4_K_M.gguf"
+    "~/Documents/Models/Qwen3.5-9B-Base-Q4_K_M.gguf"
 ))
 
 STORIES_ROOT = APP_ROOT / "stories"
@@ -177,33 +177,19 @@ def discover_story_names():
 
     return names
 
-SYSTEM_PROMPT = r'''You are writing an ongoing fictional novel.
+SYSTEM_PROMPT = r'''You are the prose writer for an ongoing contemporary American novel.
 
-Use the supplied story context as canon and continuity reference.
+Write only the story itself.
+Use the supplied scene context as factual continuity.
+Characters should know only what their current knowledge supports.
+Stay within the user's requested scene and do not advance beyond it unless the user asks you to.
+Only characters named in the scene cast are physically present.
+Do not invent major plot events, clues, threats, or revelations simply to make the scene more dramatic.
+Let ordinary conversation, action, humor, memory, emotion, and small observations unfold naturally.
+Do not explain the writing task, mention prompts or context, use screenplay formatting, add headings, or address the reader.
 
-Character files define established character identity, personality, relationships, background, and important character facts.
-story_bible.json defines established world and story canon.
-current_state.json defines the present situation, locations, knowledge, important recent events, and what has not happened yet.
-The user's current request defines what to write now.
-The previous saved manuscript section is the direct prose bridge from the preceding scene.
-
-Keep established facts consistent. Characters only know what they could reasonably know from the story.
-
-Ordinary conversation is normal. Characters can joke, gossip, talk about school, plans, food, family, hobbies, memories, and other everyday things. Most casual conversation is scene-only and does not need to become permanent story memory. Important events, discoveries, lasting decisions, consequential knowledge, meaningful relationship changes, important plans, clues, and other facts that later scenes need to remember are the things worth preserving.
-
-Use the requested characters and let them behave like real people. Follow the scene goal, required events, boundaries, tone, and requested length.
-
-When the scene includes a required event, actually show it happening in dialogue, action, and reaction. Do not merely describe that it happened. If the request describes a revealing slip, accidental confession, or similar dialogue sequence without naming the exact wording, use the most directly established character fact that the scene goal and canon clearly point toward. Do not substitute a different revelation.
-
-Start from the actual current story position. Do not invent an earlier conversation to respond to. Do not restart the previous saved section.
-
-Protected scene boundaries are literal. When the request says there is no threat, suspicious encounter, or major plot event yet, do not manufacture suspense by having characters stop, listen for something, scan their surroundings, become watchful, or react to an unexplained sound. Keep ordinary moments ordinary until an actual established event changes the situation.
-
-Write a complete scene with a natural beginning, development, and ending. Do not stop just because the characters have exchanged a few lines.
-
-Scene cast and physical presence are a hard boundary. Only characters explicitly listed by the current scene request are physically present and participating in the scene. Other established characters may be mentioned or discussed naturally when appropriate, but their presence elsewhere in current_state.json does not place them in the scene. Never move an excluded character into the scene unless the user explicitly adds that character to the scene request.
-
-Output only the story prose.'''
+The story engine handles persistent memory separately. Do not turn ordinary scene details into commentary about story state.
+Output only finished story prose.'''
 
 
 STATE_REQUIRED_KEYS = {
@@ -1111,57 +1097,8 @@ Rules:
             saved_model_path
         )
 
-def _derive_revelation_guidance(characters):
-    """Extract established private relationship facts that may satisfy a reveal."""
-    requested = {
-        str(item).strip().lower()
-        for item in str(characters or "").split(",")
-        if str(item).strip()
-    }
-
-    if not requested:
-        return []
-
-    guidance = []
-
-    for card_name in discover_story_names():
-        if not card_name.endswith(".json") or card_name == "current_state.json" or card_name == "story_bible.json":
-            continue
-
-        try:
-            data = json.loads((STORY_DIR / card_name).read_text(encoding="utf-8"))
-        except Exception:
-            continue
-
-        name = str(data.get("name", "")).strip()
-        if not name or name.lower() not in requested:
-            continue
-
-        relationships = data.get("relationships")
-        if not isinstance(relationships, dict):
-            continue
-
-        for person, value in relationships.items():
-            text_value = str(value or "").strip()
-            lower_value = text_value.lower()
-
-            if any(term in lower_value for term in (
-                "secret crush",
-                "crush on",
-                "attracted to",
-                "has feelings for",
-                "in love with",
-                "romantic feelings",
-            )):
-                guidance.append(
-                    f"{name}: established private relationship fact involving {person} -> {text_value}"
-                )
-
-    return guidance
-
-
 def build_scene_prompt(data):
-    """Build a compact, high-salience scene request for the writer."""
+    """Legacy-compatible scene prompt builder with no long rule stack."""
     def clean(value, default=""):
         value = str(value or "").strip()
         return value if value else default
@@ -1173,84 +1110,35 @@ def build_scene_prompt(data):
     required = clean(data.get("required"))
     avoid = clean(data.get("avoid"))
     tone = clean(data.get("tone"))
-    length = clean(data.get("length"), "500 to 650")
     guidance = clean(data.get("guidance"))
 
     if not goal:
-        raise ValueError("Scene goal is required.")
+        raise ValueError("Scene direction is required.")
 
-    revelation_guidance = _derive_revelation_guidance(characters)
-
-    lines = [
-        f"Begin Chapter {chapter}, Scene {scene}.",
+    parts = [
+        f"Continue Chapter {chapter}, Scene {scene}.",
         "",
-        f"Write a complete scene of approximately {length} words.",
-        "Do not stop after the opening setup or a few exchanges.",
+        "SCENE CAST:",
+        characters or "Use only the characters named in the scene direction.",
         "",
-        "ONLY THESE CHARACTERS ARE IN THIS SCENE:",
-        characters or "Use only the characters established in the current scene context.",
-        "Do not introduce, place, or focus another named character in the scene just because that character exists in the story files. Other established characters may be mentioned or discussed naturally, but they are not physically present unless listed above.",
-        "",
-        "SCENE GOAL:",
+        "SCENE DIRECTION:",
         goal,
     ]
 
     if required:
-        lines += [
-            "",
-            "MUST HAPPEN BEFORE THE SCENE ENDS:",
-            required,
-            "",
-            "For this required event, use this exact sequence:",
-            "1. Lead naturally into the event.",
-            "2. Have the required character actually say the revealing words in dialogue.",
-            "3. Make the spoken meaning clear enough that the other character understands what slipped out.",
-            "4. Have the speaker immediately realize the mistake.",
-            "5. Have the speaker cover it naturally with a correction, joke, denial, or change of subject.",
-            "6. Show the other character noticing and reacting.",
-            "7. Continue the scene briefly after the reaction.",
-            "Do not replace any of these steps with narration, thoughts, glances, or implied meaning.",
-            "Do not end the scene until every required step has actually happened.",
-        ]
-
-    if revelation_guidance:
-        lines += [
-            "",
-            "ESTABLISHED PRIVATE FACTS RELEVANT TO THE REQUIRED REVELATION:",
-            *[
-                f"- {item}"
-                for item in revelation_guidance
-            ],
-            "Use a relevant established fact for the required spoken reveal rather than inventing a different secret.",
-        ]
+        parts += ["", "REQUIRED BEATS:", required]
 
     if avoid:
-        lines += [
-            "",
-            "DO NOT ADVANCE PAST THIS BOUNDARY:",
-            avoid,
-        ]
+        parts += ["", "BOUNDARY:", avoid]
 
     if tone:
-        lines += ["", "TONE / STYLE:", tone]
+        parts += ["", "TONE:", tone]
 
     if guidance:
-        lines += ["", "CREATIVE GUIDANCE:", guidance]
+        parts += ["", "CREATIVE NOTES:", guidance]
 
-    lines += [
-        "",
-        "WRITE NOW.",
-        "Start from the actual current story position and previous saved section.",
-        "Do not invent an earlier conversation to respond to.",
-        "Stay with the listed characters and the current scene.",
-        "Ordinary chit-chat and small everyday details are welcome and are temporary scene material.",
-        "Do not add a new major plot event, clue, threat, location, relationship, or other important story fact.",
-        f"Complete the full scene at approximately {length} words.",
-        "End at a natural stopping point without crossing the protected boundary.",
-        "Output only the story prose.",
-    ]
-
-    return "\n".join(lines).strip()
+    parts += ["", "Write the scene now. Output only story prose."]
+    return "\n".join(parts)
 
 
 def resolve_model_path(value):
@@ -1472,8 +1360,41 @@ def _format_locked_state(data):
     return "\n".join(lines)
 
 
-def build_writer_scene_packet(files, scene_characters=None):
-    """Build focused present-story context for the prose writer."""
+def _resolve_scene_character_names(scene_characters, user_text, available_names):
+    requested = [
+        str(item).strip()
+        for item in (scene_characters or [])
+        if str(item).strip()
+    ]
+
+    lookup = {
+        name.lower(): name
+        for name in available_names
+    }
+
+    selected = []
+    for item in requested:
+        canonical = lookup.get(item.lower())
+        if canonical and canonical not in selected:
+            selected.append(canonical)
+
+    if selected:
+        return selected
+
+    lowered = str(user_text or "").lower()
+
+    for name in available_names:
+        if re.search(
+            r"\\b" + re.escape(name.lower()) + r"\\b",
+            lowered,
+        ):
+            selected.append(name)
+
+    return selected
+
+
+def build_writer_scene_packet(files, scene_characters=None, user_text=""):
+    """Build only the present, relevant context needed by the prose writer."""
     parsed = {}
 
     for name, raw in files:
@@ -1485,15 +1406,16 @@ def build_writer_scene_packet(files, scene_characters=None):
     state = parsed.get("current_state.json", {})
     bible = parsed.get("story_bible.json", {})
 
-    character_files = [
+    card_names = [
         str(name).strip()
         for name in bible.get("character_cards", [])
         if str(name).strip()
     ]
 
+    cards = []
     available_names = []
 
-    for card_name in character_files:
+    for card_name in card_names:
         data = parsed.get(card_name)
         if not isinstance(data, dict):
             continue
@@ -1501,84 +1423,88 @@ def build_writer_scene_packet(files, scene_characters=None):
         name = str(data.get("name", "")).strip()
         if name:
             available_names.append(name)
+            cards.append((name, data))
 
-    if scene_characters:
-        requested = [str(name).strip() for name in scene_characters if str(name).strip()]
-        active_names = [
-            name
-            for name in requested
-            if name in available_names
-        ]
-    else:
-        active_names = list(available_names)
-
-    location = state.get("location")
+    active_names = _resolve_scene_character_names(
+        scene_characters,
+        user_text,
+        available_names,
+    )
 
     lines = [
-        "[STORY CONTEXT]",
+        "[WRITER CONTEXT]",
         "",
         "[SCENE CAST]",
-        "Only these characters are physically present in this scene:",
-        "- " + (", ".join(active_names) if active_names else "Use the characters explicitly listed by the scene request."),
-        "Other characters may exist elsewhere in the story and may be mentioned, but they are not physically present unless listed above.",
-        f"Chapter: {state.get('chapter')}",
-        f"Scene: {state.get('scene')}",
+        "- " + (
+            ", ".join(active_names)
+            if active_names
+            else "No explicit cast supplied. Use only characters named in the scene direction."
+        ),
     ]
 
-    if state.get("time"):
-        lines.append(f"Time: {json.dumps(state.get('time'), ensure_ascii=False)}")
+    if isinstance(state.get("chapter"), int):
+        lines.append(f"Chapter: {state.get('chapter')}")
 
+    if isinstance(state.get("scene"), int):
+        lines.append(f"Scene: {state.get('scene')}")
+
+    if state.get("time"):
+        lines.append(
+            "Time: " + json.dumps(
+                state.get("time"),
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
+
+    location = state.get("location")
     if isinstance(location, dict):
-        lines.append("")
-        lines.append("CURRENT LOCATIONS FOR SCENE CAST:")
+        lines += ["", "[CURRENT LOCATIONS]"]
         for name, place in location.items():
-            if name in active_names:
+            if not active_names or name in active_names:
                 lines.append(f"- {name}: {place}")
     elif location:
-        lines.extend(["", f"CURRENT LOCATION: {location}"])
+        lines += ["", f"Current location: {location}"]
 
     if state.get("current_situation"):
-        lines.extend(["", "CURRENT SITUATION:", str(state.get("current_situation"))])
+        lines += [
+            "",
+            "[CURRENT SITUATION]",
+            str(state.get("current_situation")),
+        ]
 
     knowledge = state.get("character_knowledge")
-    if isinstance(knowledge, dict):
+    if isinstance(knowledge, dict) and active_names:
         relevant = []
+
         for name in active_names:
             facts = knowledge.get(name)
+
             if isinstance(facts, list) and facts:
-                relevant.append(f"- {name}: " + "; ".join(str(x) for x in facts))
+                relevant.append(
+                    f"- {name}: " + "; ".join(str(item) for item in facts)
+                )
             elif facts:
                 relevant.append(f"- {name}: {facts}")
+
         if relevant:
-            lines.extend(["", "WHAT THEY KNOW:"] + relevant)
+            lines += ["", "[WHAT THEY KNOW]"] + relevant
 
     objectives = state.get("active_objectives")
-    if isinstance(objectives, dict):
+    if isinstance(objectives, dict) and active_names:
         relevant = []
+
         for name in active_names:
             value = objectives.get(name)
             if value:
                 relevant.append(f"- {name}: {value}")
+
         if relevant:
-            lines.extend(["", "CURRENT OBJECTIVES:"] + relevant)
+            lines += ["", "[CURRENT OBJECTIVES]"] + relevant
 
-    for card_name in character_files:
-        data = parsed.get(card_name)
-        if not isinstance(data, dict):
+    for name, data in cards:
+        if active_names and name not in active_names:
             continue
-
-        name = data.get("name")
-        if not name or (active_names and name not in active_names):
-            continue
-
-        background = str(data.get("background", "")).strip()
-        if any(term in background.lower() for term in ("died", "deceased", "passed away")):
-            lines.extend([
-                "",
-                f"HARD CHARACTER FACT: {name}",
-                background,
-                "Do not contradict this fact or portray the deceased person as living or present.",
-            ])
 
         filtered = _pick_fields(
             data,
@@ -1593,42 +1519,49 @@ def build_writer_scene_packet(files, scene_characters=None):
                 "strengths",
                 "weaknesses",
                 "important_items",
-            )
+            ),
         )
 
-        lines.extend([
+        lines += [
             "",
-            f"CHARACTER: {name}",
+            f"[CHARACTER: {name}]",
             _compact_json(filtered),
-        ])
+        ]
 
-    continuity = state.get("continuity_requirements")
-    if isinstance(continuity, list) and continuity:
-        lines.extend([
+    public_world = _pick_fields(
+        bible,
+        (
+            "title",
+            "version",
+            "status",
+            "relationships",
+            "locations",
+        ),
+    )
+
+    if public_world:
+        lines += [
             "",
-            "PERSISTENT CONTINUITY RULES:",
-        ])
-        for item in continuity:
-            lines.append(f"- {item}")
+            "[STORY WORLD]",
+            _compact_json(public_world),
+        ]
 
     completed = state.get("completed_events")
-    if completed:
-        lines.append("")
-        lines.append("IMPORTANT ESTABLISHED EVENTS:")
-        for item in completed:
-            lines.append(f"- {item}")
+    if isinstance(completed, list) and completed:
+        lines += ["", "[ESTABLISHED EVENTS]"]
+        lines.extend(f"- {item}" for item in completed)
 
     clues = state.get("active_clues")
-    if clues:
-        lines.append("")
-        lines.append("ACTIVE STORY CLUES:")
-        for item in clues:
-            lines.append(f"- {item}")
+    if isinstance(clues, list) and clues:
+        lines += ["", "[ACTIVE CLUES]"]
+        lines.extend(f"- {item}" for item in clues)
 
-    lines.extend([
-        "",
-        "[END STORY CONTEXT]",
-    ])
+    unresolved = state.get("unresolved_questions")
+    if isinstance(unresolved, list) and unresolved:
+        lines += ["", "[UNRESOLVED QUESTIONS]"]
+        lines.extend(f"- {item}" for item in unresolved)
+
+    lines += ["", "[END WRITER CONTEXT]"]
 
     return "\n".join(lines)
 
@@ -1833,7 +1766,11 @@ class LlamaSession:
         self.story_dir = STORY_DIR
         self.started_at = None
         self.buffer = ""
-        self.model_path = DEFAULT_MODEL.resolve() if DEFAULT_MODEL.exists() else None
+        self.model_path = (
+            DEFAULT_MODEL.resolve()
+            if DEFAULT_MODEL.exists()
+            else None
+        )
 
     def _stop_unlocked(self):
         proc = self.child
@@ -1844,7 +1781,7 @@ class LlamaSession:
 
         try:
             if proc.stdin:
-                proc.stdin.write(b"/exit\n")
+                proc.stdin.write(b"/exit\\n")
                 proc.stdin.flush()
         except Exception:
             pass
@@ -1864,41 +1801,7 @@ class LlamaSession:
         with self.lock:
             self._stop_unlocked()
 
-    def _build_prompt(self, base_prompt, files):
-        parts = [base_prompt.strip()]
-
-        cast_match = re.search(
-            r"ONLY THESE CHARACTERS ARE IN THIS SCENE:\s*([^\n]+)",
-            base_prompt,
-            re.IGNORECASE,
-        )
-
-        scene_characters = []
-        if cast_match:
-            scene_characters = [
-                item.strip()
-                for item in cast_match.group(1).split(",")
-                if item.strip()
-            ]
-
-        scene_packet = build_writer_scene_packet(
-            files,
-            scene_characters=scene_characters,
-        )
-
-        if scene_packet:
-            parts.append(scene_packet)
-
-        previous_section = build_previous_section_context()
-
-        if previous_section:
-            parts.append(previous_section)
-
-        return "\n".join(parts)
-
     def _read_more(self, timeout):
-        # Retained for compatibility with older code paths. Writer generation
-        # no longer depends on interactive prompt detection.
         if self.child is None or self.child.stdout is None:
             raise RuntimeError("llama-cli stdout is unavailable")
 
@@ -1908,7 +1811,7 @@ class LlamaSession:
             [self.child.stdout],
             [],
             [],
-            timeout
+            timeout,
         )
 
         if not ready:
@@ -1916,7 +1819,7 @@ class LlamaSession:
 
         chunk = os.read(
             self.child.stdout.fileno(),
-            8192
+            8192,
         )
 
         if not chunk:
@@ -1924,7 +1827,7 @@ class LlamaSession:
 
         return chunk.decode(
             "utf-8",
-            errors="replace"
+            errors="replace",
         )
 
     def _drain_pending_output(self, quiet_window=0.25):
@@ -1938,17 +1841,23 @@ class LlamaSession:
         while time.time() < deadline:
             timeout = min(
                 0.05,
-                max(0.01, deadline - time.time())
+                max(0.01, deadline - time.time()),
             )
 
             ready, _, _ = select.select(
-                [self.child.stdout], [], [], timeout
+                [self.child.stdout],
+                [],
+                [],
+                timeout,
             )
 
             if not ready:
                 break
 
-            chunk = os.read(self.child.stdout.fileno(), 8192)
+            chunk = os.read(
+                self.child.stdout.fileno(),
+                8192,
+            )
 
             if not chunk:
                 break
@@ -1962,19 +1871,27 @@ class LlamaSession:
                 prompt_index = text.find("> ")
             else:
                 prompt_index = text.rfind("\n> ")
+
                 if prompt_index < 0 and text.startswith("> "):
                     prompt_index = 0
 
             if prompt_index >= 0:
                 before = text[:prompt_index]
                 after = text[
-                    prompt_index + (2 if prompt_index == 0 else 3):
+                    prompt_index + (
+                        2
+                        if prompt_index == 0
+                        else 3
+                    ):
                 ]
                 self.buffer = after
                 return before
 
             chunk = self._read_more(
-                min(1.0, max(0.05, deadline - time.time()))
+                min(
+                    1.0,
+                    max(0.05, deadline - time.time()),
+                )
             )
 
             if chunk:
@@ -1983,51 +1900,49 @@ class LlamaSession:
 
             if self.child and self.child.poll() is not None:
                 tail = text[-1600:]
+
                 raise RuntimeError(
                     "llama-cli exited unexpectedly "
                     f"(code {self.child.returncode}). "
-                    f"Backend output:\n{tail}"
+                    f"Backend output:\\n{tail}"
                 )
 
         raise TimeoutError(
             "Timed out waiting for llama-cli prompt. "
-            f"Recent backend output:\n{text[-1600:]}"
+            f"Recent backend output:\\n{text[-1600:]}"
         )
 
     @staticmethod
     def clean_output(text):
         raw = (text or "").replace("\r", "")
 
-        # llama-cli may echo its banner and the complete prompt even when
-        # --no-display-prompt is supplied. Strip that transport output before
-        # the story reaches the chat UI or validation.
-        if "USER REQUEST:" in raw:
-            raw = raw.rsplit("USER REQUEST:", 1)[1]
-
         for marker in (
-            "[END PREVIOUS SAVED STORY SECTION]",
-            "[END SCENE PACKET]",
+            "[END WRITER CONTEXT]",
+            "[END USER REQUEST]",
         ):
             if marker in raw:
                 raw = raw.rsplit(marker, 1)[1]
 
+        if "USER REQUEST:" in raw:
+            raw = raw.rsplit("USER REQUEST:", 1)[1]
+
         lines = []
 
         for line in raw.splitlines():
-            s = line.strip()
+            stripped = line.strip()
 
-            if not s:
+            if not stripped:
                 if lines and lines[-1] != "":
                     lines.append("")
                 continue
 
-            if s.startswith("[ Prompt:") or s.startswith("[ Generation:"):
+            if stripped.startswith("[ Prompt:") or stripped.startswith("[ Generation:"):
                 continue
 
-            if s.startswith("Exiting..."):
+            if stripped.startswith("Exiting..."):
                 continue
 
-            if s == ">":
+            if stripped == ">":
                 continue
 
             lines.append(line)
@@ -2052,18 +1967,12 @@ class LlamaSession:
                     "No model is loaded. Use Load Model first."
                 )
 
-            self.system_prompt = system_prompt
+            self.system_prompt = system_prompt or SYSTEM_PROMPT
             self.files = files
             self.started_at = time.time()
             self.buffer = ""
 
-            full_prompt = self._build_prompt(
-                system_prompt,
-                files
-            )
-
             env = os.environ.copy()
-
             env["LD_LIBRARY_PATH"] = (
                 str(LLAMA.parent)
                 + (
@@ -2080,12 +1989,14 @@ class LlamaSession:
                 "--device", "none",
                 "-t", "4",
                 "-c", "8192",
-                "--temp", "0.65",
+                "--temp", "0.75",
+                "--top-p", "0.92",
+                "--top-k", "100",
                 "--reasoning", "off",
                 "--repeat-last-n", "256",
                 "--repeat-penalty", "1.08",
-                "--n-predict", "1800",
-                "--system-prompt", full_prompt,
+                "--n-predict", "2200",
+                "--system-prompt", self.system_prompt,
                 "--color", "off",
                 "--no-display-prompt",
                 "--simple-io",
@@ -2105,7 +2016,7 @@ class LlamaSession:
             try:
                 self._wait_for_prompt(
                     180,
-                    initial=True
+                    initial=True,
                 )
 
                 self.buffer = ""
@@ -2117,10 +2028,37 @@ class LlamaSession:
 
                 raise RuntimeError(
                     "llama-cli did not become ready. "
-                    f"Backend output:\n{tail}"
+                    f"Backend output:\\n{tail}"
                 )
 
-    def ask(self, text, clear_history=True):
+    def _build_turn_prompt(self, text, scene_characters=None):
+        packet = build_writer_scene_packet(
+            self.files,
+            scene_characters=scene_characters,
+            user_text=text,
+        )
+
+        previous_section = build_previous_section_context()
+
+        parts = [
+            packet,
+            "",
+            "[PREVIOUS SAVED STORY SECTION]",
+            (
+                previous_section
+                if previous_section
+                else "No previous saved section. This is the beginning."
+            ),
+            "[END PREVIOUS SAVED STORY SECTION]",
+            "",
+            "[USER SCENE DIRECTION]",
+            text.strip(),
+            "[END USER REQUEST]",
+        ]
+
+        return "\n".join(parts)
+
+    def ask(self, text, scene_characters=None, clear_history=True):
         with self.lock:
             proc = self.child
 
@@ -2133,29 +2071,36 @@ class LlamaSession:
 
             try:
                 if clear_history:
-                    proc.stdin.write(
-                        b"/clear\n"
-                    )
+                    proc.stdin.write(b"/clear\\n")
                     proc.stdin.flush()
 
                     self._wait_for_prompt(
                         30,
-                        initial=False
+                        initial=False,
                     )
 
                     self.buffer = ""
                     self._drain_pending_output(
-                        quiet_window=0.5
+                        quiet_window=0.5,
                     )
 
+                turn_prompt = self._build_turn_prompt(
+                    text,
+                    scene_characters=scene_characters,
+                )
+
                 proc.stdin.write(
-                    ("USER REQUEST:\n" + text + "\n").encode("utf-8")
+                    (
+                        "USER REQUEST:\\n"
+                        + turn_prompt
+                        + "\\n"
+                    ).encode("utf-8")
                 )
                 proc.stdin.flush()
 
                 raw = self._wait_for_prompt(
                     300,
-                    initial=False
+                    initial=False,
                 )
 
                 answer = self.clean_output(raw)
@@ -2175,17 +2120,15 @@ class LlamaSession:
             except OSError as exc:
                 raise RuntimeError(str(exc)) from exc
 
-    def estimate_context(self, extra=""):
-        rendered_prompt = self._build_prompt(
-            self.system_prompt,
-            self.files
+    def estimate_context(self, extra="", scene_characters=None):
+        rendered_prompt = self._build_turn_prompt(
+            extra,
+            scene_characters=scene_characters,
         )
-
-        total = len(rendered_prompt) + len(extra)
 
         return max(
             0,
-            (total + 3) // 4
+            (len(rendered_prompt) + 3) // 4,
         )
 
 
@@ -2276,7 +2219,7 @@ class Handler(BaseHTTPRequestHandler):
                 "context_size": 8192,
                 "gpu_layers": 0,
                 "reasoning": "off",
-                "n_predict": 2400,
+                "n_predict": 2200,
                 "repeat_penalty": 1.08,
                 "state": {
                     "chapter": (
@@ -2444,11 +2387,16 @@ class Handler(BaseHTTPRequestHandler):
                 set_active_story_dir(story_dir)
 
                 session.stop()
-                session.files = load_story_files(
-                    discover_story_names()
-                )
+                session.files = load_default_story_files()
                 session.story_dir = STORY_DIR
                 pending_state = None
+
+                if session.model_path is not None:
+                    session.start(
+                        session.system_prompt or SYSTEM_PROMPT,
+                        session.files,
+                        session.model_path,
+                    )
 
                 self._json(
                     200,
@@ -2490,14 +2438,17 @@ class Handler(BaseHTTPRequestHandler):
                         "No model was selected."
                     )
 
-                model_path = resolve_model_path(
-                    requested
-                )
+                model_path = resolve_model_path(requested)
 
                 session.model_path = model_path
+                session.files = load_default_story_files()
+                session.story_dir = STORY_DIR
 
-                if session.child is not None:
-                    self._restart_with_current_state()
+                session.start(
+                    session.system_prompt or SYSTEM_PROMPT,
+                    session.files,
+                    session.model_path,
+                )
 
                 self._json(
                     200,
@@ -2507,7 +2458,11 @@ class Handler(BaseHTTPRequestHandler):
                         "running": bool(
                             session.child
                             and session.child.poll() is None
-                        )
+                        ),
+                        "files": [
+                            name
+                            for name, _ in session.files
+                        ],
                     }
                 )
 
@@ -2768,11 +2723,18 @@ class Handler(BaseHTTPRequestHandler):
 
                 pending_state = None
 
+                if session.model_path is not None:
+                    session.files = load_default_story_files()
+                    session.start(
+                        session.system_prompt or SYSTEM_PROMPT,
+                        session.files,
+                        session.model_path,
+                    )
+
                 self._json(200, {
                     "ok": True,
                     "message": (
-                        "current_state.json applied. "
-                        "Start New Chat to load the updated state into the model."
+                        "current_state.json applied and the writer session was refreshed."
                     ),
                 })
                 return
@@ -2802,7 +2764,17 @@ class Handler(BaseHTTPRequestHandler):
                     )
                     return
 
-                answer, elapsed = session.ask(text)
+                raw_characters = body.get("characters", "")
+                scene_characters = [
+                    item.strip()
+                    for item in str(raw_characters).split(",")
+                    if item.strip()
+                ]
+
+                answer, elapsed = session.ask(
+                    text,
+                    scene_characters=scene_characters,
+                )
 
                 self._json(
                     200,
@@ -2812,7 +2784,8 @@ class Handler(BaseHTTPRequestHandler):
                         "seconds": round(elapsed, 1),
                         "estimated_context_tokens": (
                             session.estimate_context(
-                                text + "\n" + answer
+                                text + "\n" + answer,
+                                scene_characters=scene_characters,
                             )
                         ),
                         "context_size": 8192
