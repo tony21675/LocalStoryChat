@@ -1,0 +1,45 @@
+{
+  "id": "kidnapping",
+  "name": "Kidnapping",
+  "type": "story_module",
+  "status": "optional",
+  "purpose": "Introduces the kidnapping arc when the author activates this module.",
+  "secret_until_activated": true,
+  "plot": {
+    "victim": "Tiffany",
+    "method": "Tiffany is forcibly taken and placed into a van.",
+    "kidnappers": "Two male kidnappers.",
+    "motive": "unknown",
+    "van": "unknown",
+    "destination": "unknown",
+    "planning": "unknown",
+    "sequence": [
+      "Tiffany is taken before reaching home.",
+      "Two male kidnappers are involved.",
+      "One male kidnapper drives the van.",
+      "The other male kidnapper physically grabs Tiffany and forces her into the van.",
+      "Maya and Chloe witness what happens.",
+      "Maya and Chloe are not taken and remain safe.",
+      "Maya and Chloe run to Tony after Tiffany is taken.",
+      "Maya and Chloe reach Tony together while crying and extremely distraught.",
+      "Maya and Chloe immediately hug Tony for comfort.",
+      "Tony calms Maya and Chloe before getting a clear explanation.",
+      "After Tony calms them, Maya and Chloe tell him that Tiffany has been taken.",
+      "Tony learns what happened from Maya and Chloe rather than witnessing it himself."
+    ]
+  },
+  "tracker": {
+    "location": "inside Tiffany's dog tags",
+    "known_by": [],
+    "activation": "Tiffany squeezes the dog tags tightly.",
+    "active": false,
+    "effect": "Sends Tiffany's location to Tony's phone when activated."
+  },
+  "rules": {
+    "tracker": "The tracker remains hidden and inactive until the story naturally establishes its discovery and activation.",
+    "unknowns": "The kidnappers' identities, motive, destination, van details, and planning remain unknown until established.",
+    "scene_cast": "Only characters explicitly selected for a scene are physically present.",
+    "police": "Tony intends to handle the situation himself unless the established story later changes that.",
+    "choice": "Maya and Chloe are not required to participate in Tony's search. They may choose to help."
+  }
+}
