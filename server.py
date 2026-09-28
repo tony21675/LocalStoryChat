@@ -1511,9 +1511,7 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
             (
                 "name",
                 "age",
-                "appearance",
                 "personality",
-                "relationships",
                 "background",
                 "skills",
                 "strengths",
@@ -1523,28 +1521,48 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
             ),
         )
 
+        appearance = data.get("appearance")
+        if isinstance(appearance, dict):
+            filtered["appearance"] = _pick_fields(
+                appearance,
+                (
+                    "height",
+                    "build",
+                    "hair",
+                    "eyes",
+                    "clothing",
+                    "style",
+                ),
+            )
+
+        relationships = data.get("relationships")
+        if isinstance(relationships, dict):
+            relevant_relationships = {
+                other: value
+                for other, value in relationships.items()
+                if str(other).strip() in active_names
+            }
+            if relevant_relationships:
+                filtered["relationships"] = relevant_relationships
+
         lines += [
             "",
             f"[CHARACTER: {name}]",
             _compact_json(filtered),
         ]
 
-    public_world = _pick_fields(
-        bible,
-        (
-            "title",
-            "version",
-            "status",
-            "relationships",
-            "locations",
-        ),
-    )
+    offstage_names = [
+        name
+        for name in available_names
+        if name not in active_names
+    ]
 
-    if public_world:
+    if offstage_names:
         lines += [
             "",
-            "[STORY WORLD]",
-            _compact_json(public_world),
+            "[OFFSTAGE CHARACTERS]",
+            "- " + ", ".join(offstage_names),
+            "These characters are not physically present in this scene. They may be mentioned briefly only when natural, but they must not enter, interact, be observed directly, or become a focus of the scene unless the user explicitly requests it.",
         ]
 
     completed = state.get("completed_events")
@@ -1562,7 +1580,17 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         lines += ["", "[UNRESOLVED QUESTIONS]"]
         lines.extend(f"- {item}" for item in unresolved)
 
-    lines += ["", "[END WRITER CONTEXT]"]
+    lines += [
+        "",
+        "[FINAL SCENE BOUNDARY]",
+        "Write only the requested scene.",
+        "Do not advance the cast to a new location unless the user asks for it.",
+        "Do not create new plot events, threats, discoveries, revelations, or major backstory to make the scene more dramatic.",
+        "Do not turn background facts into the main subject unless the user asks for them.",
+        "Only the selected scene cast can physically participate.",
+        "",
+        "[END WRITER CONTEXT]",
+    ]
 
     return "\n".join(lines)
 
@@ -1917,12 +1945,17 @@ class LlamaSession:
     def clean_output(text):
         raw = (text or "").replace("\r", "")
 
+        output_marker = "[BEGIN STORY OUTPUT]"
+        if output_marker in raw:
+            raw = raw.rsplit(output_marker, 1)[1]
+
         for marker in (
+            "[END STORY OUTPUT]",
             "[END WRITER CONTEXT]",
             "[END USER REQUEST]",
         ):
             if marker in raw:
-                raw = raw.rsplit(marker, 1)[1]
+                raw = raw.split(marker, 1)[0]
 
         if "USER REQUEST:" in raw:
             raw = raw.rsplit("USER REQUEST:", 1)[1]
@@ -2055,6 +2088,8 @@ class LlamaSession:
             "[USER SCENE DIRECTION]",
             text.strip(),
             "[END USER REQUEST]",
+            "",
+            "[BEGIN STORY OUTPUT]",
         ]
 
         return "\n".join(parts)
@@ -2106,7 +2141,6 @@ class LlamaSession:
                 "--prompt", turn_prompt,
                 "--color", "off",
                 "--no-display-prompt",
-                "--simple-io",
                 "--single-turn",
                 "--no-show-timings",
             ]
