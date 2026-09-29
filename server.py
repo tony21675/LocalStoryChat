@@ -2198,6 +2198,17 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         "The scene cast is a closed set. Do not introduce offstage participants.",
         "Do not change established time, location, relationships, or consequential facts unless the current scene direction or active scene module explicitly establishes the change.",
         "Natural harmless detail is welcome; consequential invention is not.",
+    ]
+
+    if deduped_locked_facts:
+        lines += [
+            "",
+            "[NON-NEGOTIABLE CANON]",
+            "The following facts are hard canon for this scene. Do not contradict, revive, replace, or reinterpret them.",
+        ]
+        lines.extend(f"- {fact}" for fact in deduped_locked_facts)
+
+    lines += [
         "",
         "[END WRITER CONTEXT]",
     ]
