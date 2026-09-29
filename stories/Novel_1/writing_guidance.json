@@ -33,7 +33,26 @@
           "Tiffany": "At the gas station entrance.",
           "Maya": "At the gas station entrance."
         },
-        "current_situation": "Tiffany and Maya have left school and arrived together at the gas station. Tony remains at home asleep and is not participating in their scene."
+        "current_situation": "Tiffany and Maya have left school and arrived together at the gas station. Tony remains at home asleep and is not participating in their scene.",
+        "character_knowledge": {
+          "Tiffany": [
+            "Is at the gas station with Maya.",
+            "Knows Tony is at home.",
+            "Knows Maya lives next door with her mother.",
+            "Her mother died while giving birth to her."
+          ],
+          "Maya": [
+            "Is at the gas station with Tiffany.",
+            "Knows Tony is at home.",
+            "Knows she lives with her mother next door.",
+            "Knows Tiffany's mother died while giving birth to Tiffany."
+          ]
+        },
+        "active_objectives": {
+          "Tony": "Remain at home and rest.",
+          "Tiffany": "Get a soda with Maya and spend some time talking at the gas station.",
+          "Maya": "Get a drink with Tiffany and spend some time talking at the gas station."
+        }
       },
       "endpoint_markers": [
         "at the gas station entrance",
