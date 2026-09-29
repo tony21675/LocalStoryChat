@@ -1582,6 +1582,27 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         if guidance_lines:
             lines += ["", "[RECURRING WRITING GUIDANCE]"] + guidance_lines
 
+        # Early-scene pacing is conditional so later scenes do not receive
+        # knowledge about future structure they do not need yet.
+        chapter = state.get("chapter")
+        scene = state.get("scene")
+        scene_limits = guidance.get("scene_limits")
+        if (
+            chapter == 1
+            and scene in (1, 2)
+            and isinstance(scene_limits, list)
+        ):
+            early_limits = [
+                str(item).strip()
+                for item in scene_limits
+                if str(item).strip()
+            ]
+            if early_limits:
+                lines += ["", "[EARLY SCENE PACING]"] + [
+                    f"- {item}"
+                    for item in early_limits[:2]
+                ]
+
     if isinstance(state.get("chapter"), int):
         lines.append(f"Chapter: {state.get('chapter')}")
 
