@@ -1033,7 +1033,7 @@ def scene_endpoint_marker_reached(story_text, scene_plan):
 
     paragraphs = [
         part.strip()
-        for part in re.split(r"\\n\\s*\\n", story_text or "")
+        for part in re.split(r"\n\s*\n", story_text or "")
         if part.strip()
     ]
 
