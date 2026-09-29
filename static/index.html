@@ -401,9 +401,11 @@ const directionInput=$('#direction');
 let pendingState=null;
 let selectedSectionFile=null;
 let pendingUnsavedChat=null;
+let lastSavedSectionFilename=null;
 
 const CHAT_STORAGE_KEY='localStoryChat.history.v2';
 const CAST_STORAGE_KEY='localStoryChat.cast.v1';
+const LAST_SAVED_SECTION_KEY='localStoryChat.lastSavedSection.v1';
 
 function currentStoryKey(){
   const value=window._activeStoryName || 'default';
@@ -579,10 +581,12 @@ function addMsg(role,text,isStory=false,persist=true){
 function clearChat(){
   chat.innerHTML='<div class="empty" id="empty">New chat. No previous conversation is loaded.</div>';
   pendingUnsavedChat=null;
+  lastSavedSectionFilename=null;
   $('#timing').textContent='';
 
   try{
     localStorage.removeItem(CHAT_STORAGE_KEY+'.'+currentStoryKey());
+    localStorage.removeItem(LAST_SAVED_SECTION_KEY+'.'+currentStoryKey());
   }catch(e){}
 }
 
@@ -905,6 +909,15 @@ async function confirmSaveStory(){
       })
     });
 
+    lastSavedSectionFilename=j.filename;
+
+    try{
+      localStorage.setItem(
+        LAST_SAVED_SECTION_KEY+'.'+currentStoryKey(),
+        lastSavedSectionFilename
+      );
+    }catch(e){}
+
     $('#saveBox').style.display='none';
     $('#timing').textContent='Saved '+j.filename;
     pendingUnsavedChat=null;
@@ -1015,6 +1028,11 @@ async function updateState(){
     return;
   }
 
+  if(!lastSavedSectionFilename){
+    showError('Save the completed story section before updating story memory.');
+    return;
+  }
+
   setBusy(true);
 
   try{
@@ -1022,12 +1040,7 @@ async function updateState(){
       method:'POST',
       body:JSON.stringify({
         story,
-        chapter:Number(
-          $('#positionStatus').textContent.match(/Ch\s+(\d+)/)?.[1] || 1
-        ),
-        scene:Number(
-          $('#positionStatus').textContent.match(/Sc\s+(\d+)/)?.[1] || 1
-        )
+        sectionFilename:lastSavedSectionFilename
       })
     });
 
@@ -1098,6 +1111,14 @@ async function applyState(){
     });
 
     pendingState=null;
+    lastSavedSectionFilename=null;
+
+    try{
+      localStorage.removeItem(
+        LAST_SAVED_SECTION_KEY+'.'+currentStoryKey()
+      );
+    }catch(e){}
+
     $('#statePreview').value='';
     syncMemoryButtons();
     addMsg('assistant',j.message);
@@ -1163,6 +1184,15 @@ directionInput.addEventListener('keydown',e=>{
 });
 
 (async function init(){
+  try{
+    lastSavedSectionFilename=
+      localStorage.getItem(
+        LAST_SAVED_SECTION_KEY+'.'+currentStoryKey()
+      ) || null;
+  }catch(e){
+    lastSavedSectionFilename=null;
+  }
+
   await refresh();
   restoreChatHistory();
 
@@ -1190,6 +1220,7 @@ directionInput.addEventListener('keydown',e=>{
   }catch(e){
     showError(e.message);
   }
+
 })();
 </script>
 </body>
