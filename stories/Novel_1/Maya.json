@@ -34,5 +34,13 @@
     "Tiffany": "best friend; they have known each other since they were babies; their relationship is platonic and sister-like",
     "Chloe": "close friend"
   },
-  "knowledge_rule": "Only knows what she personally experienced, was told, or reasonably inferred."
+  "knowledge_rule": "Only knows what she personally experienced, was told, or reasonably inferred.",
+  "signature_scent": "Clean laundry, soft vanilla, and a faint hint of fresh mint.",
+  "personality_cues": [
+    "Usually notices small changes in people and surroundings before commenting on them.",
+    "Often pauses to think before speaking when something matters.",
+    "Checks on people through simple questions rather than dramatic displays.",
+    "Uses quiet, understated humor with close friends.",
+    "Shows loyalty through consistency and being there when people need her."
+  ]
 }
