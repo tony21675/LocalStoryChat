@@ -8,7 +8,8 @@
     "The story may invent harmless small talk, past shared stories, inside jokes, ordinary feelings, and everyday interpersonal details when they do not contradict hard canon, timeline, character knowledge, or explicit scene constraints.",
     "Treat harmless invented relationship details as scene-level creative material, not permanent canon.",
     "Use personality cues to shape behavior, dialogue, humor, reactions, and what characters notice. Show personality instead of explaining it.",
-    "Use signature scents only as occasional, natural sensory details. Do not mention a scent simply because it is available in the character data."
+    "Use signature scents only as occasional, natural sensory details. Do not mention a scent simply because it is available in the character data.",
+    "Keep the scene grounded in the user's direction and the established present situation."
   ],
   "relationship_freedom": [
     "Characters may casually refer to plausible shared experiences from their established relationship.",
@@ -17,8 +18,7 @@
   ],
   "avoid": [
     "Do not turn harmless relationship details into major biography or consequential backstory.",
-    "Do not invent major plot events, clues, threats, revelations, secret knowledge, or new relationships merely to add drama.",
-    "Do not reveal optional plot-module information unless that module is active or the user explicitly asks for it.",
-    "Do not force every scene to accomplish a major plot development."
+    "Do not force every scene to accomplish a major plot development.",
+    "Do not manufacture a major plot development merely to add drama."
   ]
 }
