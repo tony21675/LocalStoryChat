@@ -20,5 +20,10 @@
     "Do not turn harmless relationship details into major biography or consequential backstory.",
     "Do not force every scene to accomplish a major plot development.",
     "Do not manufacture a major plot development merely to add drama."
+  ],
+  "scene_limits": [
+    "For Chapter 1 Scene 1 and Scene 2, keep Tiffany and Maya walking home from school together. The scene should remain focused on their walk, conversation, and ordinary interaction.",
+    "During Chapter 1 Scene 1 and Scene 2, do not have them arrive home or introduce a major change to their ordinary activity unless the user explicitly directs it.",
+    "When the story reaches Chapter 1 Scene 3, follow the user's scene direction for what happens next rather than relying on this early-walk guidance."
   ]
 }
