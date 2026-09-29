@@ -1240,6 +1240,12 @@ Output no markdown or explanation.
                 "State manager 'evidence' must be an array."
             )
 
+        if endpoint_reached and not patch:
+            raise ValueError(
+                "The state manager marked the scene endpoint as reached "
+                "but proposed no state changes. The story state was not advanced."
+            )
+
         unknown_top_level = sorted(
             set(patch.keys()) - STATE_REQUIRED_KEYS
         )
