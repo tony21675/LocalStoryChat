@@ -1405,6 +1405,15 @@ Output no markdown or explanation.
             patch
         )
 
+        # Scene plans may define small, authoritative end-state fields that
+        # must replace stale per-scene values rather than merge with them.
+        if isinstance(completed_scene_plan, dict):
+            plan_state_after = completed_scene_plan.get("state_after", {})
+            if isinstance(plan_state_after, dict):
+                for field in authoritative_fields:
+                    if field in plan_state_after:
+                        proposed[field] = plan_state_after[field]
+
         proposed["chapter"] = completed_chapter
         proposed["scene"] = next_scene
         proposed["scene_completed"] = False
