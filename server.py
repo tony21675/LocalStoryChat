@@ -1055,8 +1055,8 @@ Then check the COMPLETED SCENE PLAN. Set endpoint_reached to true only if the pr
 For Scene 1, "approaching the gas station" is not the same as "arrived at the gas station."
 For an endpoint that requires arrival, the final prose must clearly establish arrival.
 
-For every location change, provide evidence using the exact dotted field when possible, for example:
-{"field":"location.Tiffany","claim":"At the gas station entrance","quote":"They approached the station's entrance."}
+For every location change, provide evidence using the exact dotted field when possible.
+Example shape: field=location.Tiffany, claim=At the gas station entrance, quote=They approached the station's entrance.
 A parent-level "location" evidence record with the same string claim is also acceptable.
 Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit that item.
 Do not set chapter, scene, scene_completed, or status. The application supplies those bookkeeping fields after validation.
