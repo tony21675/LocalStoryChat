@@ -954,6 +954,29 @@ def find_saved_section_for_current_scene():
     return path.name, story
 
 
+def get_scene_plan(scene_number):
+    guidance_path = STORY_DIR / "writing_guidance.json"
+
+    if not guidance_path.is_file():
+        return {}
+
+    try:
+        guidance = json.loads(
+            guidance_path.read_text(encoding="utf-8")
+        )
+    except Exception:
+        return {}
+
+    plans = guidance.get("scene_plan", {})
+
+    if not isinstance(plans, dict):
+        return {}
+
+    plan = plans.get(str(scene_number))
+
+    return plan if isinstance(plan, dict) else {}
+
+
 def generate_state_proposal(
     story_text,
     section_filename=None,
@@ -1019,22 +1042,7 @@ def generate_state_proposal(
     completed_scene = section_number
     next_scene = completed_scene + 1
 
-    guidance = {}
-    guidance_path = STORY_DIR / "writing_guidance.json"
-    if guidance_path.is_file():
-        try:
-            guidance = json.loads(
-                guidance_path.read_text(encoding="utf-8")
-            )
-        except Exception:
-            guidance = {}
-
-    completed_scene_plan = {}
-    scene_plan = guidance.get("scene_plan")
-    if isinstance(scene_plan, dict):
-        candidate_plan = scene_plan.get(str(completed_scene))
-        if isinstance(candidate_plan, dict):
-            completed_scene_plan = candidate_plan
+    completed_scene_plan = get_scene_plan(completed_scene)
 
     prompt = f"""Update the story state after completing Chapter {completed_chapter}, Scene {completed_scene}.
 
@@ -1043,6 +1051,8 @@ CURRENT STATE BEFORE THIS SECTION:
 
 COMPLETED SCENE PLAN:
 {json.dumps(completed_scene_plan, ensure_ascii=False, indent=2)}
+
+If the scene plan contains "state_after", treat those values as application-authored end-state bookkeeping. When endpoint_reached is true, the application will apply them automatically. Do not spend output tokens repeating them unless useful for other evidence.
 
 COMPLETED STORY SECTION:
 {story_text}
@@ -1240,11 +1250,28 @@ Output no markdown or explanation.
                 "State manager 'evidence' must be an array."
             )
 
-        if endpoint_reached and not patch:
-            raise ValueError(
-                "The state manager marked the scene endpoint as reached "
-                "but proposed no state changes. The story state was not advanced."
-            )
+        if endpoint_reached:
+            plan_state_after = completed_scene_plan.get("state_after", {})
+
+            if isinstance(plan_state_after, dict):
+                authoritative_patch = {}
+
+                for field, value in plan_state_after.items():
+                    if field in STATE_REQUIRED_KEYS and field not in _STATE_METADATA_FIELDS:
+                        authoritative_patch[field] = value
+
+                if authoritative_patch:
+                    patch = merge_state(
+                        patch,
+                        authoritative_patch
+                    )
+
+            if not patch:
+                raise ValueError(
+                    "The state manager marked the scene endpoint as reached "
+                    "but proposed no state changes and the scene plan defines "
+                    "no automatic end-state update. The story state was not advanced."
+                )
 
         unknown_top_level = sorted(
             set(patch.keys()) - STATE_REQUIRED_KEYS
@@ -1272,11 +1299,39 @@ Output no markdown or explanation.
         patch.pop("scene_completed", None)
         patch.pop("status", None)
 
-        patch = _filter_patch_to_supported_evidence(
+        plan_state_after = (
+            completed_scene_plan.get("state_after", {})
+            if isinstance(completed_scene_plan, dict)
+            else {}
+        )
+
+        authoritative_fields = {
+            key
+            for key in plan_state_after
+            if key in STATE_REQUIRED_KEYS
+            and key not in _STATE_METADATA_FIELDS
+        } if isinstance(plan_state_after, dict) else set()
+
+        model_patch = {
+            key: value
+            for key, value in patch.items()
+            if key not in authoritative_fields
+        }
+
+        model_patch = _filter_patch_to_supported_evidence(
             current_state,
-            patch,
+            model_patch,
             story_text,
             evidence
+        )
+
+        patch = merge_state(
+            model_patch,
+            {
+                key: value
+                for key, value in patch.items()
+                if key in authoritative_fields
+            }
         )
 
         patch = _filter_unestablished_location_changes(
