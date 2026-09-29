@@ -1337,6 +1337,8 @@ CHARACTER_CONTEXT_FIELDS = (
     "weaknesses",
     "important_items",
     "knowledge_rule",
+    "signature_scent",
+    "personality_cues",
 )
 
 CURRENT_STATE_CONTEXT_FIELDS = (
@@ -1654,6 +1656,8 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                 "weaknesses",
                 "important_items",
                 "knowledge_rule",
+                "signature_scent",
+                "personality_cues",
             ),
         )
 
