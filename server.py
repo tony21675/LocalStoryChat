@@ -2588,7 +2588,7 @@ class LlamaSession:
         end = index + marker_length
 
         punctuation = re.search(
-            r"[.!?](?:["”'’])?(?:\s|$)",
+            r'[.!?](?:["\'])?(?:\s|$)',
             raw[end:],
         )
 
