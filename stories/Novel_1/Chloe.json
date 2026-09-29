@@ -30,5 +30,13 @@
     "Tiffany": "close friend",
     "Maya": "close friend"
   },
-  "knowledge_rule": "Only knows what she personally experienced, was told, or reasonably inferred."
+  "knowledge_rule": "Only knows what she personally experienced, was told, or reasonably inferred.",
+  "signature_scent": "Fresh citrus, warm amber, and a subtle trace of sandalwood.",
+  "personality_cues": [
+    "Comfortable filling an awkward silence with conversation or humor.",
+    "Says what she thinks more readily than she filters it.",
+    "Challenges people directly when something feels wrong.",
+    "Uses humor to lighten tense or uncomfortable moments.",
+    "Shows affection and concern openly rather than hiding them."
+  ]
 }
