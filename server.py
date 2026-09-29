@@ -303,12 +303,8 @@ STATE_SYSTEM_PROMPT = r"""You are the scene-state updater for an ongoing fiction
 
 Your job is to produce the story state that the next scene should start from.
 
-Return ONLY:
-{
-  "patch": {},
-  "evidence": [],
-  "endpoint_reached": true
-}
+Return one JSON object with exactly these fields:
+patch, evidence, endpoint_reached
 
 For every completed section, determine the end-of-section state from the prose.
 Also determine whether the completed prose actually reaches the current scene plan's endpoint.
@@ -819,8 +815,8 @@ def extract_json_object(text):
     text = text or ""
 
     # llama-cli can echo part of the prompt before the actual response.
-    # Search every JSON object and keep the last object with the exact state
-    # proposal keys. Do not require the whole stdout stream to be JSON.
+    # Search every JSON object, but reject the literal placeholder object used
+    # in the state prompt so echoed prompt text cannot become the proposal.
     candidates = []
 
     for index, char in enumerate(text):
@@ -841,9 +837,18 @@ def extract_json_object(text):
         if (
             "patch" in obj
             and "evidence" in obj
+            and "endpoint_reached" in obj
             and isinstance(obj.get("patch"), dict)
             and isinstance(obj.get("evidence"), list)
+            and isinstance(obj.get("endpoint_reached"), bool)
         ):
+            # Ignore a prompt/example placeholder.
+            if (
+                obj.get("patch") == {}
+                and obj.get("evidence") == []
+                and obj.get("endpoint_reached") is True
+            ):
+                continue
             return obj
 
     # Fallback for model output that contains valid JSON after echoed prompt
@@ -860,8 +865,15 @@ def extract_json_object(text):
                 isinstance(obj, dict)
                 and "patch" in obj
                 and "evidence" in obj
+                and "endpoint_reached" in obj
                 and isinstance(obj.get("patch"), dict)
                 and isinstance(obj.get("evidence"), list)
+                and isinstance(obj.get("endpoint_reached"), bool)
+                and not (
+                    obj.get("patch") == {}
+                    and obj.get("evidence") == []
+                    and obj.get("endpoint_reached") is True
+                )
             ):
                 return obj
         except json.JSONDecodeError:
@@ -1035,8 +1047,8 @@ COMPLETED SCENE PLAN:
 COMPLETED STORY SECTION:
 {story_text}
 
-Produce ONLY:
-{{"patch": {{}}, "evidence": [], "endpoint_reached": true}}
+Return one JSON object with these three fields:
+patch, evidence, endpoint_reached
 
 Follow this procedure in order:
 1. Read the final paragraph and final actions first.
@@ -1150,12 +1162,14 @@ Output no markdown or explanation.
             proposal = {
                 "patch": {},
                 "evidence": [],
+                "endpoint_reached": False,
             }
 
         if not isinstance(proposal, dict):
             proposal = {
                 "patch": {},
                 "evidence": [],
+                "endpoint_reached": False,
             }
 
         patch = proposal.get("patch")
