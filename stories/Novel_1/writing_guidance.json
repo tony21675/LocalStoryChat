@@ -78,9 +78,9 @@
       "end_condition": "HARD STOP after they have finished the purchase, left the store, and stepped outside into the bright afternoon. The sun is in their eyes, so Tiffany and Maya put on their sunglasses. End immediately after they are outside with their drinks and sunglasses on. Do not begin walking home or continue the conversation after this endpoint.",
       "pacing": "Give the gas-station stop its own scene and let the conversation breathe. After the purchase, let them step outside naturally and use the bright sunlight and sunglasses as the physical ending beat.",
       "output_end_patterns": [
-        "\\b(?:put|puts|slipped|slips|pulled|pulls|placed|places|settled|settles|adjusted|adjusts|slid|slides)\\s+(?:on\\s+)?(?:their|her|his|the)\\s+(?:sunglasses|shades)\\b",
-        "\\b(?:their|her|his)\\s+(?:sunglasses|shades)\\s+(?:went|go|were|are)\\s+on\\b",
-        "\\b(?:put|slipped|pulled|placed|settled|adjusted|slid)\\s+(?:her|their|his)\\s+(?:sunglasses|shades)\\s+over\\s+(?:her|their|his)\\s+(?:eyes|face)\\b"
+        "\\b(?:put|puts|pulled|pulls|slipped|slips|placed|places|settled|settles|adjusted|adjusts|slid|slides)\\s+(?:(?:on\\s+)?(?:their|her|his|the)\\s+(?:sunglasses|shades)|(?:their|her|his|the)?\\s*(?:sunglasses|shades)|them)\\s+(?:on|over\\s+(?:their|her|his)\\s+(?:eyes|face))\\b",
+        "\\b(?:put|puts|pulled|pulls|slipped|slips|placed|places|settled|settles|adjusted|adjusts|slid|slides)\\s+(?:their|her|his)\\s+(?:sunglasses|shades)\\s*(?:on|over\\s+(?:their|her|his)\\s+(?:eyes|face))?\\b",
+        "\\b(?:their|her|his)\\s+(?:sunglasses|shades)\\s+(?:went|go|were|are|settled|sat)\\s+on\\b"
       ],
       "endpoint_markers": [
         "put on their sunglasses",
@@ -103,8 +103,18 @@
             "out the door"
           ],
           [
-            "sunglasses",
-            "shades"
+            "put on sunglasses",
+            "put on shades",
+            "pulled them on",
+            "pulled on sunglasses",
+            "pulled on shades",
+            "slipped them on",
+            "slipped on sunglasses",
+            "slipped on shades",
+            "adjusted sunglasses",
+            "adjusted shades",
+            "settled sunglasses",
+            "settled shades"
           ]
         ]
       },
