@@ -3,3 +3,6 @@ __pycache__/
 
 # Runtime state backups are local safety copies, not manuscript canon
 stories/*/state_backups/
+
+# Novel data is maintained in the separate private MyNovel repository
+/stories/Novel_1/
