@@ -306,10 +306,12 @@ Your job is to produce the story state that the next scene should start from.
 Return ONLY:
 {
   "patch": {},
-  "evidence": []
+  "evidence": [],
+  "endpoint_reached": true
 }
 
 For every completed section, determine the end-of-section state from the prose.
+Also determine whether the completed prose actually reaches the current scene plan's endpoint.
 Use the final paragraph and final actions as the primary source for the end-of-section state.
 Compare that end state with the CURRENT STATE BEFORE THIS SECTION.
 If a character's location has changed and the prose clearly establishes the new location, you MUST include the location change in the patch.
@@ -325,7 +327,8 @@ Do not invent facts that are not established by the completed section.
 Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit the change.
 
 Chapter and scene numbers are application bookkeeping supplied by the application. Do not set them yourself.
-The application will advance to the next scene after the proposal is applied.
+Set "endpoint_reached" to true only when the completed prose clearly reaches the current scene plan's stated endpoint. If the prose stops early, set it to false.
+The application will advance to the next scene only when endpoint_reached is true.
 
 Allowed top-level patch fields:
 status, chapter, scene, scene_completed, location, time, current_situation,
@@ -1014,7 +1017,7 @@ COMPLETED STORY SECTION:
 {story_text}
 
 Produce ONLY:
-{{"patch": {{}}, "evidence": []}}
+{{"patch": {{}}, "evidence": [], "endpoint_reached": true}}
 
 Follow this procedure in order:
 1. Read the final paragraph and final actions first.
@@ -1028,6 +1031,10 @@ Follow this procedure in order:
 A non-empty patch is expected whenever the completed prose clearly changes the present state.
 For example, if CURRENT STATE says a character is "at school" and the final paragraph clearly says the character has reached a gas station, the patch must change that character's location to the gas station and provide an exact supporting quote.
 Do not return an empty patch merely because the location change is ordinary or because the section contains mostly normal conversation.
+
+Then check the COMPLETED SCENE PLAN. Set endpoint_reached to true only if the prose actually reaches its endpoint. Do not mark it true merely because the characters are approaching the endpoint.
+For Scene 1, "approaching the gas station" is not the same as "arrived at the gas station."
+For an endpoint that requires arrival, the final prose must clearly establish arrival.
 
 Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit that item.
 Do not set chapter, scene, scene_completed, or status. The application supplies those bookkeeping fields after validation.
@@ -1131,10 +1138,55 @@ Output no markdown or explanation.
 
         patch = proposal.get("patch")
         evidence = proposal.get("evidence")
+        endpoint_reached = proposal.get("endpoint_reached")
 
         if patch is None:
             raise ValueError(
                 "State manager response is missing 'patch'."
+            )
+
+        if endpoint_reached is None:
+            raise ValueError(
+                "State manager response is missing 'endpoint_reached'."
+            )
+
+        if not isinstance(endpoint_reached, bool):
+            raise ValueError(
+                "State manager 'endpoint_reached' must be true or false."
+            )
+
+        if not endpoint_reached:
+            scene_plan = {}
+            guidance_path = STORY_DIR / "writing_guidance.json"
+
+            if guidance_path.is_file():
+                try:
+                    guidance_data = json.loads(
+                        guidance_path.read_text(encoding="utf-8")
+                    )
+                    plans = guidance_data.get("scene_plan", {})
+                    if isinstance(plans, dict):
+                        scene_plan = plans.get(
+                            str(completed_scene),
+                            {}
+                        )
+                except Exception:
+                    scene_plan = {}
+
+            endpoint = (
+                scene_plan.get("end_condition")
+                if isinstance(scene_plan, dict)
+                else None
+            )
+
+            raise ValueError(
+                "The saved section did not clearly reach the current scene endpoint"
+                + (
+                    f": {endpoint}"
+                    if endpoint
+                    else "."
+                )
+                + " The story state was not advanced."
             )
 
         if evidence is None:
