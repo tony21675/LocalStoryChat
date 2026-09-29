@@ -885,6 +885,41 @@ def extract_json_with_keys(text, required_keys):
 def _filter_unestablished_location_changes(base, patch, story_text):
     """Location is current scene state and is already evidence-checked upstream."""
     return patch
+def find_saved_section_for_current_scene():
+    """Return the saved manuscript section for the current state scene."""
+    state = read_current_state()
+
+    chapter = state.get("chapter")
+    scene = state.get("scene")
+
+    if not isinstance(chapter, int) or not isinstance(scene, int):
+        raise ValueError(
+            "current_state.json does not contain valid chapter and scene numbers."
+        )
+
+    path = (
+        MANUSCRIPT_DIR
+        / "Chapters"
+        / f"Chapter_{chapter:02d}"
+        / f"Chapter_{chapter:02d}_Section_{scene:02d}.txt"
+    )
+
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"No saved manuscript section exists for Chapter {chapter}, "
+            f"Scene {scene}. Save that scene before updating story memory."
+        )
+
+    story = path.read_text(encoding="utf-8").strip()
+
+    if len(story) < 40:
+        raise ValueError(
+            "The saved manuscript section is too short to create a useful memory update."
+        )
+
+    return path.name, story
+
+
 def generate_state_proposal(
     story_text,
     section_filename=None,
@@ -3069,6 +3104,21 @@ class Handler(BaseHTTPRequestHandler):
                     "ok": True,
                     "current": current,
                     "pending": pending_state,
+                })
+                return
+
+            if path == "/api/state/propose-saved":
+                section_filename, story = find_saved_section_for_current_scene()
+
+                proposed = generate_state_proposal(
+                    story,
+                    section_filename=section_filename,
+                )
+
+                self._json(200, {
+                    "ok": True,
+                    "sectionFilename": section_filename,
+                    "state": proposed,
                 })
                 return
 
