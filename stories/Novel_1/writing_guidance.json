@@ -30,8 +30,9 @@
   ],
   "scene_plan": {
     "1": {
-      "direction": "Tiffany and Maya stop at a nearby gas station on the way home to get sodas.",
-      "end_condition": "End the scene at the gas station or immediately after they purchase the sodas. Do not continue the trip toward home within this scene."
+      "direction": "Start from Tiffany and Maya's current position on the front road and continue their walk toward a nearby gas station, where they make a brief stop to get sodas.",
+      "end_condition": "End the scene at the gas station or immediately after they purchase the sodas. Do not continue the trip home within this scene.",
+      "pacing": "Show the short transition from the current road to the gas station before settling into the stop. Do not begin the scene already at the destination."
     },
     "2": {
       "direction": "After the gas station, Tiffany and Maya resume walking home together.",
