@@ -65,6 +65,12 @@
         "we're actually here",
         "there we are",
         "this is our stop"
+      ],
+      "output_end_patterns": [
+        "\\bwe'?re actually here\\b",
+        "\\bthere we are\\b",
+        "\\bthis is our stop\\b",
+        "\\b(?:at|outside) the gas station(?:'s)? entrance\\b"
       ]
     },
     "2": {
@@ -79,6 +85,15 @@
         "gave them their change",
         "returned the change",
         "finished the purchase"
+      ],
+      "output_end_patterns": [
+        "\\bhanded back (?:their|the|her) change\\b",
+        "\\bhanded (?:their|the|her) change back\\b",
+        "\\breturned (?:their|the|her) change\\b",
+        "\\bchange (?:was|were) (?:handed|returned)\\b",
+        "\\btransaction (?:was )?(?:complete|finished)\\b",
+        "\\bpurchase (?:was )?(?:complete|finished)\\b",
+        "\\bregister (?:drawer )?(?:closed|clicked shut)\\b"
       ]
     },
     "3": {
