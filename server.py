@@ -2568,7 +2568,11 @@ class LlamaSession:
 
         markers = plan.get("output_end_markers", [])
         if not isinstance(markers, list):
-            return raw
+            markers = []
+
+        patterns = plan.get("output_end_patterns", [])
+        if not isinstance(patterns, list):
+            patterns = []
 
         candidates = []
         lowered = raw.lower()
@@ -2581,6 +2585,21 @@ class LlamaSession:
             index = lowered.find(marker_text.lower())
             if index >= 0:
                 candidates.append((index, len(marker_text)))
+
+        for pattern in patterns:
+            try:
+                match = re.search(
+                    str(pattern),
+                    raw,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+            except re.error:
+                continue
+
+            if match:
+                candidates.append(
+                    (match.start(), match.end() - match.start())
+                )
 
         if not candidates:
             return raw
