@@ -2584,6 +2584,10 @@ class LlamaSession:
         if not isinstance(patterns, list):
             patterns = []
 
+        stop_before_patterns = plan.get("output_stop_before_patterns", [])
+        if not isinstance(stop_before_patterns, list):
+            stop_before_patterns = []
+
         candidates = []
         lowered = raw.lower()
 
@@ -2611,10 +2615,36 @@ class LlamaSession:
                     (match.start(), match.end() - match.start())
                 )
 
+        for pattern in stop_before_patterns:
+            try:
+                match = re.search(
+                    str(pattern),
+                    raw,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+            except re.error:
+                continue
+
+            if match:
+                candidates.append(
+                    (max(0, match.start() - 1), 0)
+                )
+
         if not candidates:
             return raw
 
         index, marker_length = min(candidates, key=lambda item: item[0])
+
+        if marker_length == 0:
+            raw_before = raw[:index].rstrip()
+            last_stop = max(
+                raw_before.rfind("."),
+                raw_before.rfind("!"),
+                raw_before.rfind("?"),
+            )
+
+            return raw_before[:last_stop + 1].strip() if last_stop >= 0 else raw_before
+
         end = index + marker_length
 
         # Finish the sentence containing the endpoint marker, but never consume
