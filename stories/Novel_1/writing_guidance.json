@@ -30,13 +30,24 @@
   ],
   "scene_plan": {
     "1": {
-      "direction": "Start from Tiffany and Maya's current position on the front road and continue their walk toward a nearby gas station, where they make a brief stop to get sodas.",
-      "end_condition": "End the scene at the gas station or immediately after they purchase the sodas. Do not continue the trip home within this scene.",
-      "pacing": "Show the short transition from the current road to the gas station before settling into the stop. Do not begin the scene already at the destination."
+      "direction": "Start from Tiffany and Maya leaving school and walking along the front road toward a nearby gas station.",
+      "end_condition": "End when they arrive at the gas station. Do not begin the gas-station conversation or have them continue toward home.",
+      "pacing": "Spend the scene on the walk from school to the gas station, allowing natural conversation and small everyday observations."
     },
     "2": {
-      "direction": "After the gas station, Tiffany and Maya resume walking home together.",
-      "end_condition": "Keep this scene centered on their walk home. Let the walk unfold naturally and do not rush them to the house."
+      "direction": "Tiffany and Maya are at the gas station getting sodas. Let them talk naturally with each other and with the attendant.",
+      "end_condition": "End while they are still at the gas station or immediately after the purchase. Do not begin the walk home.",
+      "pacing": "Give the gas-station stop its own scene and let the conversation breathe."
+    },
+    "3": {
+      "direction": "Tiffany and Maya leave the gas station and begin walking home. The kidnapping module is active for this scene, and the kidnapping occurs during this departure and walk.",
+      "end_condition": "End after Tiffany has been taken and Maya is left dealing with what just happened. Do not jump ahead to Tony's house.",
+      "pacing": "Let the departure begin as an ordinary continuation before the active plot module drives the scene."
+    },
+    "4": {
+      "direction": "Maya runs to Tony's house after Tiffany is taken and wakes him. She is so panicked and distraught that Tony initially cannot understand what happened. He must calm her before he can get a clear explanation.",
+      "end_condition": "Keep the scene focused on Maya reaching Tony, Tony waking and calming her, and the beginning of her explanation.",
+      "pacing": "Give Maya's panic and Tony's effort to steady her room to develop before the facts are explained."
     }
   }
 }
