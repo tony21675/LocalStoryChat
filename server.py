@@ -990,6 +990,36 @@ def get_scene_plan(scene_number):
     return plan if isinstance(plan, dict) else {}
 
 
+def scene_endpoint_marker_reached(story_text, scene_plan):
+    """Use authored endpoint markers as a deterministic supplement to the LLM check."""
+    if not isinstance(scene_plan, dict):
+        return False
+
+    markers = scene_plan.get("endpoint_markers", [])
+
+    if not isinstance(markers, list):
+        return False
+
+    markers = [
+        _normalize_evidence_text(item).lower()
+        for item in markers
+        if _normalize_evidence_text(item)
+    ]
+
+    if not markers:
+        return False
+
+    paragraphs = [
+        part.strip()
+        for part in re.split(r"\\n\\s*\\n", story_text or "")
+        if part.strip()
+    ]
+
+    tail = " ".join(paragraphs[-3:]).lower()
+
+    return any(marker in tail for marker in markers)
+
+
 def generate_state_proposal(
     story_text,
     section_filename=None,
@@ -1213,6 +1243,15 @@ Output no markdown or explanation.
             raise ValueError(
                 "State manager 'endpoint_reached' must be true or false."
             )
+
+        # Authored endpoint markers are a deterministic supplement to the
+        # local model's judgment. This prevents a conservative state-model
+        # answer from blocking a clearly established scene endpoint.
+        if not endpoint_reached and scene_endpoint_marker_reached(
+            story_text,
+            completed_scene_plan
+        ):
+            endpoint_reached = True
 
         if not endpoint_reached:
             scene_plan = {}
