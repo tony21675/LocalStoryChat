@@ -695,7 +695,19 @@ def _filter_patch_to_supported_evidence(base, patch, story_text, evidence):
     return filtered
 
 
-def validate_state_patch(base, patch, story_text, evidence):
+def validate_state_patch(
+    base,
+    patch,
+    story_text,
+    evidence,
+    authoritative_fields=None,
+):
+    authoritative_fields = {
+        str(field).strip()
+        for field in (authoritative_fields or set())
+        if str(field).strip()
+    }
+
     if not isinstance(base, dict):
         raise ValueError(
             "State patch validation requires an object as the base state."
@@ -745,6 +757,7 @@ def validate_state_patch(base, patch, story_text, evidence):
         (field, _claim_key(claim))
         for field, claim in _iter_changed_claims(base, patch)
         if field.split(".", 1)[0] not in _STATE_METADATA_FIELDS
+        and field.split(".", 1)[0] not in authoritative_fields
     }
 
     evidence_keys = set()
@@ -1344,7 +1357,8 @@ Output no markdown or explanation.
             current_state,
             patch,
             story_text,
-            evidence
+            evidence,
+            authoritative_fields=authoritative_fields,
         )
 
         proposed = merge_state(
