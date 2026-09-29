@@ -23,11 +23,6 @@
     "Do not force every scene to accomplish a major plot development.",
     "Do not manufacture a major plot development merely to add drama."
   ],
-  "scene_limits": [
-    "For Chapter 1 Scene 1 and Scene 2, keep Tiffany and Maya walking home from school together.",
-    "For Chapter 1 Scene 1 and Scene 2, keep the action centered on their walk and ordinary conversation. Do not write them arriving home unless the user explicitly directs the arrival.",
-    "When the story reaches Chapter 1 Scene 3, follow the user's direction for that scene and do not carry these early-scene limits forward automatically."
-  ],
   "scene_plan": {
     "1": {
       "direction": "Start from Tiffany and Maya leaving school and walking along the front road toward a nearby gas station.",
