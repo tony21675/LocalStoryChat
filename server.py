@@ -276,6 +276,7 @@ Use signature scents sparingly and only when naturally noticeable.
 The current scene endpoint is a hard stop, not a suggestion.
 The scene must actually reach that endpoint before you stop. Do not stop early while merely approaching it.
 Once the endpoint is reached, stop the story immediately. Do not narrate the next action, next location, departure, aftermath, or later event after the endpoint.
+Treat the endpoint as the final sentence of this section.
 Never cross the endpoint merely to give the scene a more complete feeling.
 Do not explain the writing task, mention prompts or context, use screenplay formatting, add headings, or address the reader.
 
@@ -2587,13 +2588,30 @@ class LlamaSession:
         index, marker_length = min(candidates, key=lambda item: item[0])
         end = index + marker_length
 
+        # Finish the sentence containing the endpoint marker, but never consume
+        # a later sentence. This prevents a valid endpoint from being followed
+        # by the next scene.
+        remainder = raw[end:]
         punctuation = re.search(
-            r'[.!?](?:["\'])?(?:\s|$)',
-            raw[end:],
+            r'[.!?](?:["\'])?(?=\s|$)',
+            remainder,
         )
 
         if punctuation:
             end += punctuation.end()
+        else:
+            # The marker itself is usually inside the final sentence. If the
+            # model ran out of tokens before punctuation, trim back to the
+            # previous complete sentence rather than returning a fragment.
+            prefix = raw[:end].rstrip()
+            last_stop = max(
+                prefix.rfind("."),
+                prefix.rfind("!"),
+                prefix.rfind("?"),
+            )
+
+            if last_stop > 0:
+                end = last_stop + 1
 
         return raw[:end].strip()
 
