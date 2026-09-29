@@ -2671,73 +2671,74 @@ class LlamaSession:
                     (max(0, match.start() - 1), 0)
                 )
 
-        # Structured endpoint fallback: when a scene defines concrete end-state
-        # conditions, find the first sentence where all conditions are clearly
-        # present in the recent prose. This is intentionally broader than
-        # exact phrasing, so natural wording such as "slipping them onto
-        # their faces" can still end the scene.
-        endpoint_requirements = plan.get("endpoint_requirements")
-        if isinstance(endpoint_requirements, dict):
-            all_of = endpoint_requirements.get("all_of", [])
-
-            if isinstance(all_of, list) and all_of:
-                def sentence_satisfies_requirements(text_window):
-                    lowered_window = str(text_window or "").lower()
-
-                    for group in all_of:
-                        if isinstance(group, str):
-                            alternatives = [group]
-                        elif isinstance(group, list):
-                            alternatives = group
-                        else:
-                            alternatives = []
-
-                        terms = [
-                            _normalize_evidence_text(item).lower()
-                            for item in alternatives
-                            if _normalize_evidence_text(item)
-                        ]
-
-                        if not terms or not any(
-                            term in lowered_window
-                            for term in terms
-                        ):
-                            return False
-
-                    return True
-
-                sentence_matches = list(
-                    re.finditer(
-                        r"[^.!?]+(?:[.!?](?:[\"'])?|$)",
-                        raw,
-                        flags=re.DOTALL,
-                    )
-                )
-
-                if sentence_matches:
-                    recent_sentences = []
-
-                    for match in sentence_matches:
-                        sentence = match.group(0).strip()
-                        if not sentence:
-                            continue
-
-                        recent_sentences.append(sentence)
-                        recent_sentences = recent_sentences[-3:]
-
-                        # Use a short trailing window rather than the entire
-                        # scene, so an early mention of "sunglasses" cannot
-                        # accidentally satisfy a much later endpoint.
-                        window = " ".join(recent_sentences)
-
-                        if sentence_satisfies_requirements(window):
-                            endpoint_end = match.end()
-
-                            # Prefer ending at the complete sentence that
-                            # actually establishes the endpoint.
-                            return raw[:endpoint_end].strip()
-
         if not candidates:
+            # Structured endpoint fallback: when a scene defines concrete end-state
+            # conditions, find the first sentence where all conditions are clearly
+            # present in the recent prose. This is intentionally broader than
+            # exact phrasing, so natural wording such as "slipping them onto
+            # their faces" can still end the scene.
+            endpoint_requirements = plan.get("endpoint_requirements")
+            if isinstance(endpoint_requirements, dict):
+                all_of = endpoint_requirements.get("all_of", [])
+
+                if isinstance(all_of, list) and all_of:
+                    def sentence_satisfies_requirements(text_window):
+                        lowered_window = str(text_window or "").lower()
+
+                        for group in all_of:
+                            if isinstance(group, str):
+                                alternatives = [group]
+                            elif isinstance(group, list):
+                                alternatives = group
+                            else:
+                                alternatives = []
+
+                            terms = [
+                                _normalize_evidence_text(item).lower()
+                                for item in alternatives
+                                if _normalize_evidence_text(item)
+                            ]
+
+                            if not terms or not any(
+                                term in lowered_window
+                                for term in terms
+                            ):
+                                return False
+
+                        return True
+
+                    sentence_matches = list(
+                        re.finditer(
+                            r"[^.!?]+(?:[.!?](?:[\"'])?|$)",
+                            raw,
+                            flags=re.DOTALL,
+                        )
+                    )
+
+                    if sentence_matches:
+                        recent_sentences = []
+
+                        for match in sentence_matches:
+                            sentence = match.group(0).strip()
+                            if not sentence:
+                                continue
+
+                            recent_sentences.append(sentence)
+                            recent_sentences = recent_sentences[-3:]
+
+                            # Use a short trailing window rather than the entire
+                            # scene, so an early mention of "sunglasses" cannot
+                            # accidentally satisfy a much later endpoint.
+                            window = " ".join(recent_sentences)
+
+                            if sentence_satisfies_requirements(window):
+                                endpoint_end = match.end()
+
+                                # Prefer ending at the complete sentence that
+                                # actually establishes the endpoint.
+                                return raw[:endpoint_end].strip()
+
+
             return raw
 
         index, marker_length = min(candidates, key=lambda item: item[0])
