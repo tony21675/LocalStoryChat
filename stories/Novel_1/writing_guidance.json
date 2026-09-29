@@ -91,6 +91,10 @@
         "\\bhanded (?:their|the|her) change back\\b",
         "\\breturned (?:their|the|her) change\\b",
         "\\bchange (?:was|were) (?:handed|returned)\\b",
+        "\\bfinished ringing up (?:their|the) (?:drinks|items|purchase)\\b",
+        "\\bring(?:ing)? up (?:their|the) (?:drinks|items|purchase)\\b",
+        "\\bslid (?:them|the items|the drinks) across the counter\\b",
+        "\\bslid (?:them|the items|the drinks) over (?:to|toward) (?:Tiffany|Maya|them)\\b",
         "\\btransaction (?:was )?(?:complete|finished)\\b",
         "\\bpurchase (?:was )?(?:complete|finished)\\b",
         "\\bregister (?:drawer )?(?:closed|clicked shut)\\b"
