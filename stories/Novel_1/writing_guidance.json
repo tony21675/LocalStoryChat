@@ -28,6 +28,11 @@
       "direction": "Start from Tiffany and Maya leaving school and walking along the front road toward a nearby gas station.",
       "end_condition": "HARD STOP when they arrive at the gas station. The final action must clearly establish that they have arrived at the gas station entrance or are standing outside it. Do not enter the store, choose drinks, approach the counter, speak with the cashier, buy anything, leave the gas station, or begin walking home.",
       "pacing": "Spend the scene on the walk from school to the gas station, allowing natural conversation and small everyday observations.",
+      "output_end_markers": [
+        "we're actually here",
+        "there we are",
+        "this is our stop"
+      ],
       "state_after": {
         "location": {
           "Tiffany": "At the gas station entrance.",
@@ -65,7 +70,12 @@
     "2": {
       "direction": "Tiffany and Maya are at the gas station getting sodas. Let them talk naturally with each other and with the attendant.",
       "end_condition": "HARD STOP while they are still at the gas station immediately after the purchase. Do not leave the gas station or begin the walk home.",
-      "pacing": "Give the gas-station stop its own scene and let the conversation breathe."
+      "pacing": "Give the gas-station stop its own scene and let the conversation breathe.",
+      "output_end_markers": [
+        "handed back the change",
+        "gave them their change",
+        "finished the purchase"
+      ]
     },
     "3": {
       "direction": "Tiffany and Maya leave the gas station and begin walking home. The kidnapping module is active for this scene, and the kidnapping occurs during this departure and walk.",
