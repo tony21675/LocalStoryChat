@@ -273,7 +273,9 @@ Natural small talk, humor, shared memories, ordinary feelings, sensory detail, a
 Do not turn an unestablished family situation into implied death, estrangement, illness, absence, or conflict when established facts do not support it.
 Use personality cues to shape behavior, dialogue, humor, and reactions. Show personality through the scene rather than explaining it.
 Use signature scents sparingly and only when naturally noticeable.
-The current scene endpoint is a hard stop, not a suggestion. Once the endpoint is reached, stop the story immediately. Do not narrate the next action, next location, departure, aftermath, or later event after the endpoint.
+The current scene endpoint is a hard stop, not a suggestion.
+The scene must actually reach that endpoint before you stop. Do not stop early while merely approaching it.
+Once the endpoint is reached, stop the story immediately. Do not narrate the next action, next location, departure, aftermath, or later event after the endpoint.
 Never cross the endpoint merely to give the scene a more complete feeling.
 Do not explain the writing task, mention prompts or context, use screenplay formatting, add headings, or address the reader.
 
@@ -308,7 +310,10 @@ Return ONLY:
 }
 
 For every completed section, determine the end-of-section state from the prose.
-Update a character's current location when the prose clearly establishes where that character is at the end of the section.
+Use the final paragraph and final actions as the primary source for the end-of-section state.
+Compare that end state with the CURRENT STATE BEFORE THIS SECTION.
+If a character's location has changed and the prose clearly establishes the new location, you MUST include the location change in the patch.
+Update a character's current location even when the new location is a concise paraphrase such as "walking along the front road toward the gas station" or "at the gas station entrance."
 Update time when the prose clearly establishes a time change.
 Update current_situation so it briefly describes what is true at the end of the completed section when that has changed.
 Record new character knowledge, completed events, clues, unresolved questions, or objectives only when they are consequential and clearly established.
@@ -958,7 +963,9 @@ Produce ONLY:
 
 Rules:
 - Determine the end-of-section state from the completed prose.
-- Update current locations when the prose clearly establishes where characters are at the end.
+- Read the final paragraph first when deciding where the characters are at the end.
+- Compare each character's end location with CURRENT STATE BEFORE THIS SECTION.
+- If the prose clearly places a character somewhere new, include that location change in the patch even when the change is ordinary movement.
 - Update time only when the prose clearly establishes a change.
 - Update current_situation when the end of the section materially changes what is true now.
 - Record only consequential new knowledge, completed events, clues, unresolved questions, objectives, or continuity facts.
@@ -998,12 +1005,12 @@ Rules:
             "--device", "none",
             "-c", "8192",
             "--reasoning", "off",
-            "--temp", "0.10",
+            "--temp", "0.05",
             "--top-k", "20",
-            "--top-p", "0.80",
+            "--top-p", "0.90",
             "--repeat-last-n", "256",
             "--repeat-penalty", "1.08",
-            "--n-predict", "400",
+            "--n-predict", "600",
             "--system-prompt", STATE_SYSTEM_PROMPT,
             "--prompt", prompt,
             "--color", "off",
@@ -1593,6 +1600,10 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                 if end_condition:
                     plan_lines.append(f"Stop when: {end_condition}")
                     plan_lines.append(
+                        "ENDPOINT REQUIREMENT: The scene must reach this endpoint before "
+                        "the output ends. Do not stop early while approaching it."
+                    )
+                    plan_lines.append(
                         "HARD STOP: The endpoint above is the final beat of this scene. "
                         "Do not write any action, dialogue, travel, purchase, departure, "
                         "or aftermath that occurs after that endpoint."
@@ -1784,7 +1795,8 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         "[FINAL SCENE BOUNDARY]",
         "Write only the current scene.",
         "The user's scene direction and the current scene plan define what happens now.",
-        "The current scene endpoint is a hard stop.",
+        "The current scene endpoint is mandatory: reach it before ending the output.",
+        "Do not stop early while merely approaching the endpoint.",
         "When the endpoint happens, end the output immediately.",
         "Do not write the next action, next location, departure, aftermath, or later event after the endpoint.",
         "The scene cast is a closed set. Do not introduce offstage participants.",
