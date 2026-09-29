@@ -1919,8 +1919,12 @@ def build_previous_section_context(max_chars=12000):
         return ""
 
     chapter = state.get("chapter")
+    scene = state.get("scene")
 
     if not isinstance(chapter, int):
+        return ""
+
+    if not isinstance(scene, int) or scene <= 1:
         return ""
 
     chapter_dir = (
@@ -1948,6 +1952,11 @@ def build_previous_section_context(max_chars=12000):
         try:
             number = int(match.group(1))
         except ValueError:
+            continue
+
+        # Only use material from an earlier scene. Never let a rerun
+        # of Scene 1 accidentally inherit a later saved section.
+        if number >= scene:
             continue
 
         candidates.append((number, path))
