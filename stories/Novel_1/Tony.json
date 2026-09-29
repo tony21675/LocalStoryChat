@@ -33,5 +33,13 @@
     "Information other characters have not shared with him.",
     "Private thoughts or feelings of other characters unless they reveal them."
   ],
-  "knowledge_rule": "Only knows what he personally experienced, was told, or reasonably knows."
+  "knowledge_rule": "Only knows what he personally experienced, was told, or reasonably knows.",
+  "signature_scent": "Clean soap, cedar, worn leather, with the faint trace of motor oil that never quite leaves after working in the garage.",
+  "personality_cues": [
+    "Shows care more often through practical actions than speeches.",
+    "Uses dry, understated humor with people he trusts.",
+    "Stays calm when things around him become stressful.",
+    "Notices when someone needs help before they ask.",
+    "Protective without needing to make every protective instinct obvious."
+  ]
 }
