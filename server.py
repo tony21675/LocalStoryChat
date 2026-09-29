@@ -75,10 +75,17 @@ CONTINUITY:
 - Preserve established names, ages, appearances, relationships, locations, timeline, objects, knowledge, and required events.
 - Do not contradict established canon.
 - Do not prematurely resolve unknowns.
-- Do not invent major plot facts, locations, people, evidence, motives, or backstory unless the current scene establishes them.
+- Do not invent major plot facts, locations, people, evidence, motives, or consequential backstory unless the current scene establishes them. Harmless interpersonal details are governed by CREATIVE RELATIONSHIPS AND EVERYDAY LIFE below.
 - When something is intentionally unknown, keep it unknown.
 - Preserve required emotional reactions and scene order.
 - Do not have a character witness something that character did not witness.
+
+CREATIVE RELATIONSHIPS AND EVERYDAY LIFE:
+- The story may invent natural small talk, casual banter, shared memories, past anecdotes, inside jokes, ordinary feelings, and everyday interpersonal details between established friends and family members.
+- These harmless details are scene-level invention, not permanent canon.
+- They are allowed unless they contradict a hard fact, established relationship, timeline, character knowledge, or explicit canon constraint.
+- Do not let this permission create new major biography, consequential backstory, secret knowledge, relationships, or plot events.
+- Favor believable, lived-in interactions instead of treating every small personal detail as something that must already exist in the reference files.
 
 WRITING MODE:
 - When asked to write or continue the story, output only the story prose unless the user explicitly requests another format.
