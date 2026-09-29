@@ -263,18 +263,18 @@ def merge_active_module_files(active_modules):
 SYSTEM_PROMPT = r'''You are the prose writer for an ongoing contemporary American novel.
 
 Write only the story itself.
-Use the supplied scene context as factual continuity.
-Characters should know only what their current knowledge supports.
-Stay within the user's requested scene and do not advance beyond it unless the user asks you to.
-Only characters named in the scene cast are physically present.
-Treat current_state.json's location and movement as hard present-tense boundaries. If it says a character has not reached a destination, do not write that character arriving there unless the user explicitly asks for the arrival.
-Keep the story grounded in the user's requested direction and the established present situation.
-Let ordinary conversation, action, humor, memory, emotion, and small observations unfold naturally.
-Use each character's personality cues to shape what they notice, say, do, and how they react. Show personality through behavior and dialogue rather than explicitly explaining it to the reader.
-A character's signature scent is a subtle sensory identifier. Mention it only when it fits naturally, such as close physical proximity, shared space, clothing, or a moment when another character would realistically notice it. Do not repeatedly announce or describe a character's scent just because it is available in context.
+Treat the supplied character cards, story facts, current scene state, current scene plan, and active scene module as factual story context.
+The user's scene direction tells you what happens in this scene. Follow it.
+The current scene plan, when supplied, defines the intended direction and stopping point for this scene.
+The scene cast is a closed set. Characters not in the cast cannot appear, speak, call, text, arrive, or participate unless the user explicitly requests them.
+Do not change established time, location, relationships, character history, or other consequential facts merely because a different detail would seem plausible.
+Do not invent consequential events, backstory, information, or plot developments to fill space.
+Natural small talk, humor, shared memories, ordinary feelings, sensory detail, and temporary actions are welcome when they fit the established characters and do not change consequential story facts.
+Use personality cues to shape behavior, dialogue, humor, and reactions. Show personality through the scene rather than explaining it.
+Use signature scents sparingly and only when naturally noticeable.
+Stay inside the current scene and stop at its defined endpoint. Do not jump to the next location or later event unless the user's direction explicitly requires it.
 Do not explain the writing task, mention prompts or context, use screenplay formatting, add headings, or address the reader.
 
-The story engine handles persistent memory separately. Do not turn ordinary scene details into commentary about story state.
 Output only finished story prose.'''
 
 
@@ -295,41 +295,39 @@ STATE_REQUIRED_KEYS = {
     "continuity_requirements",
 }
 
-STATE_SYSTEM_PROMPT = r"""You are a minimal continuity updater for an ongoing fictional story.
+STATE_SYSTEM_PROMPT = r"""You are the scene-state updater for an ongoing fictional story.
 
-Your only job is to record persistent story changes that will matter in later sections.
+Your job is to produce the story state that the next scene should start from.
 
-Return ONLY this JSON object:
+Return ONLY:
 {
   "patch": {},
   "evidence": []
 }
 
-DEFAULT TO NO UPDATE.
-For ordinary dialogue, jokes, school talk, small observations, temporary emotions, gestures, routine movement, and disposable scene details, return:
-{"patch": {}, "evidence": []}
+For every completed section, determine the end-of-section state from the prose.
+Update a character's current location when the prose clearly establishes where that character is at the end of the section.
+Update time when the prose clearly establishes a time change.
+Update current_situation so it briefly describes what is true at the end of the completed section when that has changed.
+Record new character knowledge, completed events, clues, unresolved questions, or objectives only when they are consequential and clearly established.
 
-Never copy or summarize current_state.json.
-Never repeat unchanged information.
-Never repeat existing array items.
-Never add continuity_requirements unless a genuinely new persistent fact or rule was established.
-Never add active_objectives unless a meaningful lasting objective changed.
-Never add character_knowledge unless a character clearly learned a new consequential fact.
-Never add completed_events for ordinary conversation topics or incidental actions.
-Never add active_clues or unresolved_questions unless a real plot clue or unresolved plot question was established.
+Do not copy unchanged information.
+Do not turn ordinary dialogue, harmless shared memories, routine actions, temporary emotions, or disposable sensory details into permanent canon.
+Do not invent facts that are not established by the completed section.
+
+Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit the change.
+
+Chapter and scene numbers are application bookkeeping supplied by the application. Do not set them yourself.
+The application will advance to the next scene after the proposal is applied.
 
 Allowed top-level patch fields:
 status, chapter, scene, scene_completed, location, time, current_situation,
 character_knowledge, completed_events, active_clues, new_clues,
 unresolved_questions, active_objectives, continuity_requirements.
 
-For arrays, include ONLY new items introduced by this section.
+For arrays, include only genuinely new items.
 
-Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit the change.
-
-Chapter and scene numbers are application bookkeeping. Do not infer scene number from the manuscript section number.
-
-Keep the response extremely small. An empty patch is often the correct answer.
+Keep the response extremely small.
 Do not output markdown, explanations, notes, analysis, or code fences.
 """
 
@@ -337,8 +335,18 @@ pending_state = None
 STORY_SAVE_LOCK = threading.Lock()
 
 
-def next_story_section_path(chapter):
+def next_story_section_path(chapter, scene=None):
     chapter_dir = MANUSCRIPT_DIR / "Chapters" / f"Chapter_{chapter:02d}"
+
+    if isinstance(scene, int) and scene >= 1:
+        preferred_name = (
+            f"Chapter_{chapter:02d}_Section_{scene:02d}.txt"
+        )
+        preferred_path = chapter_dir / preferred_name
+
+        if not preferred_path.exists():
+            return scene, preferred_name, preferred_path
+
     highest_section = 0
 
     if chapter_dir.is_dir():
@@ -868,68 +876,8 @@ def extract_json_with_keys(text, required_keys):
 
 
 def _filter_unestablished_location_changes(base, patch, story_text):
-    """Do not let state advance physical location without explicit arrival."""
-    if not isinstance(patch, dict):
-        return patch
-
-    base_location = base.get("location")
-    patch_location = patch.get("location")
-
-    if not isinstance(base_location, dict) or not isinstance(patch_location, dict):
-        return patch
-
-    normalized_story = _normalize_evidence_text(story_text).lower()
-
-    explicit_arrival = bool(
-        re.search(
-            r"(?:arrived(?: at| home| inside)|reached (?:home|the house|their house|the front door)|entered (?:the house|their house|the home)|went inside|stepped inside)",
-            normalized_story,
-        )
-    )
-
-    if explicit_arrival:
-        return patch
-
-    filtered_location = dict(patch_location)
-
-    for character, old_value in base_location.items():
-        if not isinstance(old_value, str):
-            continue
-
-        old_text = old_value.lower()
-
-        if "not reached" not in old_text:
-            continue
-
-        if character not in filtered_location:
-            continue
-
-        new_value = filtered_location.get(character)
-
-        if new_value != old_value:
-            filtered_location.pop(character, None)
-
-    if filtered_location:
-        patch["location"] = filtered_location
-    else:
-        patch.pop("location", None)
-
-    base_situation = str(base.get("current_situation", "")).lower()
-    proposed_situation = patch.get("current_situation")
-
-    if (
-        "not reached" in base_situation
-        and isinstance(proposed_situation, str)
-        and re.search(
-            r"(?:arrived|reached|inside|entered)",
-            proposed_situation.lower(),
-        )
-    ):
-        patch.pop("current_situation", None)
-
+    """Location is current scene state and is already evidence-checked upstream."""
     return patch
-
-
 def generate_state_proposal(
     story_text,
     section_filename=None,
@@ -948,18 +896,54 @@ def generate_state_proposal(
     section_chapter = None
     section_number = None
 
-    if section_filename:
-        match = re.search(
-            r"^Chapter_(\d+)_Section_(\d+)\.txt$",
-            str(section_filename).strip(),
-            re.IGNORECASE
+    if not section_filename:
+        raise ValueError(
+            "Save the completed story section before updating story memory."
         )
 
-        if match:
-            section_chapter = int(match.group(1))
-            section_number = int(match.group(2))
+    match = re.search(
+        r"^Chapter_(\d+)_Section_(\d+)\.txt$",
+        str(section_filename).strip(),
+        re.IGNORECASE
+    )
 
-    prompt = f"""Update story state ONLY when this completed story section establishes a persistent change.
+    if not match:
+        raise ValueError(
+            "A saved manuscript section filename is required to advance story state."
+        )
+
+    section_chapter = int(match.group(1))
+    section_number = int(match.group(2))
+
+    if (
+        section_chapter < current_state.get("chapter", section_chapter)
+    ):
+        raise ValueError(
+            "The selected manuscript section is older than the current story state."
+        )
+
+    current_chapter = current_state.get("chapter")
+    current_scene = current_state.get("scene")
+
+    if (
+        section_chapter == current_chapter
+        and isinstance(current_scene, int)
+        and section_number != current_scene
+    ):
+        if section_number < current_scene:
+            raise ValueError(
+                "The selected manuscript section is older than the current story scene."
+            )
+        raise ValueError(
+            f"The selected manuscript section is Scene {section_number}, "
+            f"but the current story state expects Scene {current_scene}."
+        )
+
+    completed_chapter = section_chapter
+    completed_scene = section_number
+    next_scene = completed_scene + 1
+
+    prompt = f"""Update the story state after completing Chapter {completed_chapter}, Scene {completed_scene}.
 
 CURRENT STATE BEFORE THIS SECTION:
 {json.dumps(current_state, ensure_ascii=False, indent=2)}
@@ -967,23 +951,21 @@ CURRENT STATE BEFORE THIS SECTION:
 COMPLETED STORY SECTION:
 {story_text}
 
-REQUESTED NARRATIVE POSITION:
-Chapter {requested_chapter if isinstance(requested_chapter, int) else current_state.get("chapter")} / Scene {requested_scene if isinstance(requested_scene, int) else current_state.get("scene")}
-
-Return ONLY:
+Produce ONLY:
 {{"patch": {{}}, "evidence": []}}
 
 Rules:
-- Default to an empty patch for ordinary scene material.
-- Return only genuinely new or changed persistent information.
-- Do not copy, summarize, or restate current_state.
-- Do not add ordinary conversation topics, temporary observations, routine actions, or disposable details to state.
-- Do not create new clues or questions unless the section clearly makes them plot-relevant.
-- For array fields, include only new items.
+- Determine the end-of-section state from the completed prose.
+- Update current locations when the prose clearly establishes where characters are at the end.
+- Update time only when the prose clearly establishes a change.
+- Update current_situation when the end of the section materially changes what is true now.
+- Record only consequential new knowledge, completed events, clues, unresolved questions, objectives, or continuity facts.
+- Do not copy unchanged state.
+- Do not turn harmless small talk, shared memories, routine actions, temporary emotions, or disposable sensory detail into permanent canon.
 - Every substantive patch item needs one short exact contiguous quote from the completed story section.
 - If a proposed change cannot be directly quoted, omit it.
-- The application supplies Chapter/Scene bookkeeping separately. Do not infer scene number from the manuscript section number.
-- Keep the response extremely small. Empty patch is preferred when nothing important changed.
+- Do not set chapter, scene, scene_completed, or status. The application supplies those bookkeeping fields after validation.
+- Keep the response extremely small.
 - Output no markdown or explanation.
 """
 
@@ -1124,25 +1106,11 @@ Rules:
             for misplaced in current_characters:
                 patch.pop(misplaced, None)
 
-        if section_chapter is not None:
-            if section_chapter < current_state.get("chapter", section_chapter):
-                raise ValueError(
-                    "Selected manuscript section is older than the current story state."
-                )
-
-        if isinstance(requested_chapter, int):
-            if requested_chapter < current_state.get("chapter", requested_chapter):
-                raise ValueError(
-                    "Requested narrative chapter is earlier than the current story state."
-                )
-            patch["chapter"] = requested_chapter
-
-        if isinstance(requested_scene, int):
-            if requested_scene < 1:
-                raise ValueError(
-                    "Requested narrative scene must be at least 1."
-                )
-            patch["scene"] = requested_scene
+        # Scene bookkeeping is application-owned. The language model cannot change it.
+        patch.pop("chapter", None)
+        patch.pop("scene", None)
+        patch.pop("scene_completed", None)
+        patch.pop("status", None)
 
         patch = _filter_patch_to_supported_evidence(
             current_state,
@@ -1169,6 +1137,10 @@ Rules:
             patch
         )
 
+        proposed["chapter"] = completed_chapter
+        proposed["scene"] = next_scene
+        proposed["scene_completed"] = False
+        proposed["status"] = "in_progress"
         proposed["new_clues"] = patch.get("new_clues", [])
 
         validate_state(proposed)
@@ -1583,12 +1555,11 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         if guidance_lines:
             lines += ["", "[RECURRING WRITING GUIDANCE]"] + guidance_lines
 
-        # Early-scene pacing is conditional so later scenes do not receive
-        # knowledge about future structure they do not need yet.
         chapter = state.get("chapter")
         scene = state.get("scene")
         scene_limits = guidance.get("scene_limits")
         scene_plan = guidance.get("scene_plan")
+
         if (
             chapter == 1
             and scene in (1, 2)
@@ -1606,8 +1577,7 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                 ]
 
         if (
-            chapter == 1
-            and scene in (1, 2)
+            isinstance(scene, int)
             and isinstance(scene_plan, dict)
         ):
             current_plan = scene_plan.get(str(scene))
@@ -1617,9 +1587,9 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                 end_condition = current_plan.get("end_condition")
 
                 if direction:
-                    plan_lines.append(f"Destination / activity: {direction}")
+                    plan_lines.append(f"Direction: {direction}")
                 if end_condition:
-                    plan_lines.append(f"Scene boundary: {end_condition}")
+                    plan_lines.append(f"Stop when: {end_condition}")
                 pacing = current_plan.get("pacing")
                 if pacing:
                     plan_lines.append(f"Pacing: {pacing}")
@@ -1752,7 +1722,7 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
             "",
             "[OFFSTAGE CHARACTERS]",
             "- " + ", ".join(offstage_names),
-            "These characters are not physically present in this scene. They may be mentioned briefly only when natural, but they must not enter, interact, be observed directly, or become a focus of the scene unless the user explicitly requests it.",
+            "These characters are unavailable as scene participants. Do not have them enter, speak, call, text, send messages, or provide new information. A phone call or message counts as participation. Mention an offstage character only when needed for an established relationship or fact, unless the user explicitly requests that character's participation.",
         ]
 
     active_module_data = []
@@ -1768,8 +1738,24 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
 
     if active_module_data:
         lines += ["", "[ACTIVE STORY MODULES]"]
+        current_scene = state.get("scene")
         for module_data in active_module_data:
-            lines.append(_compact_json(module_data))
+            module_view = {
+                "id": module_data.get("id"),
+                "name": module_data.get("name"),
+                "purpose": module_data.get("purpose"),
+            }
+
+            scene_guidance = module_data.get("scene_guidance")
+            if isinstance(scene_guidance, dict):
+                current_guidance = scene_guidance.get(str(current_scene))
+                if isinstance(current_guidance, dict):
+                    module_view["current_scene"] = current_guidance
+            elif isinstance(module_data.get("writer_context"), dict):
+                module_view["current_scene"] = module_data["writer_context"]
+
+            if len(module_view) > 3:
+                lines.append(_compact_json(module_view))
 
     completed = state.get("completed_events")
     if isinstance(completed, list) and completed:
@@ -1789,11 +1775,12 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
     lines += [
         "",
         "[FINAL SCENE BOUNDARY]",
-        "Write only the requested scene.",
-        "Do not advance the cast to a new location unless the user asks for it.",
-        "Do not manufacture a plot development simply to make the scene more dramatic.",
-        "Do not turn background facts into the main subject unless the user asks for them.",
-        "Only the selected scene cast can physically participate.",
+        "Write only the current scene.",
+        "The user's scene direction and the current scene plan define what happens now.",
+        "Stop at the current scene plan's endpoint when one is supplied.",
+        "The scene cast is a closed set. Do not introduce offstage participants.",
+        "Do not change established time, location, relationships, or consequential facts unless the current scene direction or active scene module explicitly establishes the change.",
+        "Natural harmless detail is welcome; consequential invention is not.",
         "",
         "[END WRITER CONTEXT]",
     ]
@@ -2587,7 +2574,8 @@ class Handler(BaseHTTPRequestHandler):
                     ),
                     "next_save_section": (
                         next_story_section_path(
-                            read_current_state().get("chapter")
+                            read_current_state().get("chapter"),
+                            read_current_state().get("scene"),
                         )[0]
                         if STATE_PATH.exists()
                         and isinstance(read_current_state().get("chapter"), int)
@@ -3290,7 +3278,8 @@ class Handler(BaseHTTPRequestHandler):
                         )
                 else:
                     _, filename, path_out = next_story_section_path(
-                        chapter
+                        chapter,
+                        scene,
                     )
 
                 with STORY_SAVE_LOCK:
