@@ -2117,9 +2117,19 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         lines += [
             "",
             "[LOCKED CHARACTER FACTS]",
-            "These facts are established canon. Never write a contradictory fact unless the user explicitly changes the canon.",
+            "These are hard canon facts. They override plausibility, improvisation, and invented backstory. Never contradict them.",
         ]
         lines.extend(f"- {fact}" for fact in deduped_locked_facts)
+
+    if active_names:
+        lines += [
+            "",
+            "[CANON PRIORITY]",
+            "Do not revive a deceased parent, change a parent-child relationship, change a friendship into a family relationship, or invent a contradictory family history.",
+            "Tiffany's mother, if established as deceased in the character card or story bible, is deceased in the story. Do not write as though she is alive.",
+            "Tony is Tiffany's father. Maya is Tiffany's longtime friend, not Tony's child.",
+            "Tiffany and Maya's relationship is platonic and sister-like.",
+        ]
 
     if offstage_names:
         lines += [
