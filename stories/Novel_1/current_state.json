@@ -13,7 +13,7 @@
     "period": "late afternoon",
     "exact_time": "not established"
   },
-  "current_situation": "Chapter 1 is beginning. Tony is at home taking a nap. Tiffany and Maya are walking home from school together along the front road and have not reached Tony and Tiffany's home yet. Tony is not currently interacting with them. Maya lives with her mother in her own separate home next door to Tony and Tiffany. Tiffany's mother died while giving birth to Tiffany, so Tiffany never knew her mother personally. At the start of the story Tiffany and Maya are safe and focused on their ordinary immediate activities.",
+  "current_situation": "Chapter 1 is beginning. Tony is at home taking a nap. Tiffany and Maya are walking home from school together along the front road and have not reached Tony and Tiffany's home yet. Tony is not currently interacting with them. Maya lives with her mother in her own separate home next door to Tony and Tiffany. Tiffany's mother died while giving birth to Tiffany, so Tiffany never knew her mother personally. At the start of the story, everyone is simply occupied with their ordinary immediate activities.",
   "character_knowledge": {
     "Tony": [
       "Knows Tiffany is his daughter.",
@@ -46,7 +46,6 @@
     "Chapter 1 begins here.",
     "Tony and Tiffany live together in the same house.",
     "Maya lives with her mother in her own separate home next door to Tony and Tiffany.",
-    "Tiffany is safe at the start of the story.",
     "Tiffany and Maya are walking home from school together.",
     "Tiffany and Maya have not reached Tony and Tiffany's house yet.",
     "Maya and Tiffany are best friends with a close, sister-like platonic relationship.",
