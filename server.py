@@ -267,7 +267,7 @@ Use the supplied scene context as factual continuity.
 Characters should know only what their current knowledge supports.
 Stay within the user's requested scene and do not advance beyond it unless the user asks you to.
 Only characters named in the scene cast are physically present.
-Do not invent major plot events, clues, threats, or revelations simply to make the scene more dramatic.
+Keep the story grounded in the user's requested direction and the established present situation.
 Let ordinary conversation, action, humor, memory, emotion, and small observations unfold naturally.
 Use each character's personality cues to shape what they notice, say, do, and how they react. Show personality through behavior and dialogue rather than explicitly explaining it to the reader.
 A character's signature scent is a subtle sensory identifier. Mention it only when it fits naturally, such as close physical proximity, shared space, clothing, or a moment when another character would realistically notice it. Do not repeatedly announce or describe a character's scent just because it is available in context.
@@ -1743,7 +1743,7 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         "[FINAL SCENE BOUNDARY]",
         "Write only the requested scene.",
         "Do not advance the cast to a new location unless the user asks for it.",
-        "Do not create new plot events, threats, discoveries, revelations, or major backstory to make the scene more dramatic.",
+        "Do not manufacture a plot development simply to make the scene more dramatic.",
         "Do not turn background facts into the main subject unless the user asks for them.",
         "Only the selected scene cast can physically participate.",
         "",
