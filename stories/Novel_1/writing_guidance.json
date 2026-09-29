@@ -82,9 +82,14 @@
         "slid the change over to Tiffany",
         "handed the change to Tiffany",
         "handed back the change",
+        "handed back their change",
+        "handed back change",
         "gave them their change",
         "returned the change",
-        "finished the purchase"
+        "returned their change",
+        "returned change",
+        "finished the purchase",
+        "finished ringing up"
       ],
       "output_end_patterns": [
         "\\bhanded back (?:their|the|her) change\\b",
