@@ -9,7 +9,9 @@
     "Treat harmless invented relationship details as scene-level creative material, not permanent canon.",
     "Use personality cues to shape behavior, dialogue, humor, reactions, and what characters notice. Show personality instead of explaining it.",
     "Use signature scents only as occasional, natural sensory details. Do not mention a scent simply because it is available in the character data.",
-    "Keep the scene grounded in the user's direction and the established present situation."
+    "Keep the scene grounded in the user's direction and the established present situation.",
+    "Show relationships through behavior, dialogue, shared routines, and natural interaction instead of explaining relationship labels to the reader.",
+    "Do not add ominous narration or imply that an unseen event is coming when the current scene gives no reason for it."
   ],
   "relationship_freedom": [
     "Characters may casually refer to plausible shared experiences from their established relationship.",
@@ -22,8 +24,8 @@
     "Do not manufacture a major plot development merely to add drama."
   ],
   "scene_limits": [
-    "For Chapter 1 Scene 1 and Scene 2, keep Tiffany and Maya walking home from school together. The scene should remain focused on their walk, conversation, and ordinary interaction.",
-    "During Chapter 1 Scene 1 and Scene 2, do not have them arrive home or introduce a major change to their ordinary activity unless the user explicitly directs it.",
-    "When the story reaches Chapter 1 Scene 3, follow the user's scene direction for what happens next rather than relying on this early-walk guidance."
+    "For Chapter 1 Scene 1 and Scene 2, keep Tiffany and Maya walking home from school together.",
+    "For Chapter 1 Scene 1 and Scene 2, keep the action centered on their walk and ordinary conversation. Do not write them arriving home unless the user explicitly directs the arrival.",
+    "When the story reaches Chapter 1 Scene 3, follow the user's direction for that scene and do not carry these early-scene limits forward automatically."
   ]
 }
