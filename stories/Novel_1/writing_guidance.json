@@ -78,8 +78,9 @@
       "end_condition": "HARD STOP after they have finished the purchase, left the store, and stepped outside into the bright afternoon. The sun is in their eyes, so Tiffany and Maya put on their sunglasses. End immediately after they are outside with their drinks and sunglasses on. Do not begin walking home or continue the conversation after this endpoint.",
       "pacing": "Give the gas-station stop its own scene and let the conversation breathe. After the purchase, let them step outside naturally and use the bright sunlight and sunglasses as the physical ending beat.",
       "output_end_patterns": [
-        "\\b(?:put|puts|pulled|pulls|slipped|slips|placed|places|settled|settles|adjusted|adjusts|slid|slides)\\s+(?:(?:on\\s+)?(?:their|her|his|the)\\s+(?:sunglasses|shades)|(?:their|her|his|the)?\\s*(?:sunglasses|shades)|them)\\s+(?:on|over\\s+(?:their|her|his)\\s+(?:eyes|face))\\b",
-        "\\b(?:put|puts|pulled|pulls|slipped|slips|placed|places|settled|settles|adjusted|adjusts|slid|slides)\\s+(?:their|her|his)\\s+(?:sunglasses|shades)\\s*(?:on|over\\s+(?:their|her|his)\\s+(?:eyes|face))?\\b",
+        "\\b(?:put|puts|putting|slip|slips|slipped|slipping|pull|pulls|pulled|pulling|place|places|placed|placing|settle|settles|settled|settling|adjust|adjusts|adjusted|adjusting|slide|slides|slid|sliding)\\s+(?:(?:their|her|his|the)\\s+)?(?:sunglasses|shades)\\s+(?:on|onto|over)\\b",
+        "\\b(?:put|puts|putting|slip|slips|slipped|slipping|pull|pulls|pulled|pulling|place|places|placed|placing|settle|settles|settled|settling|adjust|adjusts|adjusted|adjusting|slide|slides|slid|sliding)\\s+(?:them|these)\\s+(?:on|onto|over)\\b",
+        "\\b(?:put|puts|putting|slip|slips|slipped|slipping|pull|pulls|pulled|pulling|place|places|placed|placing|settle|settles|settled|settling|adjust|adjusts|adjusted|adjusting|slide|slides|slid|sliding)\\s+(?:their|her|his)\\s+(?:sunglasses|shades)\\s+(?:over|onto)\\s+(?:their|her|his)\\s+(?:eyes|face)\\b",
         "\\b(?:their|her|his)\\s+(?:sunglasses|shades)\\s+(?:went|go|were|are|settled|sat)\\s+on\\b"
       ],
       "endpoint_markers": [
