@@ -1588,6 +1588,7 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         chapter = state.get("chapter")
         scene = state.get("scene")
         scene_limits = guidance.get("scene_limits")
+        scene_plan = guidance.get("scene_plan")
         if (
             chapter == 1
             and scene in (1, 2)
@@ -1603,6 +1604,28 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                     f"- {item}"
                     for item in early_limits[:2]
                 ]
+
+        if (
+            chapter == 1
+            and scene in (1, 2)
+            and isinstance(scene_plan, dict)
+        ):
+            current_plan = scene_plan.get(str(scene))
+            if isinstance(current_plan, dict):
+                plan_lines = []
+                direction = current_plan.get("direction")
+                end_condition = current_plan.get("end_condition")
+
+                if direction:
+                    plan_lines.append(f"Destination / activity: {direction}")
+                if end_condition:
+                    plan_lines.append(f"Scene boundary: {end_condition}")
+
+                if plan_lines:
+                    lines += ["", "[CURRENT SCENE PLAN]"] + [
+                        f"- {item}"
+                        for item in plan_lines
+                    ]
 
     if isinstance(state.get("chapter"), int):
         lines.append(f"Chapter: {state.get('chapter')}")
