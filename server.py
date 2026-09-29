@@ -324,6 +324,7 @@ Do not copy unchanged information.
 Do not turn ordinary dialogue, harmless shared memories, routine actions, temporary emotions, or disposable sensory details into permanent canon.
 Do not invent facts that are not established by the completed section.
 
+For evidence records, use the exact dotted state field when possible, such as "location.Tiffany" or "location.Maya". The claim must be the proposed value for that field, and quote must be one short exact contiguous quote copied from the completed story section. For location changes, a parent field of "location" with a string claim matching the proposed location is also acceptable.
 Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit the change.
 
 Chapter and scene numbers are application bookkeeping supplied by the application. Do not set them yourself.
@@ -591,12 +592,23 @@ def _filter_patch_to_supported_evidence(base, patch, story_text, evidence):
             if normalized_quote not in normalized_story:
                 continue
 
+            normalized_field = field.strip()
+            normalized_claim_key = _claim_key(claim)
+
             valid_evidence.add(
                 (
-                    field.strip(),
-                    _claim_key(claim)
+                    normalized_field,
+                    normalized_claim_key
                 )
             )
+
+            if normalized_field == "location" and isinstance(claim, str):
+                valid_evidence.add(
+                    (
+                        "location.__parent__",
+                        normalized_claim_key
+                    )
+                )
 
     def keep_value(base_value, value, path):
         top_level = path.split(".", 1)[0]
@@ -654,10 +666,17 @@ def _filter_patch_to_supported_evidence(base, patch, story_text, evidence):
         if value == base_value:
             return False, None
 
-        return (
-            (path, _claim_key(value)) in valid_evidence,
-            value
-        )
+        exact_key = (path, _claim_key(value))
+
+        if exact_key in valid_evidence:
+            return True, value
+
+        if path.startswith("location."):
+            parent_key = ("location.__parent__", _claim_key(value))
+            if parent_key in valid_evidence:
+                return True, value
+
+        return False, value
 
     filtered = {}
 
@@ -1036,6 +1055,9 @@ Then check the COMPLETED SCENE PLAN. Set endpoint_reached to true only if the pr
 For Scene 1, "approaching the gas station" is not the same as "arrived at the gas station."
 For an endpoint that requires arrival, the final prose must clearly establish arrival.
 
+For every location change, provide evidence using the exact dotted field when possible, for example:
+{"field":"location.Tiffany","claim":"At the gas station entrance","quote":"They approached the station's entrance."}
+A parent-level "location" evidence record with the same string claim is also acceptable.
 Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit that item.
 Do not set chapter, scene, scene_completed, or status. The application supplies those bookkeeping fields after validation.
 Keep the response extremely small.
