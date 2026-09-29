@@ -985,10 +985,30 @@ def generate_state_proposal(
     completed_scene = section_number
     next_scene = completed_scene + 1
 
+    guidance = {}
+    guidance_path = STORY_DIR / "writing_guidance.json"
+    if guidance_path.is_file():
+        try:
+            guidance = json.loads(
+                guidance_path.read_text(encoding="utf-8")
+            )
+        except Exception:
+            guidance = {}
+
+    completed_scene_plan = {}
+    scene_plan = guidance.get("scene_plan")
+    if isinstance(scene_plan, dict):
+        candidate_plan = scene_plan.get(str(completed_scene))
+        if isinstance(candidate_plan, dict):
+            completed_scene_plan = candidate_plan
+
     prompt = f"""Update the story state after completing Chapter {completed_chapter}, Scene {completed_scene}.
 
 CURRENT STATE BEFORE THIS SECTION:
 {json.dumps(current_state, ensure_ascii=False, indent=2)}
+
+COMPLETED SCENE PLAN:
+{json.dumps(completed_scene_plan, ensure_ascii=False, indent=2)}
 
 COMPLETED STORY SECTION:
 {story_text}
@@ -996,21 +1016,23 @@ COMPLETED STORY SECTION:
 Produce ONLY:
 {{"patch": {{}}, "evidence": []}}
 
-Rules:
-- Determine the end-of-section state from the completed prose.
-- Read the final paragraph first when deciding where the characters are at the end.
-- Compare each character's end location with CURRENT STATE BEFORE THIS SECTION.
-- If the prose clearly places a character somewhere new, include that location change in the patch even when the change is ordinary movement.
-- Update time only when the prose clearly establishes a change.
-- Update current_situation when the end of the section materially changes what is true now.
-- Record only consequential new knowledge, completed events, clues, unresolved questions, objectives, or continuity facts.
-- Do not copy unchanged state.
-- Do not turn harmless small talk, shared memories, routine actions, temporary emotions, or disposable sensory detail into permanent canon.
-- Every substantive patch item needs one short exact contiguous quote from the completed story section.
-- If a proposed change cannot be directly quoted, omit it.
-- Do not set chapter, scene, scene_completed, or status. The application supplies those bookkeeping fields after validation.
-- Keep the response extremely small.
-- Output no markdown or explanation.
+Follow this procedure in order:
+1. Read the final paragraph and final actions first.
+2. Compare the final state of every active character with CURRENT STATE BEFORE THIS SECTION.
+3. Identify ordinary movement as well as consequential changes. A location change is still a real state change.
+4. If the prose clearly establishes a new location for a character, you MUST include that character's location in the patch.
+5. Update current_situation when the end of the section materially changes what is true now.
+6. Record completed_events only for events that are genuinely useful to continuity.
+7. Do not copy unchanged values into the patch.
+
+A non-empty patch is expected whenever the completed prose clearly changes the present state.
+For example, if CURRENT STATE says a character is "at school" and the final paragraph clearly says the character has reached a gas station, the patch must change that character's location to the gas station and provide an exact supporting quote.
+Do not return an empty patch merely because the location change is ordinary or because the section contains mostly normal conversation.
+
+Every substantive patch item needs one short exact contiguous evidence quote copied from the completed story section. If it cannot be directly quoted, omit that item.
+Do not set chapter, scene, scene_completed, or status. The application supplies those bookkeeping fields after validation.
+Keep the response extremely small.
+Output no markdown or explanation.
 """
 
     # Run the state manager only after the writer model has been stopped.
@@ -1045,7 +1067,7 @@ Rules:
             "--top-p", "0.90",
             "--repeat-last-n", "256",
             "--repeat-penalty", "1.08",
-            "--n-predict", "600",
+            "--n-predict", "800",
             "--system-prompt", STATE_SYSTEM_PROMPT,
             "--prompt", prompt,
             "--color", "off",
