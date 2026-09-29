@@ -267,6 +267,7 @@ Use the supplied scene context as factual continuity.
 Characters should know only what their current knowledge supports.
 Stay within the user's requested scene and do not advance beyond it unless the user asks you to.
 Only characters named in the scene cast are physically present.
+Treat current_state.json's location and movement as hard present-tense boundaries. If it says a character has not reached a destination, do not write that character arriving there unless the user explicitly asks for the arrival.
 Keep the story grounded in the user's requested direction and the established present situation.
 Let ordinary conversation, action, humor, memory, emotion, and small observations unfold naturally.
 Use each character's personality cues to shape what they notice, say, do, and how they react. Show personality through behavior and dialogue rather than explicitly explaining it to the reader.
