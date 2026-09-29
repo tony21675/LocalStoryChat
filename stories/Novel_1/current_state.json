@@ -6,14 +6,14 @@
   "location": {
     "primary": "Tony and Tiffany's home",
     "Tony": "At home, asleep and taking a nap.",
-    "Tiffany": "Walking home from school with Maya and has not reached Tony and Tiffany's house yet.",
-    "Maya": "Walking home from school with Tiffany and has not reached Tony and Tiffany's house yet."
+    "Tiffany": "At school with Maya, preparing to leave for the nearby gas station.",
+    "Maya": "At school with Tiffany, preparing to leave for the nearby gas station."
   },
   "time": {
     "period": "late afternoon",
     "exact_time": "not established"
   },
-  "current_situation": "Chapter 1 is beginning. Tony is at home taking a nap. Tiffany and Maya are walking home from school together along the front road and have not reached Tony and Tiffany's home yet. Tony is not currently interacting with them. Maya lives with her mother in her own separate home next door to Tony and Tiffany. Tiffany's mother died while giving birth to Tiffany, so Tiffany never knew her mother personally. At the start of the story, everyone is simply occupied with their ordinary immediate activities.",
+  "current_situation": "Chapter 1 is beginning. Tony is at home taking a nap. Tiffany and Maya are still at school and are preparing to leave together for the nearby gas station. Tony is not currently interacting with them. Maya lives with her mother in her own separate home next door to Tony and Tiffany. Tiffany's mother died while giving birth to Tiffany, so Tiffany never knew her mother personally. At the start of the story, everyone is simply occupied with their ordinary immediate activities.",
   "character_knowledge": {
     "Tony": [
       "Knows Tiffany is his daughter.",
@@ -39,15 +39,15 @@
   "unresolved_questions": [],
   "active_objectives": {
     "Tony": "Remain at home and rest.",
-    "Tiffany": "Walk home with Maya, enjoy their conversation, and get home normally.",
-    "Maya": "Walk home with Tiffany, enjoy their conversation, and get home normally."
+    "Tiffany": "Leave school with Maya and walk together to the nearby gas station.",
+    "Maya": "Leave school with Tiffany and walk together to the nearby gas station."
   },
   "continuity_requirements": [
     "Chapter 1 begins here.",
     "Tony and Tiffany live together in the same house.",
     "Maya lives with her mother in her own separate home next door to Tony and Tiffany.",
-    "Tiffany and Maya are walking home from school together.",
-    "Tiffany and Maya have not reached Tony and Tiffany's house yet.",
+    "Tiffany and Maya are at school at the start of Chapter 1 and are preparing to leave together.",
+    "Tiffany and Maya have not yet arrived at the gas station.",
     "Maya and Tiffany are best friends with a close, sister-like platonic relationship.",
     "Tiffany's mother died while giving birth to Tiffany, so Tiffany never knew her mother personally.",
     "Only characters explicitly listed for a scene are physically present and participating in that scene.",
