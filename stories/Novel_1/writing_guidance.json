@@ -27,5 +27,15 @@
     "For Chapter 1 Scene 1 and Scene 2, keep Tiffany and Maya walking home from school together.",
     "For Chapter 1 Scene 1 and Scene 2, keep the action centered on their walk and ordinary conversation. Do not write them arriving home unless the user explicitly directs the arrival.",
     "When the story reaches Chapter 1 Scene 3, follow the user's direction for that scene and do not carry these early-scene limits forward automatically."
-  ]
+  ],
+  "scene_plan": {
+    "1": {
+      "direction": "Tiffany and Maya make a brief stop at a nearby gas station on the way home to get sodas.",
+      "end_condition": "Keep this scene centered on the stop at the gas station and their ordinary interaction there. Do not continue the trip all the way home."
+    },
+    "2": {
+      "direction": "After the gas station, Tiffany and Maya resume walking home together.",
+      "end_condition": "Keep this scene centered on their walk home. Let the walk unfold naturally and do not rush them to the house."
+    }
+  }
 }
