@@ -932,6 +932,41 @@ def extract_json_with_keys(text, required_keys):
 def _filter_unestablished_location_changes(base, patch, story_text):
     """Location is current scene state and is already evidence-checked upstream."""
     return patch
+
+
+def _clean_stale_continuity_requirements(requirements, location):
+    if not isinstance(requirements, list):
+        return requirements
+
+    location_text = " ".join(
+        str(value).lower()
+        for value in (location.values() if isinstance(location, dict) else [])
+    )
+
+    cleaned = []
+
+    for item in requirements:
+        item_text = str(item).strip()
+        lowered = item_text.lower()
+
+        if (
+            "at school at the start" in lowered
+            and "gas station" in location_text
+        ):
+            continue
+
+        if (
+            "have not yet arrived at the gas station" in lowered
+            and "gas station" in location_text
+        ):
+            continue
+
+        if item_text and item_text not in cleaned:
+            cleaned.append(item_text)
+
+    return cleaned
+
+
 def find_saved_section_for_current_scene():
     """Return the saved manuscript section for the current state scene."""
     state = read_current_state()
@@ -1405,6 +1440,13 @@ Output no markdown or explanation.
             patch
         )
 
+        proposed["continuity_requirements"] = (
+            _clean_stale_continuity_requirements(
+                proposed.get("continuity_requirements", []),
+                proposed.get("location"),
+            )
+        )
+
         # Scene plans may define small, authoritative end-state fields that
         # must replace stale per-scene values rather than merge with them.
         if isinstance(completed_scene_plan, dict):
@@ -1413,6 +1455,13 @@ Output no markdown or explanation.
                 for field in authoritative_fields:
                     if field in plan_state_after:
                         proposed[field] = plan_state_after[field]
+
+        proposed["continuity_requirements"] = (
+            _clean_stale_continuity_requirements(
+                proposed.get("continuity_requirements", []),
+                proposed.get("location"),
+            )
+        )
 
         proposed["chapter"] = completed_chapter
         proposed["scene"] = next_scene
