@@ -26,12 +26,12 @@
   "scene_plan": {
     "1": {
       "direction": "Start from Tiffany and Maya leaving school and walking along the front road toward a nearby gas station.",
-      "end_condition": "End when they arrive at the gas station. Do not begin the gas-station conversation or have them continue toward home.",
+      "end_condition": "HARD STOP when they arrive at the gas station. Do not enter the store, choose drinks, approach the counter, speak with the cashier, buy anything, leave the gas station, or begin walking home.",
       "pacing": "Spend the scene on the walk from school to the gas station, allowing natural conversation and small everyday observations."
     },
     "2": {
       "direction": "Tiffany and Maya are at the gas station getting sodas. Let them talk naturally with each other and with the attendant.",
-      "end_condition": "End while they are still at the gas station or immediately after the purchase. Do not begin the walk home.",
+      "end_condition": "HARD STOP while they are still at the gas station immediately after the purchase. Do not leave the gas station or begin the walk home.",
       "pacing": "Give the gas-station stop its own scene and let the conversation breathe."
     },
     "3": {
