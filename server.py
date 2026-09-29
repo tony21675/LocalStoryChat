@@ -1027,22 +1027,8 @@ def get_scene_plan(scene_number):
 
 
 def scene_endpoint_marker_reached(story_text, scene_plan):
-    """Use authored endpoint markers as a deterministic supplement to the LLM check."""
+    """Use authored endpoint markers and structured end-state conditions."""
     if not isinstance(scene_plan, dict):
-        return False
-
-    markers = scene_plan.get("endpoint_markers", [])
-
-    if not isinstance(markers, list):
-        return False
-
-    markers = [
-        _normalize_evidence_text(item).lower()
-        for item in markers
-        if _normalize_evidence_text(item)
-    ]
-
-    if not markers:
         return False
 
     paragraphs = [
@@ -1053,7 +1039,38 @@ def scene_endpoint_marker_reached(story_text, scene_plan):
 
     tail = " ".join(paragraphs[-3:]).lower()
 
-    return any(marker in tail for marker in markers)
+    markers = scene_plan.get("endpoint_markers", [])
+    if isinstance(markers, list):
+        for marker in markers:
+            marker_text = _normalize_evidence_text(marker).lower()
+            if marker_text and marker_text in tail:
+                return True
+
+    requirements = scene_plan.get("endpoint_requirements")
+    if isinstance(requirements, dict):
+        all_of = requirements.get("all_of", [])
+
+        if isinstance(all_of, list) and all_of:
+            for group in all_of:
+                if isinstance(group, str):
+                    alternatives = [group]
+                elif isinstance(group, list):
+                    alternatives = group
+                else:
+                    alternatives = []
+
+                terms = [
+                    _normalize_evidence_text(item).lower()
+                    for item in alternatives
+                    if _normalize_evidence_text(item)
+                ]
+
+                if not terms or not any(term in tail for term in terms):
+                    return False
+
+            return True
+
+    return False
 
 
 def generate_state_proposal(
@@ -1153,6 +1170,7 @@ For example, if CURRENT STATE says a character is "at school" and the final para
 Do not return an empty patch merely because the location change is ordinary or because the section contains mostly normal conversation.
 
 Then check the COMPLETED SCENE PLAN. Set endpoint_reached to true only if the prose actually reaches its endpoint. Do not mark it true merely because the characters are approaching the endpoint.
+When the scene plan contains endpoint conditions, every required condition must be clearly true in the final beat of the saved section.
 For Scene 1, "approaching the gas station" is not the same as "arrived at the gas station."
 For an endpoint that requires arrival, the final prose must clearly establish arrival.
 
@@ -1953,6 +1971,18 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                         "Do not write any action, dialogue, travel, purchase, departure, "
                         "or aftermath that occurs after that endpoint."
                     )
+
+                endpoint_requirements = current_plan.get("endpoint_requirements")
+                if isinstance(endpoint_requirements, dict):
+                    plan_lines.append(
+                        "ENDPOINT CONDITIONS: All listed end-state conditions must be true "
+                        "in the final beat of the scene."
+                    )
+                    plan_lines.append(
+                        "Required conditions: "
+                        + _compact_json(endpoint_requirements)
+                    )
+
                 pacing = current_plan.get("pacing")
                 if pacing:
                     plan_lines.append(f"Pacing: {pacing}")
