@@ -72,8 +72,12 @@
       "end_condition": "HARD STOP while they are still at the gas station immediately after the purchase. Do not leave the gas station or begin the walk home.",
       "pacing": "Give the gas-station stop its own scene and let the conversation breathe.",
       "output_end_markers": [
+        "slid the change across the counter",
+        "slid the change over to Tiffany",
+        "handed the change to Tiffany",
         "handed back the change",
         "gave them their change",
+        "returned the change",
         "finished the purchase"
       ]
     },
