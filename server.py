@@ -1956,10 +1956,14 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
             if isinstance(current_plan, dict):
                 plan_lines = []
                 direction = current_plan.get("direction")
+                start_condition = current_plan.get("start_condition")
                 end_condition = current_plan.get("end_condition")
 
                 if direction:
                     plan_lines.append(f"Direction: {direction}")
+
+                if start_condition:
+                    plan_lines.append(f"Start from: {start_condition}")
                 if end_condition:
                     plan_lines.append(f"Stop when: {end_condition}")
                     plan_lines.append(
