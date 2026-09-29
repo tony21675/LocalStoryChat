@@ -1620,6 +1620,9 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                     plan_lines.append(f"Destination / activity: {direction}")
                 if end_condition:
                     plan_lines.append(f"Scene boundary: {end_condition}")
+                pacing = current_plan.get("pacing")
+                if pacing:
+                    plan_lines.append(f"Pacing: {pacing}")
 
                 if plan_lines:
                     lines += ["", "[CURRENT SCENE PLAN]"] + [
