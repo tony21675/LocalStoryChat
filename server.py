@@ -2170,7 +2170,9 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
             "",
             "[OFFSTAGE CHARACTERS]",
             "- " + ", ".join(offstage_names),
-            "These characters are unavailable as scene participants. Do not have them enter, speak, call, text, send messages, or provide new information. A phone call or message counts as participation. Mention an offstage character only when needed for an established relationship or fact, unless the user explicitly requests that character's participation.",
+            "These characters are unavailable as scene participants. Do not have them enter, speak, call, text, send messages, or provide new information. A phone call or message counts as participation.",
+            "SCENE CAST LOCK: Only characters in [SCENE CAST] may physically appear, speak, act, or interact in this scene. Offstage characters must remain offstage. Do not place an offstage character behind a counter, in a room, on the road, in a vehicle, or anywhere else in the scene.",
+            "Mention an offstage character only when needed for an established relationship or fact, unless the user explicitly requests that character's participation.",
         ]
 
     active_module_data = []
@@ -2225,6 +2227,7 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         "[FINAL SCENE BOUNDARY]",
         "Write only the current scene.",
         "The user's scene direction and the current scene plan define what happens now.",
+        "SCENE CAST LOCK: No character outside the named scene cast may physically appear, speak, act, call, text, or participate.",
         "The current scene endpoint is mandatory: reach it before ending the output.",
         "Do not stop early while merely approaching the endpoint.",
         "When the endpoint happens, end the output immediately.",
