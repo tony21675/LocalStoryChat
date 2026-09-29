@@ -75,8 +75,8 @@
     },
     "2": {
       "direction": "Begin with Tiffany and Maya at the gas station entrance where Scene 1 ended. They enter the convenience store, choose sodas, and talk naturally with each other and the attendant. Finish the purchase naturally, including payment and receiving their change. Then let them leave the store and step outside.",
-      "end_condition": "HARD STOP after they have finished the purchase, left the store, and stepped outside into the bright afternoon. The sun is in their eyes, so Tiffany and Maya put on their sunglasses. End immediately after they are outside with their drinks and sunglasses on. Do not begin walking home or continue the conversation after this endpoint.",
-      "pacing": "Begin with their arrival continuing naturally from the previous scene: they are at the entrance, then enter the store. Spend most of the scene on the simple soda stop and natural conversation. After the purchase, let them step outside and use the bright sunlight and sunglasses as the physical ending beat.",
+      "end_condition": "HARD STOP after they have finished the purchase, left the store, and stepped outside into the bright afternoon. The sun is in their eyes, so both Tiffany and Maya put on their sunglasses. End immediately after both girls have their sunglasses on and are standing outside with their drinks. Do not begin walking home or continue the conversation after this endpoint.",
+      "pacing": "Give the gas-station stop its own scene and let the conversation breathe. After the purchase, let them step outside naturally. Use the bright sunlight as the physical ending beat, then have both girls put on their sunglasses and stop immediately.",
       "output_end_patterns": [
         "\\b(?:put|puts|putting|slip|slips|slipped|slipping|pull|pulls|pulled|pulling|place|places|placed|placing|settle|settles|settled|settling|adjust|adjusts|adjusted|adjusting|slide|slides|slid|sliding)\\s+(?:(?:their|her|his|the)\\s+)?(?:sunglasses|shades)\\s+(?:on|onto|over)\\b",
         "\\b(?:put|puts|putting|slip|slips|slipped|slipping|pull|pulls|pulled|pulling|place|places|placed|placing|settle|settles|settled|settling|adjust|adjusts|adjusted|adjusting|slide|slides|slid|sliding)\\s+(?:them|these)\\s+(?:on|onto|over)\\b",
@@ -104,18 +104,26 @@
             "out the door"
           ],
           [
-            "put on sunglasses",
-            "put on shades",
-            "pulled them on",
-            "pulled on sunglasses",
-            "pulled on shades",
-            "slipped them on",
-            "slipped on sunglasses",
-            "slipped on shades",
-            "adjusted sunglasses",
-            "adjusted shades",
-            "settled sunglasses",
-            "settled shades"
+            "Tiffany put on her sunglasses",
+            "Tiffany slipped on her sunglasses",
+            "Tiffany pulled on her sunglasses",
+            "Tiffany put her sunglasses on",
+            "Tiffany slipped her sunglasses on",
+            "Tiffany pulled her sunglasses on",
+            "Tiffany put on her shades",
+            "Tiffany slipped on her shades",
+            "Tiffany put her shades on"
+          ],
+          [
+            "Maya put on her sunglasses",
+            "Maya slipped on her sunglasses",
+            "Maya pulled on her sunglasses",
+            "Maya put her sunglasses on",
+            "Maya slipped her sunglasses on",
+            "Maya pulled her sunglasses on",
+            "Maya put on her shades",
+            "Maya slipped on her shades",
+            "Maya put her shades on"
           ]
         ]
       },
@@ -124,7 +132,7 @@
           "Tiffany": "Outside the gas station.",
           "Maya": "Outside the gas station."
         },
-        "current_situation": "Tiffany and Maya have finished their gas station stop, completed their purchase, stepped outside with their drinks, and put on their sunglasses because the bright afternoon sun is in their eyes. Tony remains at home asleep and is not participating in their scene.",
+        "current_situation": "Tiffany and Maya have finished their gas station stop, completed their purchase, stepped outside with their drinks, and both put on their sunglasses because the bright afternoon sun is in their eyes. Tony remains at home asleep and is not participating in their scene.",
         "active_objectives": {
           "Tony": "Remain at home and rest.",
           "Tiffany": "Leave the gas station with Maya and walk home.",
