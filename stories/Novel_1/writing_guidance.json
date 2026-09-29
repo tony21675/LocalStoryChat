@@ -74,9 +74,9 @@
       ]
     },
     "2": {
-      "direction": "Tiffany and Maya are at the gas station getting sodas. Let them talk naturally with each other and with the attendant. Finish the purchase naturally, including payment and receiving their change.",
+      "direction": "Begin with Tiffany and Maya at the gas station entrance where Scene 1 ended. They enter the convenience store, choose sodas, and talk naturally with each other and the attendant. Finish the purchase naturally, including payment and receiving their change. Then let them leave the store and step outside.",
       "end_condition": "HARD STOP after they have finished the purchase, left the store, and stepped outside into the bright afternoon. The sun is in their eyes, so Tiffany and Maya put on their sunglasses. End immediately after they are outside with their drinks and sunglasses on. Do not begin walking home or continue the conversation after this endpoint.",
-      "pacing": "Give the gas-station stop its own scene and let the conversation breathe. After the purchase, let them step outside naturally and use the bright sunlight and sunglasses as the physical ending beat.",
+      "pacing": "Begin with their arrival continuing naturally from the previous scene: they are at the entrance, then enter the store. Spend most of the scene on the simple soda stop and natural conversation. After the purchase, let them step outside and use the bright sunlight and sunglasses as the physical ending beat.",
       "output_end_patterns": [
         "\\b(?:put|puts|putting|slip|slips|slipped|slipping|pull|pulls|pulled|pulling|place|places|placed|placing|settle|settles|settled|settling|adjust|adjusts|adjusted|adjusting|slide|slides|slid|sliding)\\s+(?:(?:their|her|his|the)\\s+)?(?:sunglasses|shades)\\s+(?:on|onto|over)\\b",
         "\\b(?:put|puts|putting|slip|slips|slipped|slipping|pull|pulls|pulled|pulling|place|places|placed|placing|settle|settles|settled|settling|adjust|adjusts|adjusted|adjusting|slide|slides|slid|sliding)\\s+(?:them|these)\\s+(?:on|onto|over)\\b",
@@ -130,7 +130,8 @@
           "Tiffany": "Leave the gas station with Maya and walk home.",
           "Maya": "Leave the gas station with Tiffany and walk home."
         }
-      }
+      },
+      "start_condition": "Start exactly from the current state: Tiffany and Maya are standing at the gas station entrance. Do not begin with them already inside the store, already leaving the store, or already walking away."
     },
     "3": {
       "direction": "Tiffany and Maya leave the gas station and begin walking home. The kidnapping module is active for this scene, and the kidnapping occurs during this departure and walk.",
