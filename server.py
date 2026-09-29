@@ -270,9 +270,11 @@ The scene cast is a closed set. Characters not in the cast cannot appear, speak,
 Do not change established time, location, relationships, character history, or other consequential facts merely because a different detail would seem plausible.
 Do not invent consequential events, backstory, information, or plot developments to fill space.
 Natural small talk, humor, shared memories, ordinary feelings, sensory detail, and temporary actions are welcome when they fit the established characters and do not change consequential story facts.
+Do not turn an unestablished family situation into implied death, estrangement, illness, absence, or conflict when established facts do not support it.
 Use personality cues to shape behavior, dialogue, humor, and reactions. Show personality through the scene rather than explaining it.
 Use signature scents sparingly and only when naturally noticeable.
-Stay inside the current scene and stop at its defined endpoint. Do not jump to the next location or later event unless the user's direction explicitly requires it.
+The current scene endpoint is a hard stop, not a suggestion. Once the endpoint is reached, stop the story immediately. Do not narrate the next action, next location, departure, aftermath, or later event after the endpoint.
+Never cross the endpoint merely to give the scene a more complete feeling.
 Do not explain the writing task, mention prompts or context, use screenplay formatting, add headings, or address the reader.
 
 Output only finished story prose.'''
@@ -1590,6 +1592,11 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
                     plan_lines.append(f"Direction: {direction}")
                 if end_condition:
                     plan_lines.append(f"Stop when: {end_condition}")
+                    plan_lines.append(
+                        "HARD STOP: The endpoint above is the final beat of this scene. "
+                        "Do not write any action, dialogue, travel, purchase, departure, "
+                        "or aftermath that occurs after that endpoint."
+                    )
                 pacing = current_plan.get("pacing")
                 if pacing:
                     plan_lines.append(f"Pacing: {pacing}")
@@ -1777,7 +1784,9 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         "[FINAL SCENE BOUNDARY]",
         "Write only the current scene.",
         "The user's scene direction and the current scene plan define what happens now.",
-        "Stop at the current scene plan's endpoint when one is supplied.",
+        "The current scene endpoint is a hard stop.",
+        "When the endpoint happens, end the output immediately.",
+        "Do not write the next action, next location, departure, aftermath, or later event after the endpoint.",
         "The scene cast is a closed set. Do not introduce offstage participants.",
         "Do not change established time, location, relationships, or consequential facts unless the current scene direction or active scene module explicitly establishes the change.",
         "Natural harmless detail is welcome; consequential invention is not.",
