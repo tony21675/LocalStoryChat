@@ -269,6 +269,8 @@ Stay within the user's requested scene and do not advance beyond it unless the u
 Only characters named in the scene cast are physically present.
 Do not invent major plot events, clues, threats, or revelations simply to make the scene more dramatic.
 Let ordinary conversation, action, humor, memory, emotion, and small observations unfold naturally.
+Use each character's personality cues to shape what they notice, say, do, and how they react. Show personality through behavior and dialogue rather than explicitly explaining it to the reader.
+A character's signature scent is a subtle sensory identifier. Mention it only when it fits naturally, such as close physical proximity, shared space, clothing, or a moment when another character would realistically notice it. Do not repeatedly announce or describe a character's scent just because it is available in context.
 Do not explain the writing task, mention prompts or context, use screenplay formatting, add headings, or address the reader.
 
 The story engine handles persistent memory separately. Do not turn ordinary scene details into commentary about story state.
