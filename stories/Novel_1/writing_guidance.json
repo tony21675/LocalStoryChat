@@ -34,7 +34,14 @@
           "Maya": "At the gas station entrance."
         },
         "current_situation": "Tiffany and Maya have left school and arrived together at the gas station. Tony remains at home asleep and is not participating in their scene."
-      }
+      },
+      "endpoint_markers": [
+        "at the gas station entrance",
+        "station's entrance",
+        "we're actually here",
+        "there we are",
+        "this is our stop"
+      ]
     },
     "2": {
       "direction": "Tiffany and Maya are at the gas station getting sodas. Let them talk naturally with each other and with the attendant.",
