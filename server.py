@@ -1451,10 +1451,37 @@ Output no markdown or explanation.
         # must replace stale per-scene values rather than merge with them.
         if isinstance(completed_scene_plan, dict):
             plan_state_after = completed_scene_plan.get("state_after", {})
+
             if isinstance(plan_state_after, dict):
                 for field in authoritative_fields:
-                    if field in plan_state_after:
-                        proposed[field] = plan_state_after[field]
+                    if field not in plan_state_after:
+                        continue
+
+                    value = plan_state_after[field]
+
+                    if field == "character_knowledge" and isinstance(value, dict):
+                        existing = proposed.get("character_knowledge", {})
+                        merged = dict(existing) if isinstance(existing, dict) else {}
+                        for character, facts in value.items():
+                            merged[character] = facts
+                        proposed[field] = merged
+
+                    elif field == "active_objectives" and isinstance(value, dict):
+                        existing = proposed.get("active_objectives", {})
+                        merged = dict(existing) if isinstance(existing, dict) else {}
+                        for character, objective in value.items():
+                            merged[character] = objective
+                        proposed[field] = merged
+
+                    elif field == "location" and isinstance(value, dict):
+                        existing = proposed.get("location", {})
+                        merged = dict(existing) if isinstance(existing, dict) else {}
+                        for character, place in value.items():
+                            merged[character] = place
+                        proposed[field] = merged
+
+                    else:
+                        proposed[field] = value
 
         proposed["continuity_requirements"] = (
             _clean_stale_continuity_requirements(
