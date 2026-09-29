@@ -5,6 +5,23 @@
   "status": "optional",
   "purpose": "Introduces the kidnapping arc when the author activates this module.",
   "secret_until_activated": true,
+  "scene_guidance": {
+    "3": {
+      "required_events": [
+        "Tiffany and Maya leave the gas station and begin walking home.",
+        "Two male kidnappers take Tiffany during the walk.",
+        "One kidnapper drives the van and the other physically grabs Tiffany and forces her into the van.",
+        "Maya witnesses Tiffany being taken.",
+        "Maya is not taken."
+      ],
+      "end_condition": "End after Tiffany has been taken and Maya is left dealing with what just happened.",
+      "do_not_advance": [
+        "Do not send Maya to Tony's house in this scene.",
+        "Do not reveal the kidnappers' motive, identities, destination, or planning beyond what is directly seen.",
+        "Do not activate or explain the tracker unless the scene itself establishes that happening."
+      ]
+    }
+  },
   "plot": {
     "victim": "Tiffany",
     "method": "Tiffany is forcibly taken and placed into a van.",
