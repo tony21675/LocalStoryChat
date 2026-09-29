@@ -373,7 +373,7 @@ textarea:focus,input:focus,select:focus{
   <div class="panel-head">
     <div>
       <h2>Story Memory</h2>
-      <div class="sub">You do not type anything here. After saving a section, click Update Memory and the app proposes only durable continuity changes for you to review.</div>
+      <div class="sub">After saving a section, click Update Memory. The app reads the saved section for the current scene and proposes only durable continuity changes for you to review.</div>
     </div>
     <div class="toolbar">
       <button id="updateState" class="btn ok">Update Memory</button>
@@ -1021,28 +1021,22 @@ async function writeScene(){
 }
 
 async function updateState(){
-  const story=latestAssistantText();
-
-  if(!story){
-    showError('There is no story section in the chat to use for memory.');
-    return;
-  }
-
-  if(!lastSavedSectionFilename){
-    showError('Save the completed story section before updating story memory.');
-    return;
-  }
-
   setBusy(true);
 
   try{
-    const j=await api('/api/state/propose',{
+    const j=await api('/api/state/propose-saved',{
       method:'POST',
-      body:JSON.stringify({
-        story,
-        sectionFilename:lastSavedSectionFilename
-      })
+      body:JSON.stringify({})
     });
+
+    lastSavedSectionFilename=j.sectionFilename;
+
+    try{
+      localStorage.setItem(
+        LAST_SAVED_SECTION_KEY+'.'+currentStoryKey(),
+        lastSavedSectionFilename
+      );
+    }catch(e){}
 
     pendingState=j.state;
     $('#statePreview').value=
