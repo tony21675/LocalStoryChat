@@ -2079,6 +2079,47 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
         if name not in active_names
     ]
 
+    # Put a compact hard-facts block close to the active cast. These are
+    # authored facts, not creative suggestions.
+    locked_facts = []
+
+    if isinstance(bible, dict):
+        relationships = bible.get("relationships")
+        if isinstance(relationships, dict):
+            for relation, fact in relationships.items():
+                relation_text = str(relation).strip()
+                if not relation_text:
+                    continue
+
+                involved = any(
+                    name.lower() in relation_text.lower()
+                    for name in active_names
+                )
+
+                if involved and str(fact).strip():
+                    locked_facts.append(str(fact).strip())
+
+    for name, data in cards:
+        if active_names and name not in active_names:
+            continue
+
+        background = data.get("background")
+        if background and str(background).strip():
+            locked_facts.append(str(background).strip())
+
+    deduped_locked_facts = []
+    for fact in locked_facts:
+        if fact not in deduped_locked_facts:
+            deduped_locked_facts.append(fact)
+
+    if deduped_locked_facts:
+        lines += [
+            "",
+            "[LOCKED CHARACTER FACTS]",
+            "These facts are established canon. Never write a contradictory fact unless the user explicitly changes the canon.",
+        ]
+        lines.extend(f"- {fact}" for fact in deduped_locked_facts)
+
     if offstage_names:
         lines += [
             "",
@@ -2510,6 +2551,53 @@ class LlamaSession:
         )
 
     @staticmethod
+    def enforce_scene_output_boundary(text):
+        """Deterministically stop generated prose at the authored scene endpoint."""
+        raw = str(text or "").strip()
+
+        try:
+            state = read_current_state()
+            scene = state.get("scene")
+            plan = get_scene_plan(scene)
+        except Exception:
+            return raw
+
+        if not isinstance(plan, dict):
+            return raw
+
+        markers = plan.get("output_end_markers", [])
+        if not isinstance(markers, list):
+            return raw
+
+        candidates = []
+        lowered = raw.lower()
+
+        for marker in markers:
+            marker_text = _normalize_evidence_text(marker)
+            if not marker_text:
+                continue
+
+            index = lowered.find(marker_text.lower())
+            if index >= 0:
+                candidates.append((index, len(marker_text)))
+
+        if not candidates:
+            return raw
+
+        index, marker_length = min(candidates, key=lambda item: item[0])
+        end = index + marker_length
+
+        punctuation = re.search(
+            r"[.!?](?:["”'’])?(?:\s|$)",
+            raw[end:],
+        )
+
+        if punctuation:
+            end += punctuation.end()
+
+        return raw[:end].strip()
+
+    @staticmethod
     def clean_output(text):
         """Extract only the final assistant prose from llama-cli output."""
         raw = (text or "").replace("\r", "")
@@ -2771,6 +2859,7 @@ class LlamaSession:
                     )
 
                     answer = self.clean_output(output_text)
+                    answer = self.enforce_scene_output_boundary(answer)
 
                     if not answer:
                         diagnostics = (error_output or "").strip()
