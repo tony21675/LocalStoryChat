@@ -1,0 +1,16 @@
+{
+  "purpose": "Recurring writing guidance for the current stretch of the story. This is creative direction, not permanent canon.",
+  "scene_goal": "Write the next requested scene naturally from current_state.json.",
+  "required_beats": [],
+  "tone": "Natural, grounded, character-driven prose.",
+  "relationship_freedom": [
+    "Allow natural small talk and casual banter.",
+    "Allow harmless shared memories, past anecdotes, inside jokes, and ordinary feelings between established friends and family.",
+    "Treat harmless interpersonal details as scene-level invention unless they contradict hard canon, timeline, character knowledge, or an explicit story constraint."
+  ],
+  "avoid": [
+    "Do not invent major plot events, consequential backstory, secret knowledge, or new relationships merely to fill space.",
+    "Do not reveal hidden canon early.",
+    "Do not turn optional creative details into permanent canon unless they are later established by the story."
+  ]
+}
