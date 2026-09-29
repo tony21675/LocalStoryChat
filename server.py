@@ -176,6 +176,10 @@ def discover_story_names():
     if current_state.exists():
         names.append("current_state.json")
 
+    writing_guidance = STORY_DIR / "writing_guidance.json"
+    if writing_guidance.exists():
+        names.append("writing_guidance.json")
+
     return names
 
 
@@ -1484,6 +1488,7 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
 
     state = parsed.get("current_state.json", {})
     bible = parsed.get("story_bible.json", {})
+    guidance = parsed.get("writing_guidance.json", {})
 
     card_names = [
         str(name).strip()
@@ -1540,6 +1545,38 @@ def build_writer_scene_packet(files, scene_characters=None, user_text=""):
             else "No explicit cast supplied. Use only characters named in the scene direction."
         ),
     ]
+
+    if isinstance(guidance, dict):
+        guidance_lines = []
+
+        purpose = guidance.get("purpose")
+        if purpose:
+            guidance_lines.append(f"Purpose: {purpose}")
+
+        scene_goal = guidance.get("scene_goal")
+        if scene_goal:
+            guidance_lines.append(f"Current guidance: {scene_goal}")
+
+        recurring = guidance.get("recurring_instructions")
+        if isinstance(recurring, list):
+            for item in recurring:
+                if str(item).strip():
+                    guidance_lines.append(f"- {str(item).strip()}")
+
+        relationship_freedom = guidance.get("relationship_freedom")
+        if isinstance(relationship_freedom, list):
+            for item in relationship_freedom:
+                if str(item).strip():
+                    guidance_lines.append(f"- {str(item).strip()}")
+
+        avoid = guidance.get("avoid")
+        if isinstance(avoid, list):
+            for item in avoid:
+                if str(item).strip():
+                    guidance_lines.append(f"- Avoid: {str(item).strip()}")
+
+        if guidance_lines:
+            lines += ["", "[RECURRING WRITING GUIDANCE]"] + guidance_lines
 
     if isinstance(state.get("chapter"), int):
         lines.append(f"Chapter: {state.get('chapter')}")
