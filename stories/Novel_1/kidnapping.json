@@ -14,18 +14,17 @@
     "destination": "unknown",
     "planning": "unknown",
     "sequence": [
-      "Tiffany is taken before reaching home.",
+      "Tiffany is taken after Tiffany and Maya leave the gas station.",
       "Two male kidnappers are involved.",
       "One male kidnapper drives the van.",
       "The other male kidnapper physically grabs Tiffany and forces her into the van.",
-      "Maya and Chloe witness what happens.",
-      "Maya and Chloe are not taken and remain safe.",
-      "Maya and Chloe run to Tony after Tiffany is taken.",
-      "Maya and Chloe reach Tony together while crying and extremely distraught.",
-      "Maya and Chloe immediately hug Tony for comfort.",
-      "Tony calms Maya and Chloe before getting a clear explanation.",
-      "After Tony calms them, Maya and Chloe tell him that Tiffany has been taken.",
-      "Tony learns what happened from Maya and Chloe rather than witnessing it himself."
+      "Maya witnesses what happens and is not taken.",
+      "Maya runs to Tony after Tiffany is taken.",
+      "Maya reaches Tony alone while crying and extremely distraught.",
+      "Maya immediately seeks Tony's help and comfort.",
+      "Tony calms Maya before getting a clear explanation.",
+      "After Tony calms her, Maya tells him that Tiffany has been taken.",
+      "Tony learns what happened from Maya rather than witnessing it himself."
     ]
   },
   "tracker": {
