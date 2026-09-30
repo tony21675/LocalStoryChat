@@ -23,17 +23,39 @@ HOST = "127.0.0.1"
 PORT = 8787
 BASE = Path.home()
 
-LLAMA = Path(os.path.expanduser(
-    "~/Documents/llama.cpp/build/bin/llama-cli"
-))
+REPO_ROOT = Path(__file__).resolve().parent
+WORKSPACE_ROOT = Path(
+    os.environ.get("STORY_WORKSPACE_ROOT", str(REPO_ROOT.parent))
+).expanduser().resolve()
 
-MODELS_DIR = BASE / "Documents" / "Models"
+MODELS_DIR = Path(
+    os.environ.get("STORY_MODELS_DIR", str(WORKSPACE_ROOT / "Models"))
+).expanduser().resolve()
 
-DEFAULT_MODEL = Path(os.path.expanduser(
-    "~/Documents/Models/llmfan46--gemma-4-E4B-it-ultra-uncensored-heretic-GGUF--gemma-4-E4B-it-ultra-uncensored-heretic-Q4_K_M.gguf"
-))
+LLAMA = Path(
+    os.environ.get(
+        "STORY_LLAMA_PATH",
+        str(WORKSPACE_ROOT / "llama.cpp" / "build" / "bin" / "llama-cli"),
+    )
+).expanduser().resolve()
 
-STORY_DIR = BASE / "Documents" / "StoryJSON"
+DEFAULT_MODEL_NAME = os.environ.get(
+    "STORY_DEFAULT_MODEL",
+    "llmfan46--gemma-4-E4B-it-ultra-uncensored-heretic-GGUF--gemma-4-E4B-it-ultra-uncensored-heretic-Q4_K_M.gguf",
+)
+DEFAULT_MODEL = MODELS_DIR / DEFAULT_MODEL_NAME
+
+DEFAULT_NOVEL_DIR = WORKSPACE_ROOT / "MyNovel"
+LEGACY_STORY_DIR = WORKSPACE_ROOT / "StoryJSON"
+
+if DEFAULT_NOVEL_DIR.exists():
+    STORY_DIR = DEFAULT_NOVEL_DIR
+elif LEGACY_STORY_DIR.exists():
+    STORY_DIR = LEGACY_STORY_DIR
+else:
+    STORY_DIR = Path(
+        os.environ.get("STORY_NOVEL_ROOT", str(DEFAULT_NOVEL_DIR))
+    ).expanduser().resolve()
 
 STORY_NAMES = [
     "Tony.json",
