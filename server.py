@@ -1388,7 +1388,15 @@ def main():
     )
 
     print(
+        f"workspace: {WORKSPACE_ROOT}"
+    )
+
+    print(
         f"models directory: {MODELS_DIR}"
+    )
+
+    print(
+        f"novel directory: {STORY_DIR}"
     )
 
     print(
