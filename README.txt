@@ -23,3 +23,7 @@ Configuration:
 - 4096 context
 - Dolphin 3.0 Llama 3.1 8B Q4_K_M
 - Persistent llama-cli conversation
+
+## Future independent applications
+
+The project plans two separate local applications, currently on hold until StoryBuilder Writer and Story Bible are finished. See [FUTURE_APPS_ON_HOLD.md](FUTURE_APPS_ON_HOLD.md) for the shared scope and restart checklist. The existing LocalStoryChat v7 app is unchanged; it is reference material for the future generic local chat app, not a decision to retrofit this story-oriented app.
