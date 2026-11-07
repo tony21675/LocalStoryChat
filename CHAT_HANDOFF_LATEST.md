@@ -37,12 +37,7 @@ cd ~/Documents/LocalStoryChat
 
 ## Future projects are documented elsewhere
 
-The two planned standalone, non-writing applications are described only in the central [FUTURE_APPS_ON_HOLD.md](https://github.com/tony21675/StoryBuilder/blob/redesign/simplified-writing-workflow/FUTURE_APPS_ON_HOLD.md) in the StoryBuilder repository:
-
-- Local Model Chat
-- DIY Vape Recipe Studio
-
-This LocalStoryChat handoff intentionally does not repeat their specifications. Both remain on hold until the author explicitly resumes them. The central backlog is the only source for their planned scope and priorities.
+The unrelated future-app backlog is maintained in the private ChatGPT Library at `/Future_Apps/FUTURE_APPS_ON_HOLD.md`. This handoff intentionally does not repeat those project specifications. The future apps remain on hold until the author explicitly resumes them.
 
 ## Working agreement
 
