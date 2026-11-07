@@ -68,6 +68,6 @@ The author eventually wants four easy desktop launchers: Writer, Story Bible, Lo
 
 ## Related handoff
 
-The shared project scope and restart checklist are in [FUTURE_APPS_ON_HOLD.md](FUTURE_APPS_ON_HOLD.md). The same file is also kept in the StoryBuilder repository.
+The shared future-app backlog is maintained only in [StoryBuilder's FUTURE_APPS_ON_HOLD.md](https://github.com/tony21675/StoryBuilder/blob/redesign/simplified-writing-workflow/FUTURE_APPS_ON_HOLD.md). This repository's duplicate copy was removed to prevent divergent versions.
 
 **This handoff records future intent only. It does not authorize starting either app now.**
